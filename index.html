@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Tabletop — Supabase</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<style>
+  :root {
+    --bg: #1b1d22; --panel: #26282f; --panel-border: #383b44;
+    --text: #e8e9ec; --text-dim: #9a9ea8; --accent: #6c8cff;
+    --accent-text: #0b0d12; --danger: #ff6b6b; --ok: #6cff9e;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; font-family: system-ui, sans-serif; background: var(--bg); color: var(--text);
+    overscroll-behavior: none; touch-action: none; }
+  body { display: flex; flex-direction: column; }
+  header { padding: 10px 14px; background: var(--panel); border-bottom: 1px solid var(--panel-border);
+    display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  header h1 { font-size: 15px; margin: 0 8px 0 0; font-weight: 600; color: var(--text-dim); }
+  #connDot { width: 10px; height: 10px; border-radius: 50%; background: var(--danger); margin-right: auto; }
+  #connDot.ok { background: var(--ok); }
+  button, label.btn { background: var(--panel-border); color: var(--text); border: none; border-radius: 8px;
+    padding: 8px 12px; font-size: 13px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+  button.primary, label.btn.primary { background: var(--accent); color: var(--accent-text); }
+  button.danger { background: var(--danger); color: #fff; }
+  input[type=file] { display: none; }
+  #boardWrap { position: relative; flex: 1; overflow: hidden; touch-action: none;
+    background: linear-gradient(45deg, rgba(128,128,128,.08) 25%, transparent 25%) 0 0/20px 20px,
+                linear-gradient(-45deg, rgba(128,128,128,.08) 25%, transparent 25%) 0 0/20px 20px; }
+  #board { position: absolute; top: 0; left: 0; transform-origin: 0 0; }
+  #mapImg { display: block; max-width: none; user-select: none; -webkit-user-drag: none; pointer-events: none; }
+  #placeholder { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    color: var(--text-dim); font-size: 14px; text-align: center; padding: 20px; }
+  .token { position: absolute; background-size: contain; background-position: center;
+    background-repeat: no-repeat; touch-action: none; cursor: grab; filter: drop-shadow(0 2px 4px rgba(0,0,0,.45)); }
+  .token.dragging { opacity: .85; }
+  .token .resizeHandle { position: absolute; right: -6px; bottom: -6px; width: 16px; height: 16px;
+    border-radius: 50%; background: var(--accent); border: 2px solid var(--bg); touch-action: none;
+    cursor: nwse-resize; }
+  .token.selected .resizeHandle { display: block; }
+  .token .resizeHandle { display: none; }
+  footer { padding: 6px 14px; font-size: 11px; color: var(--text-dim); background: var(--panel); border-top: 1px solid var(--panel-border); }
+
+  /* Tela de configuração */
+  #setupOverlay { position: fixed; inset: 0; background: rgba(0,0,0,.6); display: flex;
+    align-items: center; justify-content: center; z-index: 50; padding: 16px; }
+  #setupOverlay.hidden { display: none; }
+  #setupCard { background: var(--panel); border: 1px solid var(--panel-border); border-radius: 12px;
+    padding: 20px; max-width: 420px; width: 100%; }
+  #setupCard h2 { margin-top: 0; font-size: 16px; }
+  #setupCard p { font-size: 13px; color: var(--text-dim); line-height: 1.5; }
+  #setupCard input { width: 100%; padding: 8px 10px; margin: 6px 0 12px; border-radius: 8px;
+    border: 1px solid var(--panel-border); background: var(--bg); color: var(--text); font-size: 13px; }
+  #setupError { color: var(--danger); font-size: 12px; min-height: 16px; }
+</style>
+</head>
+<body>
+
+  <div id="setupOverlay">
+    <div id="setupCard">
+      <h2>Conectar ao Supabase</h2>
+      <p>Cole o <strong>Project URL</strong> e a <strong>anon public key</strong> do seu projeto
+      (Project Settings → API no painel do Supabase). Isso fica salvo só neste navegador.</p>
+      <label>Project URL</label>
+      <input id="inpUrl" placeholder="https://xxxxx.supabase.co">
+      <label>Anon public key</label>
+      <input id="inpKey" placeholder="eyJhbGciOi...">
+      <div id="setupError"></div>
+      <button class="primary" id="btnConnect">Conectar</button>
+    </div>
+  </div>
+
+  <header>
+    <span id="connDot" title="status da conexão"></span>
+    <h1>Tabletop</h1>
+    <label class="btn" title="Importar mapa">
+      🗺️ Mapa
+      <input type="file" id="mapInput" accept="image/png,image/jpeg,image/webp">
+    </label>
+    <label class="btn" title="Adicionar token">
+      🧙 Token
+      <input type="file" id="tokenInput" accept="image/png,image/jpeg,image/webp">
+    </label>
+    <button id="zoomOut">−</button>
+    <button id="zoomIn">+</button>
+    <button id="settingsBtn">⚙️</button>
+    <button id="clearBtn" class="danger">🗑️ Limpar mesa</button>
+  </header>
+
+  <div id="boardWrap">
+    <div id="placeholder">Conectando...</div>
+    <div id="board">
+      <img id="mapImg" style="display:none">
+    </div>
+  </div>
+
+  <footer>Sincronizado via Supabase. Todos que abrirem esta página com a mesma URL/chave veem a mesma mesa.</footer>
+
+<script>
+(function () {
+  const boardWrap = document.getElementById('boardWrap');
+  const board = document.getElementById('board');
+  const mapImg = document.getElementById('mapImg');
+  const placeholder = document.getElementById('placeholder');
+  const mapInput = document.getElementById('mapInput');
+  const tokenInput = document.getElementById('tokenInput');
+  const clearBtn = document.getElementById('clearBtn');
+  const zoomInBtn = document.getElementById('zoomIn');
+  const zoomOutBtn = document.getElementById('zoomOut');
+  const settingsBtn = document.getElementById('settingsBtn');
+  const connDot = document.getElementById('connDot');
+
+  const setupOverlay = document.getElementById('setupOverlay');
+  const inpUrl = document.getElementById('inpUrl');
+  const inpKey = document.getElementById('inpKey');
+  const setupError = document.getElementById('setupError');
+  const btnConnect = document.getElementById('btnConnect');
+
+  let sb = null;
+  let scale = 1;
+  let tokenEls = new Map(); // id -> element
+  let currentMapUrl = null;
+
+  function fileToDataURL(file) {
+    return new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(r.result);
+      r.onerror = reject;
+      r.readAsDataURL(file);
+    });
+  }
+
+  // mimeType deve ser o tipo original do arquivo (image/png mantém transparência;
+  // usar JPEG num PNG com transparência pinta o fundo de preto).
+  function resizeDataURL(dataURL, maxDim, mimeType, quality) {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        let { width, height } = img;
+        if (width <= maxDim && height <= maxDim) { resolve(dataURL); return; }
+        const ratio = Math.min(maxDim / width, maxDim / height);
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(width * ratio);
+        canvas.height = Math.round(height * ratio);
+        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL(mimeType, mimeType === 'image/png' ? undefined : (quality || 0.85)));
+      };
+      img.src = dataURL;
+    });
+  }
+
+  function dataURLToBlob(dataURL) {
+    const [header, b64] = dataURL.split(',');
+    const mime = header.match(/:(.*?);/)[1];
+    const bin = atob(b64);
+    const arr = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+    return new Blob([arr], { type: mime });
+  }
+
+  async function uploadImage(dataURL, prefix) {
+    const blob = dataURLToBlob(dataURL);
+    const ext = blob.type.includes('png') ? 'png' : 'jpg';
+    const path = `${prefix}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+    const { error } = await sb.storage.from('tabletop').upload(path, blob, { contentType: blob.type });
+    if (error) throw error;
+    const { data } = sb.storage.from('tabletop').getPublicUrl(path);
+    return data.publicUrl;
+  }
+
+  function applyZoom() { board.style.transform = `scale(${scale})`; }
+
+  function renderMap(url) {
+    currentMapUrl = url;
+    if (url) {
+      mapImg.src = url;
+      mapImg.style.display = 'block';
+      placeholder.style.display = 'none';
+    } else {
+      mapImg.style.display = 'none';
+      placeholder.style.display = 'flex';
+      placeholder.textContent = 'Importe um mapa (PNG/JPG) para começar.';
+    }
+  }
+
+  function upsertTokenEl(tok) {
+    let el = tokenEls.get(tok.id);
+    if (!el) {
+      el = document.createElement('div');
+      el.className = 'token';
+      el.dataset.id = tok.id;
+      const handle = document.createElement('div');
+      handle.className = 'resizeHandle';
+      el.appendChild(handle);
+      board.appendChild(el);
+      tokenEls.set(tok.id, el);
+      attachDrag(el, tok.id);
+      attachResize(el, handle, tok.id);
+      el.addEventListener('pointerdown', (e) => {
+        if (e.target === handle) return;
+        selectToken(el);
+      });
+    }
+    el.style.backgroundImage = `url(${tok.src_url})`;
+    if (!el.resizing) {
+      const size = tok.size || 64;
+      el.style.width = size + 'px';
+      el.style.height = size + 'px';
+    }
+    if (!el.dragging) {
+      el.style.left = tok.x + 'px';
+      el.style.top = tok.y + 'px';
+    }
+  }
+
+  let selectedTokenEl = null;
+  function selectToken(el) {
+    if (selectedTokenEl && selectedTokenEl !== el) selectedTokenEl.classList.remove('selected');
+    el.classList.add('selected');
+    selectedTokenEl = el;
+  }
+  function deselectAll() {
+    if (selectedTokenEl) selectedTokenEl.classList.remove('selected');
+    selectedTokenEl = null;
+  }
+
+  function removeTokenEl(id) {
+    const el = tokenEls.get(id);
+    if (el) { el.remove(); tokenEls.delete(id); }
+  }
+
+  function attachDrag(el, tokenId) {
+    let dragging = false, startX, startY, origX, origY, lastSent = 0;
+    el.addEventListener('pointerdown', (e) => {
+      dragging = true;
+      el.dragging = true;
+      el.classList.add('dragging');
+      el.setPointerCapture(e.pointerId);
+      startX = e.clientX; startY = e.clientY;
+      origX = parseFloat(el.style.left) || 0;
+      origY = parseFloat(el.style.top) || 0;
+    });
+    el.addEventListener('pointermove', (e) => {
+      if (!dragging) return;
+      const dx = (e.clientX - startX) / scale;
+      const dy = (e.clientY - startY) / scale;
+      const x = origX + dx, y = origY + dy;
+      el.style.left = x + 'px';
+      el.style.top = y + 'px';
+      // Throttle: manda posição pro servidor no máximo a cada 100ms durante o arraste
+      const now = Date.now();
+      if (now - lastSent > 100) {
+        lastSent = now;
+        sb.from('tokens').update({ x, y }).eq('id', tokenId).then(({ error }) => { if (error) console.error('mover token:', error); });
+      }
+    });
+    function end() {
+      if (!dragging) return;
+      dragging = false;
+      el.dragging = false;
+      el.classList.remove('dragging');
+      const x = parseFloat(el.style.left) || 0;
+      const y = parseFloat(el.style.top) || 0;
+      sb.from('tokens').update({ x, y }).eq('id', tokenId).then(({ error }) => { if (error) console.error('mover token:', error); });
+    }
+    el.addEventListener('pointerup', end);
+    el.addEventListener('pointercancel', end);
+  }
+
+  function attachResize(el, handle, tokenId) {
+    let resizing = false, startX, startY, origSize, lastSent = 0;
+    handle.addEventListener('pointerdown', (e) => {
+      e.stopPropagation();
+      resizing = true;
+      el.resizing = true;
+      handle.setPointerCapture(e.pointerId);
+      startX = e.clientX; startY = e.clientY;
+      origSize = parseFloat(el.style.width) || 64;
+    });
+    handle.addEventListener('pointermove', (e) => {
+      if (!resizing) return;
+      e.stopPropagation();
+      const d = ((e.clientX - startX) + (e.clientY - startY)) / 2 / scale;
+      const size = Math.max(24, Math.min(600, origSize + d));
+      el.style.width = size + 'px';
+      el.style.height = size + 'px';
+      const now = Date.now();
+      if (now - lastSent > 100) {
+        lastSent = now;
+        sb.from('tokens').update({ size }).eq('id', tokenId).then(({ error }) => { if (error) console.error('redimensionar token:', error); });
+      }
+    });
+    function end(e) {
+      if (!resizing) return;
+      e.stopPropagation();
+      resizing = false;
+      el.resizing = false;
+      const size = parseFloat(el.style.width) || 64;
+      sb.from('tokens').update({ size }).eq('id', tokenId).then(({ error }) => { if (error) console.error('redimensionar token:', error); });
+    }
+    handle.addEventListener('pointerup', end);
+    handle.addEventListener('pointercancel', end);
+  }
+
+  mapInput.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    placeholder.style.display = 'flex';
+    placeholder.textContent = 'Enviando mapa...';
+    try {
+      const raw = await fileToDataURL(file);
+      const mime = file.type.includes('png') ? 'image/png' : 'image/jpeg';
+      const resized = await resizeDataURL(raw, 2500, mime, 0.85);
+      const url = await uploadImage(resized, 'maps');
+      const { error } = await sb.from('board').update({ map_url: url, updated_at: new Date().toISOString() }).eq('id', 1);
+      if (error) throw error;
+    } catch (err) {
+      alert('Erro ao enviar mapa: ' + err.message);
+    }
+    mapInput.value = '';
+  });
+
+  tokenInput.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    try {
+      const raw = await fileToDataURL(file);
+      const mime = file.type.includes('png') ? 'image/png' : 'image/jpeg';
+      const small = await resizeDataURL(raw, 512, mime, 0.9);
+      const url = await uploadImage(small, 'tokens');
+      const { error } = await sb.from('tokens').insert({ src_url: url, x: 40, y: 40, size: 96 });
+      if (error) throw error;
+    } catch (err) {
+      alert('Erro ao adicionar token: ' + err.message +
+        '\n\nSe a mensagem falar da coluna "size", rode de novo o tabletop-supabase-setup.sql no SQL Editor do Supabase.');
+    }
+    tokenInput.value = '';
+  });
+
+  clearBtn.addEventListener('click', async () => {
+    if (!confirm('Limpar mapa e todos os tokens da mesa?')) return;
+    try {
+      const r1 = await sb.from('board').update({ map_url: null }).eq('id', 1);
+      if (r1.error) throw r1.error;
+      const { data: toks, error: selErr } = await sb.from('tokens').select('id');
+      if (selErr) throw selErr;
+      if (toks && toks.length) {
+        const { error: delErr } = await sb.from('tokens').delete().in('id', toks.map(t => t.id));
+        if (delErr) throw delErr;
+      }
+    } catch (err) {
+      alert('Erro ao limpar a mesa: ' + err.message);
+    }
+  });
+
+  zoomInBtn.addEventListener('click', () => { scale = Math.min(scale * 1.2, 4); applyZoom(); });
+  zoomOutBtn.addEventListener('click', () => { scale = Math.max(scale / 1.2, 0.25); applyZoom(); });
+
+  // Pan (1 dedo/mouse) e pinça para zoom (2 dedos) no fundo do tabuleiro (não em cima de tokens).
+  let boardX = 0, boardY = 0;
+  const activePointers = new Map(); // pointerId -> {x, y}
+  let panStartX, panStartY, panOrigX = 0, panOrigY = 0;
+  let pinchStartDist = 0, pinchStartScale = 1, pinchStartBoardX = 0, pinchStartBoardY = 0, pinchCenterLocal = null;
+
+  function boardLocalStyle() {
+    board.style.left = boardX + 'px';
+    board.style.top = boardY + 'px';
+  }
+
+  function pointerDistAndCenter() {
+    const pts = [...activePointers.values()];
+    const dx = pts[0].x - pts[1].x, dy = pts[0].y - pts[1].y;
+    const dist = Math.hypot(dx, dy);
+    const rect = boardWrap.getBoundingClientRect();
+    const cx = (pts[0].x + pts[1].x) / 2 - rect.left;
+    const cy = (pts[0].y + pts[1].y) / 2 - rect.top;
+    return { dist, cx, cy };
+  }
+
+  boardWrap.addEventListener('pointerdown', (e) => {
+    if (e.target.closest('.token')) return;
+    deselectAll();
+    boardWrap.setPointerCapture(e.pointerId);
+    activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+    if (activePointers.size === 1) {
+      panStartX = e.clientX; panStartY = e.clientY;
+      panOrigX = boardX; panOrigY = boardY;
+    } else if (activePointers.size === 2) {
+      const { dist, cx, cy } = pointerDistAndCenter();
+      pinchStartDist = dist;
+      pinchStartScale = scale;
+      pinchStartBoardX = boardX;
+      pinchStartBoardY = boardY;
+      pinchCenterLocal = { cx, cy };
+    }
+  });
+
+  boardWrap.addEventListener('pointermove', (e) => {
+    if (!activePointers.has(e.pointerId)) return;
+    activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+    if (activePointers.size === 2) {
+      const { dist, cx, cy } = pointerDistAndCenter();
+      const ratio = dist / (pinchStartDist || dist);
+      scale = Math.min(4, Math.max(0.25, pinchStartScale * ratio));
+      // Mantém o ponto do meio da pinça fixo na tela enquanto dá zoom.
+      boardX = cx - (scale / pinchStartScale) * (cx - pinchStartBoardX);
+      boardY = cy - (scale / pinchStartScale) * (cy - pinchStartBoardY);
+      applyZoom();
+      boardLocalStyle();
+    } else if (activePointers.size === 1) {
+      boardX = panOrigX + (e.clientX - panStartX);
+      boardY = panOrigY + (e.clientY - panStartY);
+      boardLocalStyle();
+    }
+  });
+
+  function releasePointer(e) {
+    activePointers.delete(e.pointerId);
+    // Se sair de 2 dedos para 1, reinicia a referência do pan com o dedo restante.
+    if (activePointers.size === 1) {
+      const p = [...activePointers.values()][0];
+      panStartX = p.x; panStartY = p.y;
+      panOrigX = boardX; panOrigY = boardY;
+    }
+  }
+  boardWrap.addEventListener('pointerup', releasePointer);
+  boardWrap.addEventListener('pointercancel', releasePointer);
+
+  // Zoom com roda do mouse / trackpad (desktop)
+  boardWrap.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const rect = boardWrap.getBoundingClientRect();
+    const cx = e.clientX - rect.left, cy = e.clientY - rect.top;
+    const oldScale = scale;
+    scale = Math.min(4, Math.max(0.25, scale * (e.deltaY < 0 ? 1.1 : 0.9)));
+    boardX = cx - (scale / oldScale) * (cx - boardX);
+    boardY = cy - (scale / oldScale) * (cy - boardY);
+    applyZoom();
+    boardLocalStyle();
+  }, { passive: false });
+
+  settingsBtn.addEventListener('click', () => {
+    inpUrl.value = localStorage.getItem('tabletop_sb_url') || '';
+    inpKey.value = localStorage.getItem('tabletop_sb_key') || '';
+    setupError.textContent = '';
+    setupOverlay.classList.remove('hidden');
+  });
+
+  async function connect(url, key) {
+    setupError.textContent = '';
+    connDot.classList.remove('ok');
+    placeholder.textContent = 'Conectando...';
+    try {
+      sb = supabase.createClient(url, key);
+
+      // Carrega estado inicial
+      const { data: boardRow, error: boardErr } = await sb.from('board').select('*').eq('id', 1).maybeSingle();
+      if (boardErr) throw boardErr;
+      renderMap(boardRow ? boardRow.map_url : null);
+
+      const { data: toks, error: toksErr } = await sb.from('tokens').select('*');
+      if (toksErr) throw toksErr;
+      tokenEls.forEach((el) => el.remove());
+      tokenEls.clear();
+      (toks || []).forEach(upsertTokenEl);
+
+      // Assina mudanças em tempo real
+      sb.channel('tabletop-sync')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'board' }, (payload) => {
+          if (payload.new) renderMap(payload.new.map_url);
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'tokens' }, (payload) => {
+          if (payload.eventType === 'DELETE') {
+            removeTokenEl(payload.old.id);
+          } else {
+            upsertTokenEl(payload.new);
+          }
+        })
+        .subscribe((status) => {
+          if (status === 'SUBSCRIBED') connDot.classList.add('ok');
+        });
+
+      localStorage.setItem('tabletop_sb_url', url);
+      localStorage.setItem('tabletop_sb_key', key);
+      setupOverlay.classList.add('hidden');
+    } catch (err) {
+      setupError.textContent = 'Falha ao conectar: ' + err.message;
+      placeholder.textContent = 'Não foi possível conectar. Verifique a URL e a chave.';
+    }
+  }
+
+  btnConnect.addEventListener('click', () => {
+    const url = inpUrl.value.trim();
+    const key = inpKey.value.trim();
+    if (!url || !key) { setupError.textContent = 'Preencha a URL e a chave.'; return; }
+    connect(url, key);
+  });
+
+  applyZoom();
+  const savedUrl = localStorage.getItem('tabletop_sb_url');
+  const savedKey = localStorage.getItem('tabletop_sb_key');
+  if (savedUrl && savedKey) {
+    connect(savedUrl, savedKey);
+  }
+})();
+</script>
+</body>
+</html>
