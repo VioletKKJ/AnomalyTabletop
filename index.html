@@ -12,6 +12,7 @@
     --accent-text: #0b0d12; --danger: #ff6b6b; --ok: #6cff9e;
   }
   * { box-sizing: border-box; }
+  .hidden { display: none !important; }
   html, body { height: 100%; margin: 0; font-family: system-ui, sans-serif; background: var(--bg); color: var(--text);
     overscroll-behavior: none; touch-action: none; }
   body { display: flex; flex-direction: column; }
@@ -32,27 +33,54 @@
   #mapImg { display: block; max-width: none; user-select: none; -webkit-user-drag: none; pointer-events: none; }
   #placeholder { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
     color: var(--text-dim); font-size: 14px; text-align: center; padding: 20px; }
-  .token { position: absolute; background-size: contain; background-position: center;
-    background-repeat: no-repeat; touch-action: none; cursor: grab; filter: drop-shadow(0 2px 4px rgba(0,0,0,.45)); }
+  .token { position: absolute; touch-action: none; cursor: grab; }
   .token.dragging { opacity: .85; }
+  .token .tokenImg { position: absolute; inset: 0; background-size: contain; background-position: center;
+    background-repeat: no-repeat; filter: drop-shadow(0 2px 4px rgba(0,0,0,.45)); pointer-events: none; }
   .token .resizeHandle { position: absolute; right: -6px; bottom: -6px; width: 16px; height: 16px;
     border-radius: 50%; background: var(--accent); border: 2px solid var(--bg); touch-action: none;
-    cursor: nwse-resize; }
+    cursor: nwse-resize; display: none; }
   .token.selected .resizeHandle { display: block; }
-  .token .resizeHandle { display: none; }
+  .token.selected .tokenImg { outline: 2px dashed var(--accent); outline-offset: 4px; }
+
+  #tokenMenu { position: fixed; z-index: 60; background: var(--panel); border: 1px solid var(--panel-border);
+    border-radius: 10px; padding: 6px; display: none; min-width: 200px; box-shadow: 0 6px 20px rgba(0,0,0,.4); }
+  #tokenMenu.open { display: block; }
+  #tokenMenu button { width: 100%; justify-content: flex-start; background: transparent; border-radius: 6px; margin: 1px 0; }
+  #tokenMenu button:hover { background: var(--panel-border); }
+  #tokenMenu hr { border: none; border-top: 1px solid var(--panel-border); margin: 6px 0; }
+  #tokenMenu .statesRow { display: flex; flex-wrap: wrap; gap: 6px; padding: 4px 2px; }
+  #tokenMenu .stateThumb { width: 36px; height: 36px; border-radius: 6px; background-size: contain;
+    background-position: center; background-repeat: no-repeat; border: 2px solid var(--panel-border); cursor: pointer; }
+  #tokenMenu .stateThumb.active { border-color: var(--accent); }
   footer { padding: 6px 14px; font-size: 11px; color: var(--text-dim); background: var(--panel); border-top: 1px solid var(--panel-border); }
 
-  /* Tela de configuração */
-  #setupOverlay { position: fixed; inset: 0; background: rgba(0,0,0,.6); display: flex;
+  /* Telas de configuração e login (compartilham o mesmo visual de card) */
+  #setupOverlay, #loginOverlay { position: fixed; inset: 0; background: rgba(0,0,0,.6); display: flex;
     align-items: center; justify-content: center; z-index: 50; padding: 16px; }
-  #setupOverlay.hidden { display: none; }
-  #setupCard { background: var(--panel); border: 1px solid var(--panel-border); border-radius: 12px;
+  #setupOverlay.hidden, #loginOverlay.hidden { display: none; }
+  #setupCard, #loginCard { background: var(--panel); border: 1px solid var(--panel-border); border-radius: 12px;
     padding: 20px; max-width: 420px; width: 100%; }
-  #setupCard h2 { margin-top: 0; font-size: 16px; }
-  #setupCard p { font-size: 13px; color: var(--text-dim); line-height: 1.5; }
-  #setupCard input { width: 100%; padding: 8px 10px; margin: 6px 0 12px; border-radius: 8px;
+  #setupCard h2, #loginCard h2 { margin-top: 0; font-size: 16px; }
+  #setupCard p, #loginCard p { font-size: 13px; color: var(--text-dim); line-height: 1.5; }
+  #setupCard input, #loginCard input { width: 100%; padding: 8px 10px; margin: 6px 0 12px; border-radius: 8px;
     border: 1px solid var(--panel-border); background: var(--bg); color: var(--text); font-size: 13px; }
-  #setupError { color: var(--danger); font-size: 12px; min-height: 16px; }
+  #setupError, #loginError { color: var(--danger); font-size: 12px; min-height: 16px; }
+  #loginCard .row { display: flex; gap: 8px; }
+  #loginCard .row button { flex: 1; justify-content: center; }
+  #roleBadge { font-size: 12px; color: var(--text-dim); padding: 4px 8px; background: var(--panel-border); border-radius: 6px; }
+  /* Controles que só o mestre deve ver */
+  body.jogador .mestre-only { display: none !important; }
+
+  #playersOverlay { position: fixed; inset: 0; background: rgba(0,0,0,.6); display: flex;
+    align-items: center; justify-content: center; z-index: 50; padding: 16px; }
+  #playersCard { background: var(--panel); border: 1px solid var(--panel-border); border-radius: 12px;
+    padding: 20px; max-width: 420px; width: 100%; }
+  #playersCard h2 { margin-top: 0; font-size: 16px; }
+  #playersCard p { font-size: 13px; color: var(--text-dim); line-height: 1.5; }
+  .playerRow { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--panel-border); }
+  .playerRow .name { flex: 1; font-size: 13px; }
+  .playerRow .roleTag { font-size: 11px; color: var(--text-dim); }
 </style>
 </head>
 <body>
@@ -71,22 +99,51 @@
     </div>
   </div>
 
+  <div id="loginOverlay" class="hidden">
+    <div id="loginCard">
+      <h2>Entrar na mesa</h2>
+      <p>Escolha um usuário e uma senha. Se é a primeira vez, crie uma conta.</p>
+      <label>Usuário</label>
+      <input id="inpUsername" placeholder="seu-nome" autocomplete="username">
+      <label>Senha</label>
+      <input id="inpPassword" type="password" placeholder="••••••••" autocomplete="current-password">
+      <div id="loginError"></div>
+      <div class="row">
+        <button class="primary" id="btnLogin">Entrar</button>
+        <button id="btnSignup">Criar conta</button>
+      </div>
+    </div>
+  </div>
+
   <header>
     <span id="connDot" title="status da conexão"></span>
     <h1>Tabletop</h1>
-    <label class="btn" title="Importar mapa">
+    <span id="roleBadge" class="hidden"></span>
+    <label class="btn mestre-only" title="Importar mapa">
       🗺️ Mapa
       <input type="file" id="mapInput" accept="image/png,image/jpeg,image/webp">
     </label>
-    <label class="btn" title="Adicionar token">
+    <label class="btn mestre-only" title="Adicionar token">
       🧙 Token
       <input type="file" id="tokenInput" accept="image/png,image/jpeg,image/webp">
     </label>
     <button id="zoomOut">−</button>
     <button id="zoomIn">+</button>
     <button id="settingsBtn">⚙️</button>
-    <button id="clearBtn" class="danger">🗑️ Limpar mesa</button>
+    <button id="clearBtn" class="danger mestre-only">🗑️ Limpar mesa</button>
+    <button id="claimMestreBtn" class="primary hidden">👑 Virar mestre desta mesa</button>
+    <button id="managePlayersBtn" class="mestre-only hidden">👥 Jogadores</button>
+    <button id="logoutBtn" class="hidden">Sair</button>
   </header>
+
+  <div id="playersOverlay" class="hidden">
+    <div id="playersCard" class="card">
+      <h2>Jogadores da mesa</h2>
+      <p>Troque quem é mestre. Só pode haver um mestre por vez.</p>
+      <div id="playersList"></div>
+      <button id="closePlayersBtn">Fechar</button>
+    </div>
+  </div>
 
   <div id="boardWrap">
     <div id="placeholder">Conectando...</div>
@@ -95,7 +152,21 @@
     </div>
   </div>
 
-  <footer>Sincronizado via Supabase. Todos que abrirem esta página com a mesma URL/chave veem a mesma mesa.</footer>
+  <div id="tokenMenu">
+    <div id="tokenStatesRow" class="statesRow"></div>
+    <button id="menuAddState" class="mestre-only">➕ Adicionar estado (imagem)</button>
+    <input type="file" id="stateInput" accept="image/png,image/jpeg,image/webp" class="hidden">
+    <hr>
+    <button id="menuFront">⬆️ Trazer para frente</button>
+    <button id="menuBack">⬇️ Mandar para trás</button>
+    <hr>
+    <button id="menuRotate">🔄 Girar 90°</button>
+    <button id="menuFlip">↔️ Espelhar</button>
+    <hr>
+    <button id="menuDelete" class="mestre-only danger">🗑️ Apagar token</button>
+  </div>
+
+  <footer>Sincronizado via Supabase. Cada pessoa entra com seu próprio usuário/senha; só o mestre edita mapa e tokens.</footer>
 
 <script>
 (function () {
@@ -117,7 +188,39 @@
   const setupError = document.getElementById('setupError');
   const btnConnect = document.getElementById('btnConnect');
 
+  const loginOverlay = document.getElementById('loginOverlay');
+  const inpUsername = document.getElementById('inpUsername');
+  const inpPassword = document.getElementById('inpPassword');
+  const loginError = document.getElementById('loginError');
+  const btnLogin = document.getElementById('btnLogin');
+  const btnSignup = document.getElementById('btnSignup');
+  const roleBadge = document.getElementById('roleBadge');
+  const logoutBtn = document.getElementById('logoutBtn');
+  const tokenMenu = document.getElementById('tokenMenu');
+  const tokenStatesRow = document.getElementById('tokenStatesRow');
+  const menuAddState = document.getElementById('menuAddState');
+  const stateInput = document.getElementById('stateInput');
+  const menuFront = document.getElementById('menuFront');
+  const menuBack = document.getElementById('menuBack');
+  const menuRotate = document.getElementById('menuRotate');
+  const menuFlip = document.getElementById('menuFlip');
+  const menuDelete = document.getElementById('menuDelete');
+  const claimMestreBtn = document.getElementById('claimMestreBtn');
+  const managePlayersBtn = document.getElementById('managePlayersBtn');
+  const playersOverlay = document.getElementById('playersOverlay');
+  const playersList = document.getElementById('playersList');
+  const closePlayersBtn = document.getElementById('closePlayersBtn');
+
+  // O Supabase Auth pede um e-mail; como só queremos usuário+senha,
+  // transformamos o usuário num e-mail fake e escondido (ninguém vê isso).
+  function usernameToFakeEmail(username) {
+    const clean = username.trim().toLowerCase().replace(/[^a-z0-9_.-]/g, '');
+    return clean + '@tabletop.local';
+  }
+
   let sb = null;
+  let currentRole = null; // 'mestre' | 'jogador'
+  let currentUserId = null;
   let scale = 1;
   let tokenEls = new Map(); // id -> element
   let currentMapUrl = null;
@@ -184,25 +287,41 @@
     }
   }
 
+  const tokenData = new Map(); // id -> última linha conhecida (pra abrir o menu com dados atuais)
+
+  function imageForToken(tok) {
+    if (tok.active_state && tok.states && tok.states[tok.active_state - 1]) {
+      return tok.states[tok.active_state - 1];
+    }
+    return tok.src_url;
+  }
+
   function upsertTokenEl(tok) {
+    tokenData.set(tok.id, tok);
     let el = tokenEls.get(tok.id);
     if (!el) {
       el = document.createElement('div');
       el.className = 'token';
       el.dataset.id = tok.id;
+      const img = document.createElement('div');
+      img.className = 'tokenImg';
+      el.appendChild(img);
       const handle = document.createElement('div');
       handle.className = 'resizeHandle';
       el.appendChild(handle);
       board.appendChild(el);
       tokenEls.set(tok.id, el);
-      attachDrag(el, tok.id);
+      attachDrag(el, tok.id, handle);
       attachResize(el, handle, tok.id);
-      el.addEventListener('pointerdown', (e) => {
-        if (e.target === handle) return;
-        selectToken(el);
+      el.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        openTokenMenu(tok.id, e.clientX, e.clientY);
       });
     }
-    el.style.backgroundImage = `url(${tok.src_url})`;
+    const img = el.querySelector('.tokenImg');
+    img.style.backgroundImage = `url(${imageForToken(tok)})`;
+    img.style.transform = `rotate(${tok.rotation || 0}deg) scaleX(${tok.flip_x ? -1 : 1})`;
+    el.style.zIndex = Math.round(tok.z || 0);
     if (!el.resizing) {
       const size = tok.size || 64;
       el.style.width = size + 'px';
@@ -230,21 +349,41 @@
     if (el) { el.remove(); tokenEls.delete(id); }
   }
 
-  function attachDrag(el, tokenId) {
-    let dragging = false, startX, startY, origX, origY, lastSent = 0;
+  function attachDrag(el, tokenId, handle) {
+    let dragging = false, startX, startY, origX, origY, lastSent = 0, moved = false, longPressTimer = null;
+
     el.addEventListener('pointerdown', (e) => {
+      if (e.target === handle) return; // a alça tem sua própria lógica
+      selectToken(el);
       dragging = true;
+      moved = false;
       el.dragging = true;
       el.classList.add('dragging');
       el.setPointerCapture(e.pointerId);
       startX = e.clientX; startY = e.clientY;
       origX = parseFloat(el.style.left) || 0;
       origY = parseFloat(el.style.top) || 0;
+
+      // Toque longo (sem arrastar) abre o menu de contexto, igual botão direito no PC.
+      const px = e.clientX, py = e.clientY;
+      longPressTimer = setTimeout(() => {
+        if (dragging && !moved) {
+          dragging = false;
+          el.dragging = false;
+          el.classList.remove('dragging');
+          openTokenMenu(tokenId, px, py);
+        }
+      }, 550);
     });
+
     el.addEventListener('pointermove', (e) => {
       if (!dragging) return;
       const dx = (e.clientX - startX) / scale;
       const dy = (e.clientY - startY) / scale;
+      if (Math.abs(e.clientX - startX) > 6 || Math.abs(e.clientY - startY) > 6) {
+        moved = true;
+        clearTimeout(longPressTimer);
+      }
       const x = origX + dx, y = origY + dy;
       el.style.left = x + 'px';
       el.style.top = y + 'px';
@@ -256,6 +395,7 @@
       }
     });
     function end() {
+      clearTimeout(longPressTimer);
       if (!dragging) return;
       dragging = false;
       el.dragging = false;
@@ -303,6 +443,107 @@
     handle.addEventListener('pointercancel', end);
   }
 
+  let menuTokenId = null;
+
+  function openTokenMenu(tokenId, clientX, clientY) {
+    const tok = tokenData.get(tokenId);
+    if (!tok) return;
+    menuTokenId = tokenId;
+
+    // Miniaturas de estado: a base (0) + cada variação salva.
+    tokenStatesRow.innerHTML = '';
+    const allImages = [tok.src_url, ...(tok.states || [])];
+    allImages.forEach((url, idx) => {
+      const thumb = document.createElement('div');
+      thumb.className = 'stateThumb' + (((tok.active_state || 0) === idx) ? ' active' : '');
+      thumb.style.backgroundImage = `url(${url})`;
+      thumb.title = idx === 0 ? 'Estado base' : ('Estado ' + idx);
+      thumb.addEventListener('click', async () => {
+        const { error } = await sb.from('tokens').update({ active_state: idx }).eq('id', tokenId);
+        if (error) alert('Erro ao trocar estado: ' + error.message);
+        closeTokenMenu();
+      });
+      tokenStatesRow.appendChild(thumb);
+    });
+
+    tokenMenu.classList.add('open');
+    const menuW = 220, menuH = tokenMenu.offsetHeight || 260;
+    const x = Math.min(clientX, window.innerWidth - menuW - 8);
+    const y = Math.min(clientY, window.innerHeight - menuH - 8);
+    tokenMenu.style.left = Math.max(8, x) + 'px';
+    tokenMenu.style.top = Math.max(8, y) + 'px';
+  }
+
+  function closeTokenMenu() {
+    tokenMenu.classList.remove('open');
+    menuTokenId = null;
+  }
+
+  document.addEventListener('pointerdown', (e) => {
+    if (tokenMenu.classList.contains('open') && !tokenMenu.contains(e.target)) closeTokenMenu();
+  });
+
+  menuFront.addEventListener('click', async () => {
+    if (!menuTokenId) return;
+    const { error } = await sb.from('tokens').update({ z: Date.now() }).eq('id', menuTokenId);
+    if (error) alert('Erro: ' + error.message);
+    closeTokenMenu();
+  });
+
+  menuBack.addEventListener('click', async () => {
+    if (!menuTokenId) return;
+    const { error } = await sb.from('tokens').update({ z: -Date.now() }).eq('id', menuTokenId);
+    if (error) alert('Erro: ' + error.message);
+    closeTokenMenu();
+  });
+
+  menuRotate.addEventListener('click', async () => {
+    if (!menuTokenId) return;
+    const tok = tokenData.get(menuTokenId);
+    const newRotation = ((tok.rotation || 0) + 90) % 360;
+    const { error } = await sb.from('tokens').update({ rotation: newRotation }).eq('id', menuTokenId);
+    if (error) alert('Erro: ' + error.message);
+    closeTokenMenu();
+  });
+
+  menuFlip.addEventListener('click', async () => {
+    if (!menuTokenId) return;
+    const tok = tokenData.get(menuTokenId);
+    const { error } = await sb.from('tokens').update({ flip_x: !tok.flip_x }).eq('id', menuTokenId);
+    if (error) alert('Erro: ' + error.message);
+    closeTokenMenu();
+  });
+
+  menuDelete.addEventListener('click', async () => {
+    if (!menuTokenId) return;
+    if (!confirm('Apagar este token?')) return;
+    const { error } = await sb.from('tokens').delete().eq('id', menuTokenId);
+    if (error) alert('Erro: ' + error.message);
+    closeTokenMenu();
+  });
+
+  menuAddState.addEventListener('click', () => stateInput.click());
+
+  stateInput.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    const tokenId = menuTokenId;
+    closeTokenMenu();
+    if (!file || !tokenId) return;
+    try {
+      const tok = tokenData.get(tokenId);
+      const raw = await fileToDataURL(file);
+      const mime = file.type.includes('png') ? 'image/png' : 'image/jpeg';
+      const small = await resizeDataURL(raw, 512, mime, 0.9);
+      const url = await uploadImage(small, 'tokens');
+      const newStates = [...(tok.states || []), url];
+      const { error } = await sb.from('tokens').update({ states: newStates, active_state: newStates.length }).eq('id', tokenId);
+      if (error) throw error;
+    } catch (err) {
+      alert('Erro ao adicionar estado: ' + err.message);
+    }
+    stateInput.value = '';
+  });
+
   mapInput.addEventListener('change', async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -329,7 +570,7 @@
       const mime = file.type.includes('png') ? 'image/png' : 'image/jpeg';
       const small = await resizeDataURL(raw, 512, mime, 0.9);
       const url = await uploadImage(small, 'tokens');
-      const { error } = await sb.from('tokens').insert({ src_url: url, x: 40, y: 40, size: 96 });
+      const { error } = await sb.from('tokens').insert({ src_url: url, x: 40, y: 40, size: 96, z: Date.now() });
       if (error) throw error;
     } catch (err) {
       alert('Erro ao adicionar token: ' + err.message +
@@ -449,46 +690,84 @@
     setupOverlay.classList.remove('hidden');
   });
 
+  async function loadBoardAndTokens() {
+    const { data: boardRow, error: boardErr } = await sb.from('board').select('*').eq('id', 1).maybeSingle();
+    if (boardErr) throw boardErr;
+    renderMap(boardRow ? boardRow.map_url : null);
+
+    const { data: toks, error: toksErr } = await sb.from('tokens').select('*');
+    if (toksErr) throw toksErr;
+    tokenEls.forEach((el) => el.remove());
+    tokenEls.clear();
+    (toks || []).forEach(upsertTokenEl);
+
+    sb.channel('tabletop-sync')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'board' }, (payload) => {
+        if (payload.new) renderMap(payload.new.map_url);
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tokens' }, (payload) => {
+        if (payload.eventType === 'DELETE') {
+          removeTokenEl(payload.old.id);
+        } else {
+          upsertTokenEl(payload.new);
+        }
+      })
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') connDot.classList.add('ok');
+      });
+  }
+
+  async function refreshRoleUI() {
+    const { data: profile, error } = await sb.from('profiles').select('*').eq('id', currentUserId).maybeSingle();
+    if (error) throw error;
+    currentRole = (profile && profile.role === 'mestre') ? 'mestre' : 'jogador';
+    document.body.classList.toggle('jogador', currentRole !== 'mestre');
+    roleBadge.textContent = currentRole === 'mestre' ? ('👑 Mestre (' + (profile.display_name || '') + ')') : ('🧑 Jogador (' + (profile.display_name || '') + ')');
+    roleBadge.classList.remove('hidden');
+    managePlayersBtn.classList.toggle('hidden', currentRole !== 'mestre');
+
+    // Se ainda não existe nenhum mestre na mesa, qualquer um pode assumir.
+    const { count } = await sb.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'mestre');
+    claimMestreBtn.classList.toggle('hidden', currentRole === 'mestre' || (count || 0) > 0);
+  }
+
+  async function loadProfileAndEnter(user) {
+    currentUserId = user.id;
+    await refreshRoleUI();
+    logoutBtn.classList.remove('hidden');
+    loginOverlay.classList.add('hidden');
+    placeholder.textContent = 'Carregando mesa...';
+    await loadBoardAndTokens();
+
+    // Mantém o papel atualizado em tempo real (ex.: alguém te promoveu/rebaixou agora).
+    sb.channel('profiles-sync')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => {
+        refreshRoleUI().catch(() => {});
+      })
+      .subscribe();
+  }
+
   async function connect(url, key) {
     setupError.textContent = '';
     connDot.classList.remove('ok');
     placeholder.textContent = 'Conectando...';
     try {
       sb = supabase.createClient(url, key);
-
-      // Carrega estado inicial
-      const { data: boardRow, error: boardErr } = await sb.from('board').select('*').eq('id', 1).maybeSingle();
-      if (boardErr) throw boardErr;
-      renderMap(boardRow ? boardRow.map_url : null);
-
-      const { data: toks, error: toksErr } = await sb.from('tokens').select('*');
-      if (toksErr) throw toksErr;
-      tokenEls.forEach((el) => el.remove());
-      tokenEls.clear();
-      (toks || []).forEach(upsertTokenEl);
-
-      // Assina mudanças em tempo real
-      sb.channel('tabletop-sync')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'board' }, (payload) => {
-          if (payload.new) renderMap(payload.new.map_url);
-        })
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'tokens' }, (payload) => {
-          if (payload.eventType === 'DELETE') {
-            removeTokenEl(payload.old.id);
-          } else {
-            upsertTokenEl(payload.new);
-          }
-        })
-        .subscribe((status) => {
-          if (status === 'SUBSCRIBED') connDot.classList.add('ok');
-        });
-
       localStorage.setItem('tabletop_sb_url', url);
       localStorage.setItem('tabletop_sb_key', key);
       setupOverlay.classList.add('hidden');
+
+      const { data: { session } } = await sb.auth.getSession();
+      if (session && session.user) {
+        await loadProfileAndEnter(session.user);
+      } else {
+        placeholder.textContent = 'Faça login para ver a mesa.';
+        loginOverlay.classList.remove('hidden');
+      }
     } catch (err) {
       setupError.textContent = 'Falha ao conectar: ' + err.message;
       placeholder.textContent = 'Não foi possível conectar. Verifique a URL e a chave.';
+      setupOverlay.classList.remove('hidden');
     }
   }
 
@@ -497,6 +776,102 @@
     const key = inpKey.value.trim();
     if (!url || !key) { setupError.textContent = 'Preencha a URL e a chave.'; return; }
     connect(url, key);
+  });
+
+  btnLogin.addEventListener('click', async () => {
+    loginError.textContent = '';
+    const username = inpUsername.value.trim();
+    const password = inpPassword.value;
+    if (!username || !password) { loginError.textContent = 'Preencha usuário e senha.'; return; }
+    try {
+      const { data, error } = await sb.auth.signInWithPassword({ email: usernameToFakeEmail(username), password });
+      if (error) throw error;
+      await loadProfileAndEnter(data.user);
+    } catch (err) {
+      loginError.textContent = 'Erro ao entrar: ' + (err.message.includes('Invalid login') ? 'usuário ou senha errados.' : err.message);
+    }
+  });
+
+  btnSignup.addEventListener('click', async () => {
+    loginError.textContent = '';
+    const username = inpUsername.value.trim();
+    const password = inpPassword.value;
+    if (!username || !password) { loginError.textContent = 'Preencha usuário e senha.'; return; }
+    if (password.length < 6) { loginError.textContent = 'A senha precisa ter pelo menos 6 caracteres.'; return; }
+    try {
+      const { data, error } = await sb.auth.signUp({
+        email: usernameToFakeEmail(username),
+        password,
+        options: { data: { display_name: username } },
+      });
+      if (error) throw error;
+      if (data.session && data.user) {
+        await loadProfileAndEnter(data.user);
+      } else {
+        loginError.textContent = 'Não foi possível entrar direto. Verifique se "Confirm email" está desativado nas configurações de Auth do Supabase.';
+      }
+    } catch (err) {
+      loginError.textContent = 'Erro ao criar conta: ' + (err.message.includes('already registered') ? 'esse usuário já existe.' : err.message);
+    }
+  });
+
+  claimMestreBtn.addEventListener('click', async () => {
+    try {
+      const { count } = await sb.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'mestre');
+      if ((count || 0) > 0) { alert('Já tem um mestre nesta mesa. Peça pra ele te promover em "👥 Jogadores".'); await refreshRoleUI(); return; }
+      const { error } = await sb.from('profiles').update({ role: 'mestre' }).eq('id', currentUserId);
+      if (error) throw error;
+      await refreshRoleUI();
+    } catch (err) {
+      alert('Erro ao virar mestre: ' + err.message);
+    }
+  });
+
+  async function openPlayersPanel() {
+    playersList.innerHTML = 'Carregando...';
+    playersOverlay.classList.remove('hidden');
+    const { data: players, error } = await sb.from('profiles').select('*').order('display_name');
+    if (error) { playersList.textContent = 'Erro ao carregar: ' + error.message; return; }
+    playersList.innerHTML = '';
+    (players || []).forEach((p) => {
+      const row = document.createElement('div');
+      row.className = 'playerRow';
+      const isMe = p.id === currentUserId;
+      row.innerHTML = `<span class="name">${p.display_name || '(sem nome)'}${isMe ? ' (você)' : ''}</span>
+        <span class="roleTag">${p.role === 'mestre' ? '👑 mestre' : '🧑 jogador'}</span>`;
+      const btn = document.createElement('button');
+      btn.textContent = p.role === 'mestre' ? 'Tornar jogador' : 'Tornar mestre';
+      btn.addEventListener('click', async () => {
+        try {
+          if (p.role !== 'mestre') {
+            // Só um mestre por vez: rebaixa quem for mestre agora antes de promover.
+            await sb.from('profiles').update({ role: 'jogador' }).eq('role', 'mestre');
+          }
+          const { error: upErr } = await sb.from('profiles').update({ role: p.role === 'mestre' ? 'jogador' : 'mestre' }).eq('id', p.id);
+          if (upErr) throw upErr;
+          await refreshRoleUI();
+          await openPlayersPanel();
+        } catch (err) {
+          alert('Erro: ' + err.message);
+        }
+      });
+      row.appendChild(btn);
+      playersList.appendChild(row);
+    });
+  }
+  managePlayersBtn.addEventListener('click', openPlayersPanel);
+  closePlayersBtn.addEventListener('click', () => playersOverlay.classList.add('hidden'));
+
+  logoutBtn.addEventListener('click', async () => {
+    try { await sb.auth.signOut(); } catch (e) {}
+    location.reload();
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (!selectedTokenEl) return;
+    const id = selectedTokenEl.dataset.id;
+    if (e.key === 'PageUp') { e.preventDefault(); sb.from('tokens').update({ z: Date.now() }).eq('id', id).then(() => {}); }
+    else if (e.key === 'PageDown') { e.preventDefault(); sb.from('tokens').update({ z: -Date.now() }).eq('id', id).then(() => {}); }
   });
 
   applyZoom();
