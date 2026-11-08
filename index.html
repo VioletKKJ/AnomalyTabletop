@@ -211,13 +211,6 @@
   const playersList = document.getElementById('playersList');
   const closePlayersBtn = document.getElementById('closePlayersBtn');
 
-  // O Supabase Auth pede um e-mail; como só queremos usuário+senha,
-  // transformamos o usuário num e-mail fake e escondido (ninguém vê isso).
-  function usernameToFakeEmail(username) {
-    const clean = username.trim().toLowerCase().replace(/[^a-z0-9_.-]/g, '');
-    return clean + '@tabletop.local';
-  }
-
   let sb = null;
   let currentRole = null; // 'mestre' | 'jogador'
   let currentUserId = null;
@@ -391,7 +384,7 @@
       const now = Date.now();
       if (now - lastSent > 100) {
         lastSent = now;
-        sb.from('tokens').update({ x, y }).eq('id', tokenId).then(({ error }) => { if (error) console.error('mover token:', error); });
+        sb.rpc('move_token', { p_user_id: currentUserId, p_token_id: tokenId, p_x: x, p_y: y }).then(({ error }) => { if (error) console.error('mover token:', error); });
       }
     });
     function end() {
@@ -402,7 +395,7 @@
       el.classList.remove('dragging');
       const x = parseFloat(el.style.left) || 0;
       const y = parseFloat(el.style.top) || 0;
-      sb.from('tokens').update({ x, y }).eq('id', tokenId).then(({ error }) => { if (error) console.error('mover token:', error); });
+      sb.rpc('move_token', { p_user_id: currentUserId, p_token_id: tokenId, p_x: x, p_y: y }).then(({ error }) => { if (error) console.error('mover token:', error); });
     }
     el.addEventListener('pointerup', end);
     el.addEventListener('pointercancel', end);
@@ -428,7 +421,7 @@
       const now = Date.now();
       if (now - lastSent > 100) {
         lastSent = now;
-        sb.from('tokens').update({ size }).eq('id', tokenId).then(({ error }) => { if (error) console.error('redimensionar token:', error); });
+        sb.rpc('resize_token', { p_user_id: currentUserId, p_token_id: tokenId, p_size: size }).then(({ error }) => { if (error) console.error('redimensionar token:', error); });
       }
     });
     function end(e) {
@@ -437,7 +430,7 @@
       resizing = false;
       el.resizing = false;
       const size = parseFloat(el.style.width) || 64;
-      sb.from('tokens').update({ size }).eq('id', tokenId).then(({ error }) => { if (error) console.error('redimensionar token:', error); });
+      sb.rpc('resize_token', { p_user_id: currentUserId, p_token_id: tokenId, p_size: size }).then(({ error }) => { if (error) console.error('redimensionar token:', error); });
     }
     handle.addEventListener('pointerup', end);
     handle.addEventListener('pointercancel', end);
@@ -459,7 +452,7 @@
       thumb.style.backgroundImage = `url(${url})`;
       thumb.title = idx === 0 ? 'Estado base' : ('Estado ' + idx);
       thumb.addEventListener('click', async () => {
-        const { error } = await sb.from('tokens').update({ active_state: idx }).eq('id', tokenId);
+        const { error } = await sb.rpc('set_active_state', { p_user_id: currentUserId, p_token_id: tokenId, p_state: idx });
         if (error) alert('Erro ao trocar estado: ' + error.message);
         closeTokenMenu();
       });
@@ -483,16 +476,26 @@
     if (tokenMenu.classList.contains('open') && !tokenMenu.contains(e.target)) closeTokenMenu();
   });
 
+  // O mapa fica sempre na camada "0". Tokens nunca devem ter z menor que 1,
+  // senão eles somem pra trás do próprio mapa — por isso "mandar pra trás"
+  // calcula o menor z entre os tokens atuais e nunca deixa passar de 1.
+  function minTokenZ() {
+    let min = 1;
+    tokenData.forEach((t) => { if ((t.z || 0) < min) min = (t.z || 0); });
+    return min;
+  }
+
   menuFront.addEventListener('click', async () => {
     if (!menuTokenId) return;
-    const { error } = await sb.from('tokens').update({ z: Date.now() }).eq('id', menuTokenId);
+    const { error } = await sb.rpc('set_token_z', { p_user_id: currentUserId, p_token_id: menuTokenId, p_z: Date.now() });
     if (error) alert('Erro: ' + error.message);
     closeTokenMenu();
   });
 
   menuBack.addEventListener('click', async () => {
     if (!menuTokenId) return;
-    const { error } = await sb.from('tokens').update({ z: -Date.now() }).eq('id', menuTokenId);
+    const newZ = Math.max(1, minTokenZ() - 1);
+    const { error } = await sb.rpc('set_token_z', { p_user_id: currentUserId, p_token_id: menuTokenId, p_z: newZ });
     if (error) alert('Erro: ' + error.message);
     closeTokenMenu();
   });
@@ -501,7 +504,7 @@
     if (!menuTokenId) return;
     const tok = tokenData.get(menuTokenId);
     const newRotation = ((tok.rotation || 0) + 90) % 360;
-    const { error } = await sb.from('tokens').update({ rotation: newRotation }).eq('id', menuTokenId);
+    const { error } = await sb.rpc('rotate_token', { p_user_id: currentUserId, p_token_id: menuTokenId, p_rotation: newRotation });
     if (error) alert('Erro: ' + error.message);
     closeTokenMenu();
   });
@@ -509,7 +512,7 @@
   menuFlip.addEventListener('click', async () => {
     if (!menuTokenId) return;
     const tok = tokenData.get(menuTokenId);
-    const { error } = await sb.from('tokens').update({ flip_x: !tok.flip_x }).eq('id', menuTokenId);
+    const { error } = await sb.rpc('flip_token', { p_user_id: currentUserId, p_token_id: menuTokenId, p_flip: !tok.flip_x });
     if (error) alert('Erro: ' + error.message);
     closeTokenMenu();
   });
@@ -517,7 +520,7 @@
   menuDelete.addEventListener('click', async () => {
     if (!menuTokenId) return;
     if (!confirm('Apagar este token?')) return;
-    const { error } = await sb.from('tokens').delete().eq('id', menuTokenId);
+    const { error } = await sb.rpc('delete_token', { p_user_id: currentUserId, p_token_id: menuTokenId });
     if (error) alert('Erro: ' + error.message);
     closeTokenMenu();
   });
@@ -530,13 +533,11 @@
     closeTokenMenu();
     if (!file || !tokenId) return;
     try {
-      const tok = tokenData.get(tokenId);
       const raw = await fileToDataURL(file);
       const mime = file.type.includes('png') ? 'image/png' : 'image/jpeg';
       const small = await resizeDataURL(raw, 512, mime, 0.9);
       const url = await uploadImage(small, 'tokens');
-      const newStates = [...(tok.states || []), url];
-      const { error } = await sb.from('tokens').update({ states: newStates, active_state: newStates.length }).eq('id', tokenId);
+      const { error } = await sb.rpc('add_token_state', { p_user_id: currentUserId, p_token_id: tokenId, p_url: url });
       if (error) throw error;
     } catch (err) {
       alert('Erro ao adicionar estado: ' + err.message);
@@ -554,7 +555,7 @@
       const mime = file.type.includes('png') ? 'image/png' : 'image/jpeg';
       const resized = await resizeDataURL(raw, 2500, mime, 0.85);
       const url = await uploadImage(resized, 'maps');
-      const { error } = await sb.from('board').update({ map_url: url, updated_at: new Date().toISOString() }).eq('id', 1);
+      const { error } = await sb.rpc('set_map', { p_user_id: currentUserId, p_map_url: url });
       if (error) throw error;
     } catch (err) {
       alert('Erro ao enviar mapa: ' + err.message);
@@ -570,29 +571,18 @@
       const mime = file.type.includes('png') ? 'image/png' : 'image/jpeg';
       const small = await resizeDataURL(raw, 512, mime, 0.9);
       const url = await uploadImage(small, 'tokens');
-      const { error } = await sb.from('tokens').insert({ src_url: url, x: 40, y: 40, size: 96, z: Date.now() });
+      const { error } = await sb.rpc('add_token', { p_user_id: currentUserId, p_src_url: url, p_x: 40, p_y: 40, p_size: 96, p_z: Date.now() });
       if (error) throw error;
     } catch (err) {
-      alert('Erro ao adicionar token: ' + err.message +
-        '\n\nSe a mensagem falar da coluna "size", rode de novo o tabletop-supabase-setup.sql no SQL Editor do Supabase.');
+      alert('Erro ao adicionar token: ' + err.message);
     }
     tokenInput.value = '';
   });
 
   clearBtn.addEventListener('click', async () => {
     if (!confirm('Limpar mapa e todos os tokens da mesa?')) return;
-    try {
-      const r1 = await sb.from('board').update({ map_url: null }).eq('id', 1);
-      if (r1.error) throw r1.error;
-      const { data: toks, error: selErr } = await sb.from('tokens').select('id');
-      if (selErr) throw selErr;
-      if (toks && toks.length) {
-        const { error: delErr } = await sb.from('tokens').delete().in('id', toks.map(t => t.id));
-        if (delErr) throw delErr;
-      }
-    } catch (err) {
-      alert('Erro ao limpar a mesa: ' + err.message);
-    }
+    const { error } = await sb.rpc('clear_board', { p_user_id: currentUserId });
+    if (error) alert('Erro ao limpar a mesa: ' + error.message);
   });
 
   zoomInBtn.addEventListener('click', () => { scale = Math.min(scale * 1.2, 4); applyZoom(); });
@@ -731,8 +721,10 @@
     claimMestreBtn.classList.toggle('hidden', currentRole === 'mestre' || (count || 0) > 0);
   }
 
-  async function loadProfileAndEnter(user) {
-    currentUserId = user.id;
+  async function loadProfileAndEnter(userRow) {
+    currentUserId = userRow.id;
+    localStorage.setItem('tabletop_user_id', userRow.id);
+    localStorage.setItem('tabletop_username', userRow.username || '');
     await refreshRoleUI();
     logoutBtn.classList.remove('hidden');
     loginOverlay.classList.add('hidden');
@@ -757,9 +749,19 @@
       localStorage.setItem('tabletop_sb_key', key);
       setupOverlay.classList.add('hidden');
 
-      const { data: { session } } = await sb.auth.getSession();
-      if (session && session.user) {
-        await loadProfileAndEnter(session.user);
+      const savedUserId = localStorage.getItem('tabletop_user_id');
+      const savedUsername = localStorage.getItem('tabletop_username');
+      if (savedUserId) {
+        // Confirma que a conta ainda existe (não foi apagada do banco).
+        const { data: profile } = await sb.from('profiles').select('id, display_name, role').eq('id', savedUserId).maybeSingle();
+        if (profile) {
+          await loadProfileAndEnter({ id: profile.id, username: profile.display_name || savedUsername });
+        } else {
+          localStorage.removeItem('tabletop_user_id');
+          localStorage.removeItem('tabletop_username');
+          placeholder.textContent = 'Faça login para ver a mesa.';
+          loginOverlay.classList.remove('hidden');
+        }
       } else {
         placeholder.textContent = 'Faça login para ver a mesa.';
         loginOverlay.classList.remove('hidden');
@@ -784,11 +786,12 @@
     const password = inpPassword.value;
     if (!username || !password) { loginError.textContent = 'Preencha usuário e senha.'; return; }
     try {
-      const { data, error } = await sb.auth.signInWithPassword({ email: usernameToFakeEmail(username), password });
+      const { data, error } = await sb.rpc('login_user', { p_username: username, p_password: password });
       if (error) throw error;
-      await loadProfileAndEnter(data.user);
+      if (!data || !data.length) { loginError.textContent = 'Usuário ou senha errados.'; return; }
+      await loadProfileAndEnter(data[0]);
     } catch (err) {
-      loginError.textContent = 'Erro ao entrar: ' + (err.message.includes('Invalid login') ? 'usuário ou senha errados.' : err.message);
+      loginError.textContent = 'Erro ao entrar: ' + err.message;
     }
   });
 
@@ -797,34 +800,20 @@
     const username = inpUsername.value.trim();
     const password = inpPassword.value;
     if (!username || !password) { loginError.textContent = 'Preencha usuário e senha.'; return; }
-    if (password.length < 6) { loginError.textContent = 'A senha precisa ter pelo menos 6 caracteres.'; return; }
     try {
-      const { data, error } = await sb.auth.signUp({
-        email: usernameToFakeEmail(username),
-        password,
-        options: { data: { display_name: username } },
-      });
+      const { data, error } = await sb.rpc('signup_user', { p_username: username, p_password: password });
       if (error) throw error;
-      if (data.session && data.user) {
-        await loadProfileAndEnter(data.user);
-      } else {
-        loginError.textContent = 'Não foi possível entrar direto. Verifique se "Confirm email" está desativado nas configurações de Auth do Supabase.';
-      }
+      if (!data || !data.length) { loginError.textContent = 'Não foi possível criar a conta.'; return; }
+      await loadProfileAndEnter(data[0]);
     } catch (err) {
-      loginError.textContent = 'Erro ao criar conta: ' + (err.message.includes('already registered') ? 'esse usuário já existe.' : err.message);
+      loginError.textContent = 'Erro ao criar conta: ' + err.message;
     }
   });
 
   claimMestreBtn.addEventListener('click', async () => {
-    try {
-      const { count } = await sb.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'mestre');
-      if ((count || 0) > 0) { alert('Já tem um mestre nesta mesa. Peça pra ele te promover em "👥 Jogadores".'); await refreshRoleUI(); return; }
-      const { error } = await sb.from('profiles').update({ role: 'mestre' }).eq('id', currentUserId);
-      if (error) throw error;
-      await refreshRoleUI();
-    } catch (err) {
-      alert('Erro ao virar mestre: ' + err.message);
-    }
+    const { error } = await sb.rpc('claim_mestre', { p_user_id: currentUserId });
+    if (error) { alert('Erro ao virar mestre: ' + error.message); await refreshRoleUI(); return; }
+    await refreshRoleUI();
   });
 
   async function openPlayersPanel() {
@@ -842,18 +831,11 @@
       const btn = document.createElement('button');
       btn.textContent = p.role === 'mestre' ? 'Tornar jogador' : 'Tornar mestre';
       btn.addEventListener('click', async () => {
-        try {
-          if (p.role !== 'mestre') {
-            // Só um mestre por vez: rebaixa quem for mestre agora antes de promover.
-            await sb.from('profiles').update({ role: 'jogador' }).eq('role', 'mestre');
-          }
-          const { error: upErr } = await sb.from('profiles').update({ role: p.role === 'mestre' ? 'jogador' : 'mestre' }).eq('id', p.id);
-          if (upErr) throw upErr;
-          await refreshRoleUI();
-          await openPlayersPanel();
-        } catch (err) {
-          alert('Erro: ' + err.message);
-        }
+        const newRole = p.role === 'mestre' ? 'jogador' : 'mestre';
+        const { error } = await sb.rpc('set_role', { p_acting_user_id: currentUserId, p_target_user_id: p.id, p_new_role: newRole });
+        if (error) { alert('Erro: ' + error.message); return; }
+        await refreshRoleUI();
+        await openPlayersPanel();
       });
       row.appendChild(btn);
       playersList.appendChild(row);
@@ -862,16 +844,23 @@
   managePlayersBtn.addEventListener('click', openPlayersPanel);
   closePlayersBtn.addEventListener('click', () => playersOverlay.classList.add('hidden'));
 
-  logoutBtn.addEventListener('click', async () => {
-    try { await sb.auth.signOut(); } catch (e) {}
+  logoutBtn.addEventListener('click', () => {
+    localStorage.removeItem('tabletop_user_id');
+    localStorage.removeItem('tabletop_username');
     location.reload();
   });
 
   document.addEventListener('keydown', (e) => {
     if (!selectedTokenEl) return;
     const id = selectedTokenEl.dataset.id;
-    if (e.key === 'PageUp') { e.preventDefault(); sb.from('tokens').update({ z: Date.now() }).eq('id', id).then(() => {}); }
-    else if (e.key === 'PageDown') { e.preventDefault(); sb.from('tokens').update({ z: -Date.now() }).eq('id', id).then(() => {}); }
+    if (e.key === 'PageUp') {
+      e.preventDefault();
+      sb.rpc('set_token_z', { p_user_id: currentUserId, p_token_id: id, p_z: Date.now() }).then(() => {});
+    } else if (e.key === 'PageDown') {
+      e.preventDefault();
+      const newZ = Math.max(1, minTokenZ() - 1);
+      sb.rpc('set_token_z', { p_user_id: currentUserId, p_token_id: id, p_z: newZ }).then(() => {});
+    }
   });
 
   applyZoom();
