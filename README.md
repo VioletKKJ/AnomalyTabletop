@@ -1,3 +1,7 @@
+# Atenção
+Esse projeto está sendo feito utilizando o claude, é puramente vibecoded, é só um TTS simples para jogar com uns amigos.
+
+
 # Tabletop Web
 
 Um tabletop virtual (VTT) simples, gratuito e sem servidor próprio — feito para mesas de RPG entre amigos. Funciona no PC, celular e tablet, e sincroniza mapa e tokens em tempo real entre todos os jogadores usando o [Supabase](https://supabase.com) (plano gratuito).
