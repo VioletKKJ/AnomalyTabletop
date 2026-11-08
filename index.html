@@ -15,10 +15,33 @@
   .hidden { display: none !important; }
   html, body { height: 100%; margin: 0; font-family: system-ui, sans-serif; background: var(--bg); color: var(--text);
     overscroll-behavior: none; touch-action: none; }
-  body { display: flex; flex-direction: column; }
-  header { padding: 10px 14px; background: var(--panel); border-bottom: 1px solid var(--panel-border);
-    display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-  header h1 { font-size: 15px; margin: 0 8px 0 0; font-weight: 600; color: var(--text-dim); }
+  body { position: relative; }
+
+  #topBar { position: fixed; top: env(safe-area-inset-top, 0px); left: 0; right: 0; z-index: 30;
+    padding: 10px 14px; background: var(--panel); border-bottom: 1px solid var(--panel-border);
+    display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+    transition: transform .2s ease; }
+  #topBar.collapsed { transform: translateY(-100%); }
+  #topBar h1 { font-size: 15px; margin: 0 8px 0 0; font-weight: 600; color: var(--text-dim); }
+
+  #topBarToggle { position: fixed; top: env(safe-area-inset-top, 0px); left: 50%; transform: translateX(-50%);
+    z-index: 31; background: var(--panel); border: 1px solid var(--panel-border); border-top: none;
+    border-radius: 0 0 8px 8px; padding: 2px 14px; color: var(--text-dim); cursor: pointer; }
+  #topBar.collapsed ~ #topBarToggle { top: 0; }
+
+  #sideToolbar { position: fixed; right: 0; top: 50%; transform: translateY(-50%); z-index: 30;
+    background: var(--panel); border: 1px solid var(--panel-border); border-right: none;
+    border-radius: 10px 0 0 10px; padding: 8px 6px; display: flex; flex-direction: column; gap: 6px;
+    align-items: center; transition: transform .2s ease; max-height: 80vh; overflow-y: auto; }
+  #sideToolbar.collapsed { transform: translateY(-50%) translateX(100%); }
+  #sideToolbar button, #sideToolbar label.btn { width: 42px; height: 42px; padding: 0; justify-content: center;
+    font-size: 18px; }
+  #sideToolbar hr { width: 100%; border: none; border-top: 1px solid var(--panel-border); margin: 2px 0; }
+
+  #sideToolbarToggle { position: fixed; right: 0; top: calc(50% - 90px); z-index: 31;
+    background: var(--panel); border: 1px solid var(--panel-border); border-right: none;
+    border-radius: 8px 0 0 8px; padding: 10px 2px; color: var(--text-dim); cursor: pointer; }
+  #sideToolbar.collapsed ~ #sideToolbarToggle { right: 0; }
   #connDot { width: 10px; height: 10px; border-radius: 50%; background: var(--danger); margin-right: auto; }
   #connDot.ok { background: var(--ok); }
   button, label.btn { background: var(--panel-border); color: var(--text); border: none; border-radius: 8px;
@@ -26,7 +49,7 @@
   button.primary, label.btn.primary { background: var(--accent); color: var(--accent-text); }
   button.danger { background: var(--danger); color: #fff; }
   input[type=file] { display: none; }
-  #boardWrap { position: relative; flex: 1; overflow: hidden; touch-action: none;
+  #boardWrap { position: fixed; inset: 0; overflow: hidden; touch-action: none;
     background: linear-gradient(45deg, rgba(128,128,128,.08) 25%, transparent 25%) 0 0/20px 20px,
                 linear-gradient(-45deg, rgba(128,128,128,.08) 25%, transparent 25%) 0 0/20px 20px; }
   #board { position: absolute; top: 0; left: 0; transform-origin: 0 0; }
@@ -53,7 +76,9 @@
   #tokenMenu .stateThumb { width: 36px; height: 36px; border-radius: 6px; background-size: contain;
     background-position: center; background-repeat: no-repeat; border: 2px solid var(--panel-border); cursor: pointer; }
   #tokenMenu .stateThumb.active { border-color: var(--accent); }
-  footer { padding: 6px 14px; font-size: 11px; color: var(--text-dim); background: var(--panel); border-top: 1px solid var(--panel-border); }
+  footer { position: fixed; left: 0; right: 0; bottom: env(safe-area-inset-bottom, 0px); z-index: 20;
+    padding: 4px 14px; font-size: 10px; color: var(--text-dim); background: rgba(38,40,47,.85);
+    backdrop-filter: blur(4px); pointer-events: none; }
 
   /* Telas de configuração e login (compartilham o mesmo visual de card) */
   #setupOverlay, #loginOverlay { position: fixed; inset: 0; background: rgba(0,0,0,.6); display: flex;
@@ -127,27 +152,34 @@
     </div>
   </div>
 
-  <header>
+  <header id="topBar">
     <span id="connDot" title="status da conexão"></span>
     <h1>Tabletop</h1>
     <span id="roleBadge" class="hidden"></span>
+    <button id="scenesBtn" class="mestre-only">🎬 Cenas</button>
+    <button id="managePlayersBtn" class="mestre-only hidden">👥 Jogadores</button>
+    <button id="claimMestreBtn" class="primary hidden">👑 Virar mestre desta mesa</button>
+    <button id="settingsBtn">⚙️</button>
+    <button id="logoutBtn" class="hidden">Sair</button>
+  </header>
+  <button id="topBarToggle" title="Esconder/mostrar barra superior">▲</button>
+
+  <div id="sideToolbar">
     <label class="btn mestre-only" title="Importar mapa">
-      🗺️ Mapa
+      🗺️
       <input type="file" id="mapInput" accept="image/png,image/jpeg,image/webp">
     </label>
     <label class="btn mestre-only" title="Adicionar token">
-      🧙 Token
+      🧙
       <input type="file" id="tokenInput" accept="image/png,image/jpeg,image/webp">
     </label>
-    <button id="zoomOut">−</button>
-    <button id="zoomIn">+</button>
-    <button id="scenesBtn" class="mestre-only">🎬 Cenas</button>
-    <button id="settingsBtn">⚙️</button>
-    <button id="clearBtn" class="danger mestre-only">🗑️ Limpar tokens</button>
-    <button id="claimMestreBtn" class="primary hidden">👑 Virar mestre desta mesa</button>
-    <button id="managePlayersBtn" class="mestre-only hidden">👥 Jogadores</button>
-    <button id="logoutBtn" class="hidden">Sair</button>
-  </header>
+    <hr>
+    <button id="zoomIn" title="Mais zoom">+</button>
+    <button id="zoomOut" title="Menos zoom">−</button>
+    <hr>
+    <button id="clearBtn" class="danger mestre-only" title="Limpar tokens desta cena">🗑️</button>
+  </div>
+  <button id="sideToolbarToggle" title="Esconder/mostrar barra de ferramentas">▶</button>
 
   <div id="playersOverlay" class="hidden">
     <div id="playersCard" class="card">
@@ -196,6 +228,10 @@
 
 <script>
 (function () {
+  const topBar = document.getElementById('topBar');
+  const topBarToggle = document.getElementById('topBarToggle');
+  const sideToolbar = document.getElementById('sideToolbar');
+  const sideToolbarToggle = document.getElementById('sideToolbarToggle');
   const boardWrap = document.getElementById('boardWrap');
   const board = document.getElementById('board');
   const mapImg = document.getElementById('mapImg');
@@ -587,7 +623,7 @@
     try {
       const raw = await fileToDataURL(file);
       const mime = file.type.includes('png') ? 'image/png' : 'image/jpeg';
-      const resized = await resizeDataURL(raw, 2500, mime, 0.85);
+      const resized = await resizeDataURL(raw, 4096, mime, 0.92);
       const url = await uploadImage(resized, 'maps');
       const { error } = await sb.rpc('set_map', { p_user_id: currentUserId, p_map_url: url });
       if (error) throw error;
@@ -619,8 +655,28 @@
     if (error) alert('Erro ao limpar a mesa: ' + error.message);
   });
 
-  zoomInBtn.addEventListener('click', () => { scale = Math.min(scale * 1.2, 4); applyZoom(); });
-  zoomOutBtn.addEventListener('click', () => { scale = Math.max(scale / 1.2, 0.25); applyZoom(); });
+  function applyBarState() {
+    const topHidden = localStorage.getItem('tabletop_topbar_hidden') === '1';
+    const sideHidden = localStorage.getItem('tabletop_sidebar_hidden') === '1';
+    topBar.classList.toggle('collapsed', topHidden);
+    topBarToggle.textContent = topHidden ? '▼' : '▲';
+    sideToolbar.classList.toggle('collapsed', sideHidden);
+    sideToolbarToggle.textContent = sideHidden ? '◀' : '▶';
+  }
+  topBarToggle.addEventListener('click', () => {
+    const hidden = topBar.classList.toggle('collapsed');
+    localStorage.setItem('tabletop_topbar_hidden', hidden ? '1' : '0');
+    topBarToggle.textContent = hidden ? '▼' : '▲';
+  });
+  sideToolbarToggle.addEventListener('click', () => {
+    const hidden = sideToolbar.classList.toggle('collapsed');
+    localStorage.setItem('tabletop_sidebar_hidden', hidden ? '1' : '0');
+    sideToolbarToggle.textContent = hidden ? '◀' : '▶';
+  });
+  applyBarState();
+
+  zoomInBtn.addEventListener('click', () => { scale = Math.min(scale * 1.2, 10); applyZoom(); });
+  zoomOutBtn.addEventListener('click', () => { scale = Math.max(scale / 1.2, 0.05); applyZoom(); });
 
   // Pan (1 dedo/mouse) e pinça para zoom (2 dedos) no fundo do tabuleiro (não em cima de tokens).
   let boardX = 0, boardY = 0;
@@ -669,7 +725,7 @@
     if (activePointers.size === 2) {
       const { dist, cx, cy } = pointerDistAndCenter();
       const ratio = dist / (pinchStartDist || dist);
-      scale = Math.min(4, Math.max(0.25, pinchStartScale * ratio));
+      scale = Math.min(10, Math.max(0.05, pinchStartScale * ratio));
       // Mantém o ponto do meio da pinça fixo na tela enquanto dá zoom.
       boardX = cx - (scale / pinchStartScale) * (cx - pinchStartBoardX);
       boardY = cy - (scale / pinchStartScale) * (cy - pinchStartBoardY);
@@ -700,7 +756,7 @@
     const rect = boardWrap.getBoundingClientRect();
     const cx = e.clientX - rect.left, cy = e.clientY - rect.top;
     const oldScale = scale;
-    scale = Math.min(4, Math.max(0.25, scale * (e.deltaY < 0 ? 1.1 : 0.9)));
+    scale = Math.min(10, Math.max(0.05, scale * (e.deltaY < 0 ? 1.1 : 0.9)));
     boardX = cx - (scale / oldScale) * (cx - boardX);
     boardY = cy - (scale / oldScale) * (cy - boardY);
     applyZoom();
@@ -965,7 +1021,7 @@
     try {
       const raw = await fileToDataURL(file);
       const mime = file.type.includes('png') ? 'image/png' : 'image/jpeg';
-      const resized = await resizeDataURL(raw, 2500, mime, 0.85);
+      const resized = await resizeDataURL(raw, 4096, mime, 0.92);
       const url = await uploadImage(resized, 'maps');
       const { error } = await sb.rpc('create_scene', { p_user_id: currentUserId, p_name: name, p_map_url: url });
       if (error) throw error;
