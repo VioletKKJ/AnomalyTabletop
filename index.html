@@ -81,6 +81,18 @@
   .playerRow { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--panel-border); }
   .playerRow .name { flex: 1; font-size: 13px; }
   .playerRow .roleTag { font-size: 11px; color: var(--text-dim); }
+
+  #scenesOverlay { position: fixed; inset: 0; background: rgba(0,0,0,.6); display: flex;
+    align-items: center; justify-content: center; z-index: 50; padding: 16px; }
+  #scenesCard { background: var(--panel); border: 1px solid var(--panel-border); border-radius: 12px;
+    padding: 20px; max-width: 440px; width: 100%; max-height: 80vh; overflow-y: auto; }
+  #scenesCard h2 { margin-top: 0; font-size: 16px; }
+  #scenesCard p { font-size: 13px; color: var(--text-dim); line-height: 1.5; }
+  .sceneRow { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--panel-border); }
+  .sceneRow .thumb { width: 48px; height: 36px; border-radius: 6px; background-size: cover; background-position: center;
+    background-color: var(--bg); flex-shrink: 0; }
+  .sceneRow .name { flex: 1; font-size: 13px; }
+  .sceneRow .activeTag { font-size: 11px; color: var(--accent); }
 </style>
 </head>
 <body>
@@ -104,9 +116,9 @@
       <h2>Entrar na mesa</h2>
       <p>Escolha um usuário e uma senha. Se é a primeira vez, crie uma conta.</p>
       <label>Usuário</label>
-      <input id="inpUsername" placeholder="seu-nome" autocomplete="username">
+      <input id="inpUsername" placeholder="seu-nome" autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false">
       <label>Senha</label>
-      <input id="inpPassword" type="password" placeholder="••••••••" autocomplete="current-password">
+      <input id="inpPassword" type="password" placeholder="••••••••" autocomplete="current-password" autocapitalize="off" autocorrect="off" spellcheck="false">
       <div id="loginError"></div>
       <div class="row">
         <button class="primary" id="btnLogin">Entrar</button>
@@ -129,8 +141,9 @@
     </label>
     <button id="zoomOut">−</button>
     <button id="zoomIn">+</button>
+    <button id="scenesBtn" class="mestre-only">🎬 Cenas</button>
     <button id="settingsBtn">⚙️</button>
-    <button id="clearBtn" class="danger mestre-only">🗑️ Limpar mesa</button>
+    <button id="clearBtn" class="danger mestre-only">🗑️ Limpar tokens</button>
     <button id="claimMestreBtn" class="primary hidden">👑 Virar mestre desta mesa</button>
     <button id="managePlayersBtn" class="mestre-only hidden">👥 Jogadores</button>
     <button id="logoutBtn" class="hidden">Sair</button>
@@ -142,6 +155,19 @@
       <p>Troque quem é mestre. Só pode haver um mestre por vez.</p>
       <div id="playersList"></div>
       <button id="closePlayersBtn">Fechar</button>
+    </div>
+  </div>
+
+  <div id="scenesOverlay" class="hidden">
+    <div id="scenesCard" class="card">
+      <h2>Cenas</h2>
+      <p>Cada cena guarda seu próprio mapa e seus próprios tokens.</p>
+      <div id="scenesList"></div>
+      <div class="row" style="margin-top:10px;">
+        <button class="primary" id="newSceneBtn">➕ Nova cena</button>
+        <input type="file" id="newSceneInput" accept="image/png,image/jpeg,image/webp" class="hidden">
+      </div>
+      <button id="closeScenesBtn">Fechar</button>
     </div>
   </div>
 
@@ -196,6 +222,12 @@
   const btnSignup = document.getElementById('btnSignup');
   const roleBadge = document.getElementById('roleBadge');
   const logoutBtn = document.getElementById('logoutBtn');
+  const scenesBtn = document.getElementById('scenesBtn');
+  const scenesOverlay = document.getElementById('scenesOverlay');
+  const scenesList = document.getElementById('scenesList');
+  const newSceneBtn = document.getElementById('newSceneBtn');
+  const newSceneInput = document.getElementById('newSceneInput');
+  const closeScenesBtn = document.getElementById('closeScenesBtn');
   const tokenMenu = document.getElementById('tokenMenu');
   const tokenStatesRow = document.getElementById('tokenStatesRow');
   const menuAddState = document.getElementById('menuAddState');
@@ -214,6 +246,8 @@
   let sb = null;
   let currentRole = null; // 'mestre' | 'jogador'
   let currentUserId = null;
+  let currentSceneId = null;
+  let tokensChannel = null;
   let scale = 1;
   let tokenEls = new Map(); // id -> element
   let currentMapUrl = null;
@@ -680,26 +714,48 @@
     setupOverlay.classList.remove('hidden');
   });
 
+  async function loadSceneTokens(sceneId) {
+    tokenEls.forEach((el) => el.remove());
+    tokenEls.clear();
+    tokenData.clear();
+    if (!sceneId) return;
+    const { data: toks, error } = await sb.from('tokens').select('*').eq('scene_id', sceneId);
+    if (error) { console.error('carregar tokens da cena:', error); return; }
+    (toks || []).forEach(upsertTokenEl);
+  }
+
+  function subscribeTokensChannel(sceneId) {
+    if (tokensChannel) { sb.removeChannel(tokensChannel); tokensChannel = null; }
+    if (!sceneId) return;
+    tokensChannel = sb.channel('tokens-sync-' + sceneId)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tokens', filter: 'scene_id=eq.' + sceneId }, (payload) => {
+        if (payload.eventType === 'DELETE') {
+          removeTokenEl(payload.old.id);
+          tokenData.delete(payload.old.id);
+        } else {
+          upsertTokenEl(payload.new);
+        }
+      })
+      .subscribe();
+  }
+
   async function loadBoardAndTokens() {
     const { data: boardRow, error: boardErr } = await sb.from('board').select('*').eq('id', 1).maybeSingle();
     if (boardErr) throw boardErr;
     renderMap(boardRow ? boardRow.map_url : null);
+    currentSceneId = boardRow ? boardRow.active_scene_id : null;
 
-    const { data: toks, error: toksErr } = await sb.from('tokens').select('*');
-    if (toksErr) throw toksErr;
-    tokenEls.forEach((el) => el.remove());
-    tokenEls.clear();
-    (toks || []).forEach(upsertTokenEl);
+    await loadSceneTokens(currentSceneId);
+    subscribeTokensChannel(currentSceneId);
 
-    sb.channel('tabletop-sync')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'board' }, (payload) => {
-        if (payload.new) renderMap(payload.new.map_url);
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'tokens' }, (payload) => {
-        if (payload.eventType === 'DELETE') {
-          removeTokenEl(payload.old.id);
-        } else {
-          upsertTokenEl(payload.new);
+    sb.channel('board-sync')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'board' }, async (payload) => {
+        if (!payload.new) return;
+        renderMap(payload.new.map_url);
+        if (payload.new.active_scene_id !== currentSceneId) {
+          currentSceneId = payload.new.active_scene_id;
+          await loadSceneTokens(currentSceneId);
+          subscribeTokensChannel(currentSceneId);
         }
       })
       .subscribe((status) => {
@@ -789,7 +845,7 @@
       const { data, error } = await sb.rpc('login_user', { p_username: username, p_password: password });
       if (error) throw error;
       if (!data || !data.length) { loginError.textContent = 'Usuário ou senha errados.'; return; }
-      await loadProfileAndEnter(data[0]);
+      await loadProfileAndEnter({ id: data[0].out_id, username: data[0].out_username, role: data[0].out_role });
     } catch (err) {
       loginError.textContent = 'Erro ao entrar: ' + err.message;
     }
@@ -804,7 +860,7 @@
       const { data, error } = await sb.rpc('signup_user', { p_username: username, p_password: password });
       if (error) throw error;
       if (!data || !data.length) { loginError.textContent = 'Não foi possível criar a conta.'; return; }
-      await loadProfileAndEnter(data[0]);
+      await loadProfileAndEnter({ id: data[0].out_id, username: data[0].out_username, role: data[0].out_role });
     } catch (err) {
       loginError.textContent = 'Erro ao criar conta: ' + err.message;
     }
@@ -843,6 +899,82 @@
   }
   managePlayersBtn.addEventListener('click', openPlayersPanel);
   closePlayersBtn.addEventListener('click', () => playersOverlay.classList.add('hidden'));
+
+  async function openScenesPanel() {
+    scenesList.innerHTML = 'Carregando...';
+    scenesOverlay.classList.remove('hidden');
+    const { data: scenes, error } = await sb.from('scenes').select('*').order('created_at');
+    if (error) { scenesList.textContent = 'Erro ao carregar: ' + error.message; return; }
+    scenesList.innerHTML = '';
+    (scenes || []).forEach((s) => {
+      const row = document.createElement('div');
+      row.className = 'sceneRow';
+      const isActive = s.id === currentSceneId;
+      const thumb = document.createElement('div');
+      thumb.className = 'thumb';
+      if (s.map_url) thumb.style.backgroundImage = `url(${s.map_url})`;
+      row.appendChild(thumb);
+      const name = document.createElement('span');
+      name.className = 'name';
+      name.textContent = s.name;
+      row.appendChild(name);
+      if (isActive) {
+        const tag = document.createElement('span');
+        tag.className = 'activeTag';
+        tag.textContent = '● atual';
+        row.appendChild(tag);
+      } else {
+        const useBtn = document.createElement('button');
+        useBtn.textContent = 'Usar';
+        useBtn.addEventListener('click', async () => {
+          const { error } = await sb.rpc('set_scene', { p_user_id: currentUserId, p_scene_id: s.id });
+          if (error) { alert('Erro: ' + error.message); return; }
+          scenesOverlay.classList.add('hidden');
+        });
+        row.appendChild(useBtn);
+
+        const delBtn = document.createElement('button');
+        delBtn.className = 'danger';
+        delBtn.textContent = '🗑️';
+        delBtn.title = 'Apagar cena';
+        delBtn.addEventListener('click', async () => {
+          if (!confirm('Apagar a cena "' + s.name + '" e todos os tokens dela?')) return;
+          const { error } = await sb.rpc('delete_scene', { p_user_id: currentUserId, p_scene_id: s.id });
+          if (error) { alert('Erro: ' + error.message); return; }
+          await openScenesPanel();
+        });
+        row.appendChild(delBtn);
+      }
+      scenesList.appendChild(row);
+    });
+  }
+  scenesBtn.addEventListener('click', openScenesPanel);
+  closeScenesBtn.addEventListener('click', () => scenesOverlay.classList.add('hidden'));
+
+  newSceneBtn.addEventListener('click', () => {
+    const name = prompt('Nome da nova cena (ex.: Cidade, Masmorra...):');
+    if (name === null) return; // cancelou
+    newSceneInput.dataset.sceneName = name;
+    newSceneInput.click();
+  });
+
+  newSceneInput.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    const name = newSceneInput.dataset.sceneName || 'Nova cena';
+    if (!file) return;
+    try {
+      const raw = await fileToDataURL(file);
+      const mime = file.type.includes('png') ? 'image/png' : 'image/jpeg';
+      const resized = await resizeDataURL(raw, 2500, mime, 0.85);
+      const url = await uploadImage(resized, 'maps');
+      const { error } = await sb.rpc('create_scene', { p_user_id: currentUserId, p_name: name, p_map_url: url });
+      if (error) throw error;
+      scenesOverlay.classList.add('hidden');
+    } catch (err) {
+      alert('Erro ao criar cena: ' + err.message);
+    }
+    newSceneInput.value = '';
+  });
 
   logoutBtn.addEventListener('click', () => {
     localStorage.removeItem('tabletop_user_id');
