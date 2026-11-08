@@ -37,6 +37,7 @@
   #sideToolbar button, #sideToolbar label.btn { width: 42px; height: 42px; padding: 0; justify-content: center;
     font-size: 18px; }
   #sideToolbar hr { width: 100%; border: none; border-top: 1px solid var(--panel-border); margin: 2px 0; }
+  #sideToolbar .toolBtn.active { background: var(--accent); color: var(--accent-text); }
 
   #sideToolbarToggle { position: fixed; right: 0; top: calc(50% - 90px); z-index: 31;
     background: var(--panel); border: 1px solid var(--panel-border); border-right: none;
@@ -156,28 +157,29 @@
     <span id="connDot" title="status da conexão"></span>
     <h1>Tabletop</h1>
     <span id="roleBadge" class="hidden"></span>
+    <label class="btn mestre-only" title="Importar mapa">
+      🗺️ Mapa
+      <input type="file" id="mapInput" accept="image/png,image/jpeg,image/webp">
+    </label>
+    <label class="btn mestre-only" title="Adicionar token">
+      🧙 Token
+      <input type="file" id="tokenInput" accept="image/png,image/jpeg,image/webp">
+    </label>
+    <button id="zoomOut" title="Menos zoom">−</button>
+    <button id="zoomIn" title="Mais zoom">+</button>
     <button id="scenesBtn" class="mestre-only">🎬 Cenas</button>
     <button id="managePlayersBtn" class="mestre-only hidden">👥 Jogadores</button>
     <button id="claimMestreBtn" class="primary hidden">👑 Virar mestre desta mesa</button>
     <button id="settingsBtn">⚙️</button>
+    <button id="clearBtn" class="danger mestre-only" title="Limpar tokens desta cena">🗑️ Limpar</button>
     <button id="logoutBtn" class="hidden">Sair</button>
   </header>
   <button id="topBarToggle" title="Esconder/mostrar barra superior">▲</button>
 
   <div id="sideToolbar">
-    <label class="btn mestre-only" title="Importar mapa">
-      🗺️
-      <input type="file" id="mapInput" accept="image/png,image/jpeg,image/webp">
-    </label>
-    <label class="btn mestre-only" title="Adicionar token">
-      🧙
-      <input type="file" id="tokenInput" accept="image/png,image/jpeg,image/webp">
-    </label>
-    <hr>
-    <button id="zoomIn" title="Mais zoom">+</button>
-    <button id="zoomOut" title="Menos zoom">−</button>
-    <hr>
-    <button id="clearBtn" class="danger mestre-only" title="Limpar tokens desta cena">🗑️</button>
+    <button class="toolBtn active" id="toolSelectBtn" data-tool="select" title="Selecionar: move tokens; ainda dá pra navegar a câmera">🖱️</button>
+    <button class="toolBtn" id="toolMoveBtn" data-tool="move" title="Mover câmera: só navega, não mexe nos tokens">✋</button>
+    <!-- Mais ferramentas (régua, desenho...) entram aqui depois -->
   </div>
   <button id="sideToolbarToggle" title="Esconder/mostrar barra de ferramentas">▶</button>
 
@@ -279,6 +281,16 @@
   const playersList = document.getElementById('playersList');
   const closePlayersBtn = document.getElementById('closePlayersBtn');
 
+  const toolSelectBtn = document.getElementById('toolSelectBtn');
+  const toolMoveBtn = document.getElementById('toolMoveBtn');
+  let currentTool = 'select'; // 'select' | 'move'
+  [toolSelectBtn, toolMoveBtn].forEach((btn) => {
+    btn.addEventListener('click', () => {
+      currentTool = btn.dataset.tool;
+      [toolSelectBtn, toolMoveBtn].forEach((b) => b.classList.toggle('active', b === btn));
+    });
+  });
+
   let sb = null;
   let currentRole = null; // 'mestre' | 'jogador'
   let currentUserId = null;
@@ -378,6 +390,7 @@
       attachResize(el, handle, tok.id);
       el.addEventListener('contextmenu', (e) => {
         e.preventDefault();
+        if (currentTool !== 'select') return;
         openTokenMenu(tok.id, e.clientX, e.clientY);
       });
     }
@@ -416,6 +429,7 @@
     let dragging = false, startX, startY, origX, origY, lastSent = 0, moved = false, longPressTimer = null;
 
     el.addEventListener('pointerdown', (e) => {
+      if (currentTool !== 'select') return; // ferramenta "mover câmera": token não reage, passa pra câmera
       if (e.target === handle) return; // a alça tem sua própria lógica
       selectToken(el);
       dragging = true;
@@ -700,7 +714,7 @@
   }
 
   boardWrap.addEventListener('pointerdown', (e) => {
-    if (e.target.closest('.token')) return;
+    if (currentTool === 'select' && e.target.closest('.token')) return;
     deselectAll();
     boardWrap.setPointerCapture(e.pointerId);
     activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
