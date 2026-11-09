@@ -65,8 +65,15 @@
   #placeholder { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
     color: var(--text-dim); font-size: 14px; text-align: center; padding: 20px; }
   
-  .token, .mapPiece { position: absolute; touch-action: none; cursor: grab; user-select: none; -webkit-user-drag: none; }
-  .token.dragging, .mapPiece.dragging { opacity: .85; }
+  .token { position: absolute; touch-action: none; cursor: grab; user-select: none; -webkit-user-drag: none; }
+  .token.dragging { opacity: .85; }
+
+  /* Peças de mapa ficam travadas por padrão (fora do modo editor) */
+  .mapPiece { position: absolute; touch-action: none; user-select: none; -webkit-user-drag: none; pointer-events: none; }
+  /* No modo editor, peças de mapa ganham interatividade igual aos tokens */
+  body.map-editor-active .mapPiece { pointer-events: auto; cursor: grab; }
+  .mapPiece.dragging { opacity: .85; }
+
   .pieceImg { position: absolute; inset: 0; background-size: contain; background-position: center;
     background-repeat: no-repeat; filter: drop-shadow(0 2px 4px rgba(0,0,0,.45)); pointer-events: none; user-select: none; -webkit-user-drag: none; }
   
@@ -96,7 +103,7 @@
     padding: 4px 14px; font-size: 10px; color: var(--text-dim); background: rgba(38,40,47,.85);
     backdrop-filter: blur(4px); pointer-events: none; }
 
-  #setupOverlay, #loginOverlay, #cropOverlay, #mapEditorOverlay, #playersOverlay, #scenesOverlay {
+  #setupOverlay, #loginOverlay, #cropOverlay, #playersOverlay, #scenesOverlay {
     position: fixed; inset: 0; background: rgba(0,0,0,.75); display: flex;
     align-items: center; justify-content: center; z-index: 100; padding: 16px; }
   .hidden { display: none !important; }
@@ -173,28 +180,6 @@
     </div>
   </div>
 
-  <!-- Editor de Mapa (Interface Dedicada) -->
-  <div id="mapEditorOverlay" class="hidden">
-    <div class="card">
-      <h2>🗺️ Editor de Mapa & Cenário</h2>
-      <p>Altere o mapa base da cena atual ou adicione peças modulares de cenário.</p>
-      
-      <div style="margin: 16px 0; display:flex; flex-direction:column; gap:10px;">
-        <label class="btn primary" style="justify-content:center;">
-          🗺️ Trocar Mapa Base da Cena
-          <input type="file" id="mapInput" accept="image/png,image/jpeg,image/webp">
-        </label>
-        
-        <label class="btn" style="justify-content:center;">
-          🧩 Adicionar Peça de Cenário (Árvore, Muro, etc)
-          <input type="file" id="mapPieceInput" accept="image/png,image/jpeg,image/webp">
-        </label>
-      </div>
-
-      <button id="closeMapEditorBtn" style="width:100%; margin-top:10px;">Fechar Editor</button>
-    </div>
-  </div>
-
   <!-- Painel de Cenas -->
   <div id="scenesOverlay" class="hidden">
     <div class="card">
@@ -224,22 +209,42 @@
     <span id="connDot" title="status da conexão"></span>
     <h1>Tabletop</h1>
     <span id="roleBadge" class="hidden"></span>
-    
-    <button class="mestre-only" id="openMapEditorBtn" title="Abrir editor de mapa">🗺️ Editor de Mapa</button>
-    
-    <label class="btn mestre-only" title="Adicionar token">
-      🧙 Token
-      <input type="file" id="tokenInput" accept="image/png,image/jpeg,image/webp">
-    </label>
 
-    <button id="zoomOut" title="Menos zoom">−</button>
-    <button id="zoomIn" title="Mais zoom">+</button>
-    <button id="scenesBtn" class="mestre-only">🎬 Cenas</button>
-    <button id="managePlayersBtn" class="mestre-only hidden">👥 Jogadores</button>
-    <button id="claimMestreBtn" class="primary hidden">👑 Virar mestre</button>
-    <button id="settingsBtn">⚙️</button>
-    <button id="clearBtn" class="danger mestre-only" title="Limpar tokens/peças">🗑️ Limpar</button>
-    <button id="logoutBtn" class="hidden">Sair</button>
+    <!-- Interface Padrão -->
+    <div id="normalNav" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+      <button class="mestre-only primary" id="openMapEditorBtn">🗺️ Editor de Mapa</button>
+      
+      <label class="btn mestre-only" title="Adicionar token">
+        🧙 Token
+        <input type="file" id="tokenInput" accept="image/png,image/jpeg,image/webp">
+      </label>
+
+      <button id="zoomOut" title="Menos zoom">−</button>
+      <button id="zoomIn" title="Mais zoom">+</button>
+      <button id="scenesBtn" class="mestre-only">🎬 Cenas</button>
+      <button id="managePlayersBtn" class="mestre-only hidden">👥 Jogadores</button>
+      <button id="claimMestreBtn" class="primary hidden">👑 Virar mestre</button>
+      <button id="settingsBtn">⚙️</button>
+      <button id="clearBtn" class="danger mestre-only" title="Limpar tokens/peças">🗑️ Limpar</button>
+      <button id="logoutBtn" class="hidden">Sair</button>
+    </div>
+
+    <!-- Interface Alternada (Ativada no Modo Editor de Mapa) -->
+    <div id="editorNav" class="hidden" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+      <span style="color:var(--accent); font-weight:600; font-size:13px;">🛠️ [Editor de Mapa Ativo]</span>
+      
+      <label class="btn primary">
+        🗺️ Trocar Mapa Base
+        <input type="file" id="mapInput" accept="image/png,image/jpeg,image/webp">
+      </label>
+
+      <label class="btn primary">
+        🧩 Adicionar Peça de Mapa
+        <input type="file" id="mapPieceInput" accept="image/png,image/jpeg,image/webp">
+      </label>
+
+      <button class="danger" id="closeMapEditorBtn">❌ Sair do Editor</button>
+    </div>
   </header>
   <button id="topBarToggle" title="Esconder/mostrar barra">▲</button>
 
@@ -286,13 +291,14 @@
   const mapImg = document.getElementById('mapImg');
   const placeholder = document.getElementById('placeholder');
   
-  // Inputs e Botões do Editor de Mapa
+  // Navegações da Barra Superior
+  const normalNav = document.getElementById('normalNav');
+  const editorNav = document.getElementById('editorNav');
   const openMapEditorBtn = document.getElementById('openMapEditorBtn');
-  const mapEditorOverlay = document.getElementById('mapEditorOverlay');
   const closeMapEditorBtn = document.getElementById('closeMapEditorBtn');
+  
   const mapInput = document.getElementById('mapInput');
   const mapPieceInput = document.getElementById('mapPieceInput');
-  
   const tokenInput = document.getElementById('tokenInput');
   const clearBtn = document.getElementById('clearBtn');
   const zoomInBtn = document.getElementById('zoomIn');
@@ -456,9 +462,20 @@
     callback(croppedDataURL);
   });
 
-  // Editor Modal Handlers
-  openMapEditorBtn.addEventListener('click', () => mapEditorOverlay.classList.remove('hidden'));
-  closeMapEditorBtn.addEventListener('click', () => mapEditorOverlay.classList.add('hidden'));
+  // Alternar para o modo Editor de Mapa na barra superior
+  openMapEditorBtn.addEventListener('click', () => {
+    document.body.classList.add('map-editor-active');
+    normalNav.classList.add('hidden');
+    editorNav.classList.remove('hidden');
+  });
+
+  // Sair do modo Editor de Mapa
+  closeMapEditorBtn.addEventListener('click', () => {
+    document.body.classList.remove('map-editor-active');
+    editorNav.classList.add('hidden');
+    normalNav.classList.remove('hidden');
+    deselectAll();
+  });
 
   function applyZoom() { board.style.transform = `scale(${scale})`; }
 
@@ -596,7 +613,8 @@
 
       el.addEventListener('contextmenu', (e) => {
         e.preventDefault();
-        if (currentTool !== 'select' || currentRole !== 'mestre') return;
+        // Só permite menu de contexto no mapa se estiver no modo editor e for mestre
+        if (!document.body.classList.contains('map-editor-active') || currentTool !== 'select' || currentRole !== 'mestre') return;
         openContextMenu('map', piece.id, e.clientX, e.clientY);
       });
     }
@@ -620,7 +638,7 @@
 
     el.addEventListener('pointerdown', (e) => {
       if (currentTool !== 'select') return;
-      if (type === 'map' && currentRole !== 'mestre') return;
+      if (type === 'map' && (!document.body.classList.contains('map-editor-active') || currentRole !== 'mestre')) return;
       if (e.target === handle || e.target.classList.contains('rotateHandle')) return;
 
       selectElement(el);
@@ -634,6 +652,7 @@
       const px = e.clientX, py = e.clientY;
       longPressTimer = setTimeout(() => {
         if (dragging && !moved) {
+          if (type === 'map' && !document.body.classList.contains('map-editor-active')) return;
           dragging = false; el.dragging = false; el.classList.remove('dragging');
           openContextMenu(type, itemId, px, py);
         }
@@ -677,7 +696,7 @@
     let resizing = false, startX, startY, origSize, lastSent = 0;
 
     handle.addEventListener('pointerdown', (e) => {
-      if (type === 'map' && currentRole !== 'mestre') return;
+      if (type === 'map' && (!document.body.classList.contains('map-editor-active') || currentRole !== 'mestre')) return;
       e.stopPropagation();
       resizing = true; el.resizing = true;
       handle.setPointerCapture(e.pointerId);
@@ -731,7 +750,7 @@
   function attachRotate(el, handle, itemId, type) {
     let rotating = false, lastSent = 0;
     handle.addEventListener('pointerdown', (e) => {
-      if (type === 'map' && currentRole !== 'mestre') return;
+      if (type === 'map' && (!document.body.classList.contains('map-editor-active') || currentRole !== 'mestre')) return;
       e.stopPropagation();
       rotating = true;
       handle.setPointerCapture(e.pointerId);
@@ -916,7 +935,6 @@
           const url = await uploadImage(small, 'map_pieces');
           const { error } = await sb.rpc('add_map_element', { p_user_id: currentUserId, p_src_url: url, p_x: 40, p_y: 40, p_size: 256, p_z: Date.now() });
           if (error) throw error;
-          mapEditorOverlay.classList.add('hidden');
         } catch (err) { alert(err.message); }
       });
     } catch (err) { alert(err.message); }
@@ -953,7 +971,6 @@
       const url = await uploadImage(resized, 'maps');
       const { error } = await sb.rpc('set_map', { p_user_id: currentUserId, p_map_url: url });
       if (error) throw error;
-      mapEditorOverlay.classList.add('hidden');
     } catch (err) { alert(err.message); }
     mapInput.value = '';
   });
@@ -1079,7 +1096,13 @@
 
   boardWrap.addEventListener('dragstart', (e) => e.preventDefault());
   boardWrap.addEventListener('pointerdown', (e) => {
-    if (currentTool === 'select' && e.target.closest('.token, .mapPiece')) return;
+    if (currentTool === 'select' && e.target.closest('.token')) return;
+    // Se for mapPiece, só deixa interagir se estiver no modo editor
+    if (currentTool === 'select' && e.target.closest('.mapPiece') && !document.body.classList.contains('map-editor-active')) {
+      // Deixa passar para o pan da câmera se não estiver no editor
+    } else if (currentTool === 'select' && e.target.closest('.mapPiece') && document.body.classList.contains('map-editor-active')) {
+      return;
+    }
     deselectAll();
     boardWrap.setPointerCapture(e.pointerId);
     activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
