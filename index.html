@@ -6,7 +6,7 @@
 <title>Tabletop — Supabase</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 
-<!-- Cropper.js CSS & JS para o menu de recorte interativo -->
+<!-- Cropper.js CSS & JS para recorte interativo -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
 
@@ -63,32 +63,32 @@
   #placeholder { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
     color: var(--text-dim); font-size: 14px; text-align: center; padding: 20px; }
   
-  .token { position: absolute; touch-action: none; cursor: grab; user-select: none; -webkit-user-drag: none; }
-  .token.dragging { opacity: .85; }
-  .token .tokenImg { position: absolute; inset: 0; background-size: contain; background-position: center;
+  .token, .mapPiece { position: absolute; touch-action: none; cursor: grab; user-select: none; -webkit-user-drag: none; }
+  .token.dragging, .mapPiece.dragging { opacity: .85; }
+  .pieceImg { position: absolute; inset: 0; background-size: contain; background-position: center;
     background-repeat: no-repeat; filter: drop-shadow(0 2px 4px rgba(0,0,0,.45)); pointer-events: none; user-select: none; -webkit-user-drag: none; }
   
-  .token .resizeHandle { position: absolute; right: -6px; bottom: -6px; width: 16px; height: 16px;
+  .resizeHandle { position: absolute; right: -6px; bottom: -6px; width: 16px; height: 16px;
     border-radius: 50%; background: var(--accent); border: 2px solid var(--bg); touch-action: none;
     cursor: nwse-resize; display: none; }
   
-  .token .rotateHandle { position: absolute; left: 50%; top: -22px; transform: translateX(-50%);
+  .rotateHandle { position: absolute; left: 50%; top: -22px; transform: translateX(-50%);
     width: 16px; height: 16px; border-radius: 50%; background: var(--ok); border: 2px solid var(--bg);
     touch-action: none; cursor: grab; display: none; }
 
-  .token.selected .resizeHandle, .token.selected .rotateHandle { display: block; }
-  .token.selected .tokenImg { outline: 2px dashed var(--accent); outline-offset: 4px; }
+  .selected .resizeHandle, .selected .rotateHandle { display: block; }
+  .selected .pieceImg { outline: 2px dashed var(--accent); outline-offset: 4px; }
 
-  #tokenMenu { position: fixed; z-index: 60; background: var(--panel); border: 1px solid var(--panel-border);
+  #contextMenu { position: fixed; z-index: 60; background: var(--panel); border: 1px solid var(--panel-border);
     border-radius: 10px; padding: 6px; display: none; min-width: 200px; box-shadow: 0 6px 20px rgba(0,0,0,.4); }
-  #tokenMenu.open { display: block; }
-  #tokenMenu button { width: 100%; justify-content: flex-start; background: transparent; border-radius: 6px; margin: 1px 0; }
-  #tokenMenu button:hover { background: var(--panel-border); }
-  #tokenMenu hr { border: none; border-top: 1px solid var(--panel-border); margin: 6px 0; }
-  #tokenMenu .statesRow { display: flex; flex-wrap: wrap; gap: 6px; padding: 4px 2px; }
-  #tokenMenu .stateThumb { width: 36px; height: 36px; border-radius: 6px; background-size: contain;
+  #contextMenu.open { display: block; }
+  #contextMenu button { width: 100%; justify-content: flex-start; background: transparent; border-radius: 6px; margin: 1px 0; }
+  #contextMenu button:hover { background: var(--panel-border); }
+  #contextMenu hr { border: none; border-top: 1px solid var(--panel-border); margin: 6px 0; }
+  #contextMenu .statesRow { display: flex; flex-wrap: wrap; gap: 6px; padding: 4px 2px; }
+  #contextMenu .stateThumb { width: 36px; height: 36px; border-radius: 6px; background-size: contain;
     background-position: center; background-repeat: no-repeat; border: 2px solid var(--panel-border); cursor: pointer; }
-  #tokenMenu .stateThumb.active { border-color: var(--accent); }
+  #contextMenu .stateThumb.active { border-color: var(--accent); }
   
   footer { position: fixed; left: 0; right: 0; bottom: env(safe-area-inset-bottom, 0px); z-index: 20;
     padding: 4px 14px; font-size: 10px; color: var(--text-dim); background: rgba(38,40,47,.85);
@@ -132,8 +132,7 @@
   <div id="setupOverlay">
     <div id="setupCard">
       <h2>Conectar ao Supabase</h2>
-      <p>Cole o <strong>Project URL</strong> e a <strong>anon public key</strong> do seu projeto
-      (Project Settings → API no painel do Supabase). Isso fica salvo só neste navegador.</p>
+      <p>Cole o <strong>Project URL</strong> e a <strong>anon public key</strong> do seu projeto.</p>
       <label>Project URL</label>
       <input id="inpUrl" placeholder="https://xxxxx.supabase.co">
       <label>Anon public key</label>
@@ -161,8 +160,8 @@
 
   <div id="cropOverlay" class="hidden">
     <div id="cropCard">
-      <h2>Recortar Imagem do Token</h2>
-      <p>Ajuste o retângulo de seleção para remover bordas vazias e reduzir a hitbox do token.</p>
+      <h2>Recortar Imagem</h2>
+      <p>Ajuste a caixa de seleção para remover bordas indesejadas.</p>
       <div id="cropContainer">
         <img id="cropImg" src="">
       </div>
@@ -177,11 +176,15 @@
     <span id="connDot" title="status da conexão"></span>
     <h1>Tabletop</h1>
     <span id="roleBadge" class="hidden"></span>
-    <label class="btn mestre-only" title="Importar mapa">
-      🗺️ Mapa
+    <label class="btn mestre-only" title="Importar mapa base">
+      🗺️ Mapa Base
       <input type="file" id="mapInput" accept="image/png,image/jpeg,image/webp">
     </label>
-    <label class="btn mestre-only" title="Adicionar token">
+    <label class="btn mestre-only" title="Adicionar peça de cenário ao mapa">
+      🧩 Peça de Mapa
+      <input type="file" id="mapPieceInput" accept="image/png,image/jpeg,image/webp">
+    </label>
+    <label class="btn mestre-only" title="Adicionar token de personagem">
       🧙 Token
       <input type="file" id="tokenInput" accept="image/png,image/jpeg,image/webp">
     </label>
@@ -191,21 +194,21 @@
     <button id="managePlayersBtn" class="mestre-only hidden">👥 Jogadores</button>
     <button id="claimMestreBtn" class="primary hidden">👑 Virar mestre desta mesa</button>
     <button id="settingsBtn">⚙️</button>
-    <button id="clearBtn" class="danger mestre-only" title="Limpar tokens desta cena">🗑️ Limpar</button>
+    <button id="clearBtn" class="danger mestre-only" title="Limpar tokens e elementos da cena">🗑️ Limpar</button>
     <button id="logoutBtn" class="hidden">Sair</button>
   </header>
   <button id="topBarToggle" title="Esconder/mostrar barra superior">▲</button>
 
   <div id="sideToolbar">
-    <button class="toolBtn active" id="toolSelectBtn" data-tool="select" title="Selecionar: move tokens; ainda dá pra navegar a câmera">🖱️</button>
-    <button class="toolBtn" id="toolMoveBtn" data-tool="move" title="Mover câmera: só navega, não mexe nos tokens">✋</button>
+    <button class="toolBtn active" id="toolSelectBtn" data-tool="select" title="Selecionar/Mover peças e tokens">🖱️</button>
+    <button class="toolBtn" id="toolMoveBtn" data-tool="move" title="Mover câmera">✋</button>
   </div>
   <button id="sideToolbarToggle" title="Esconder/mostrar barra de ferramentas">▶</button>
 
   <div id="playersOverlay" class="hidden">
     <div id="playersCard" class="card">
       <h2>Jogadores da mesa</h2>
-      <p>Troque quem é mestre. Só pode haver um mestre por vez.</p>
+      <p>Gerenciar papéis dos usuários.</p>
       <div id="playersList"></div>
       <button id="closePlayersBtn">Fechar</button>
     </div>
@@ -214,7 +217,6 @@
   <div id="scenesOverlay" class="hidden">
     <div id="scenesCard" class="card">
       <h2>Cenas</h2>
-      <p>Cada cena guarda seu próprio mapa e seus próprios tokens.</p>
       <div id="scenesList"></div>
       <div class="row" style="margin-top:10px;">
         <button class="primary" id="newSceneBtn">➕ Nova cena</button>
@@ -231,21 +233,21 @@
     </div>
   </div>
 
-  <div id="tokenMenu">
+  <div id="contextMenu">
     <div id="tokenStatesRow" class="statesRow"></div>
     <button id="menuAddState" class="mestre-only">➕ Adicionar estado (imagem)</button>
     <input type="file" id="stateInput" accept="image/png,image/jpeg,image/webp" class="hidden">
-    <hr>
+    <hr id="statesHr">
     <button id="menuFront">⬆️ Trazer para frente</button>
     <button id="menuBack">⬇️ Mandar para trás</button>
     <hr>
     <button id="menuRotate">🔄 Girar 90°</button>
     <button id="menuFlip">↔️ Espelhar</button>
     <hr>
-    <button id="menuDelete" class="mestre-only danger">🗑️ Apagar token</button>
+    <button id="menuDelete" class="mestre-only danger">🗑️ Apagar</button>
   </div>
 
-  <footer>Sincronizado via Supabase. Cada pessoa entra com seu próprio usuário/senha; só o mestre edita mapa e tokens.</footer>
+  <footer>Sincronizado via Supabase.</footer>
 
 <script>
 (function () {
@@ -258,6 +260,7 @@
   const mapImg = document.getElementById('mapImg');
   const placeholder = document.getElementById('placeholder');
   const mapInput = document.getElementById('mapInput');
+  const mapPieceInput = document.getElementById('mapPieceInput');
   const tokenInput = document.getElementById('tokenInput');
   const clearBtn = document.getElementById('clearBtn');
   const zoomInBtn = document.getElementById('zoomIn');
@@ -285,15 +288,18 @@
   const newSceneBtn = document.getElementById('newSceneBtn');
   const newSceneInput = document.getElementById('newSceneInput');
   const closeScenesBtn = document.getElementById('closeScenesBtn');
-  const tokenMenu = document.getElementById('tokenMenu');
+  
+  const contextMenu = document.getElementById('contextMenu');
   const tokenStatesRow = document.getElementById('tokenStatesRow');
   const menuAddState = document.getElementById('menuAddState');
+  const statesHr = document.getElementById('statesHr');
   const stateInput = document.getElementById('stateInput');
   const menuFront = document.getElementById('menuFront');
   const menuBack = document.getElementById('menuBack');
   const menuRotate = document.getElementById('menuRotate');
   const menuFlip = document.getElementById('menuFlip');
   const menuDelete = document.getElementById('menuDelete');
+
   const claimMestreBtn = document.getElementById('claimMestreBtn');
   const managePlayersBtn = document.getElementById('managePlayersBtn');
   const playersOverlay = document.getElementById('playersOverlay');
@@ -322,11 +328,15 @@
   let currentUserId = null;
   let currentSceneId = null;
   let tokensChannel = null;
+  let mapElementsChannel = null;
   let scale = 1;
-  let tokenEls = new Map();
-  let currentMapUrl = null;
 
-  const tokenAspectRatios = new Map();
+  let tokenEls = new Map();
+  let tokenData = new Map();
+  let mapPieceEls = new Map();
+  let mapPieceData = new Map();
+
+  const aspectRatios = new Map();
 
   function fileToDataURL(file) {
     return new Promise((resolve, reject) => {
@@ -403,14 +413,10 @@
   }
 
   btnCropCancel.addEventListener('click', closeCropModal);
-
   btnCropConfirm.addEventListener('click', () => {
     if (!cropperInstance || !onCropCallback) return;
     const canvas = cropperInstance.getCroppedCanvas();
-    if (!canvas) {
-      alert('Erro ao gerar o recorte da imagem.');
-      return;
-    }
+    if (!canvas) { alert('Erro ao gerar o recorte.'); return; }
     const croppedDataURL = canvas.toDataURL('image/png');
     const callback = onCropCallback;
     closeCropModal();
@@ -420,7 +426,6 @@
   function applyZoom() { board.style.transform = `scale(${scale})`; }
 
   function renderMap(url) {
-    currentMapUrl = url;
     if (url) {
       mapImg.src = url;
       mapImg.style.display = 'block';
@@ -428,50 +433,50 @@
     } else {
       mapImg.style.display = 'none';
       placeholder.style.display = 'flex';
-      placeholder.textContent = 'Importe um mapa (PNG/JPG) para começar.';
+      placeholder.textContent = 'Importe um mapa base ou adicione peças para começar.';
     }
   }
 
-  const tokenData = new Map();
-
-  function imageForToken(tok) {
-    if (tok.active_state && tok.states && tok.states[tok.active_state - 1]) {
-      return tok.states[tok.active_state - 1];
-    }
-    return tok.src_url;
-  }
-
-  function applyTokenSize(el, size, ar) {
+  function applyElementSize(el, size, ar) {
     let w, h;
-    if (ar >= 1) {
-      w = size;
-      h = size / ar;
-    } else {
-      h = size;
-      w = size * ar;
-    }
+    if (ar >= 1) { w = size; h = size / ar; }
+    else { h = size; w = size * ar; }
     el.style.width = w + 'px';
     el.style.height = h + 'px';
   }
 
-  function updateTokenDimensions(el, tok) {
-    const url = imageForToken(tok);
-    const size = tok.size || 64;
-
-    if (tokenAspectRatios.has(url)) {
-      applyTokenSize(el, size, tokenAspectRatios.get(url));
+  function updateDimensions(el, url, size) {
+    if (aspectRatios.has(url)) {
+      applyElementSize(el, size, aspectRatios.get(url));
     } else {
       const tempImg = new Image();
       tempImg.src = url;
       tempImg.onload = () => {
         const ar = (tempImg.naturalWidth && tempImg.naturalHeight) ? (tempImg.naturalWidth / tempImg.naturalHeight) : 1;
-        tokenAspectRatios.set(url, ar);
-        applyTokenSize(el, size, ar);
+        aspectRatios.set(url, ar);
+        applyElementSize(el, size, ar);
       };
-      tempImg.onerror = () => {
-        applyTokenSize(el, size, 1);
-      };
+      tempImg.onerror = () => applyElementSize(el, size, 1);
     }
+  }
+
+  let selectedEl = null;
+  function selectElement(el) {
+    if (selectedEl && selectedEl !== el) selectedEl.classList.remove('selected');
+    el.classList.add('selected');
+    selectedEl = el;
+  }
+  function deselectAll() {
+    if (selectedEl) selectedEl.classList.remove('selected');
+    selectedEl = null;
+  }
+
+  // --- GERENCIAMENTO DE TOKENS ---
+  function imageForToken(tok) {
+    if (tok.active_state && tok.states && tok.states[tok.active_state - 1]) {
+      return tok.states[tok.active_state - 1];
+    }
+    return tok.src_url;
   }
 
   function upsertTokenEl(tok) {
@@ -481,12 +486,13 @@
       el = document.createElement('div');
       el.className = 'token';
       el.dataset.id = tok.id;
+      el.dataset.type = 'token';
       el.addEventListener('dragstart', (e) => e.preventDefault());
-      
+
       const img = document.createElement('div');
-      img.className = 'tokenImg';
+      img.className = 'pieceImg';
       el.appendChild(img);
-      
+
       const handle = document.createElement('div');
       handle.className = 'resizeHandle';
       el.appendChild(handle);
@@ -497,39 +503,24 @@
 
       board.appendChild(el);
       tokenEls.set(tok.id, el);
-      attachDrag(el, tok.id, handle);
-      attachResize(el, handle, tok.id);
-      attachRotate(el, rotHandle, tok.id);
+      attachDrag(el, tok.id, handle, 'token');
+      attachResize(el, handle, tok.id, 'token');
+      attachRotate(el, rotHandle, tok.id, 'token');
 
       el.addEventListener('contextmenu', (e) => {
         e.preventDefault();
         if (currentTool !== 'select') return;
-        openTokenMenu(tok.id, e.clientX, e.clientY);
+        openContextMenu('token', tok.id, e.clientX, e.clientY);
       });
     }
-    const img = el.querySelector('.tokenImg');
-    img.style.backgroundImage = `url(${imageForToken(tok)})`;
+    const img = el.querySelector('.pieceImg');
+    const url = imageForToken(tok);
+    img.style.backgroundImage = `url(${url})`;
     img.style.transform = `rotate(${tok.rotation || 0}deg) scaleX(${tok.flip_x ? -1 : 1})`;
-    el.style.zIndex = Math.round(tok.z || 0);
+    el.style.zIndex = Math.round(10000 + (tok.z || 0)); // Tokens ficam acima dos elementos de mapa
 
-    if (!el.resizing && !el.dragging) {
-      updateTokenDimensions(el, tok);
-    }
-    if (!el.dragging) {
-      el.style.left = tok.x + 'px';
-      el.style.top = tok.y + 'px';
-    }
-  }
-
-  let selectedTokenEl = null;
-  function selectToken(el) {
-    if (selectedTokenEl && selectedTokenEl !== el) selectedTokenEl.classList.remove('selected');
-    el.classList.add('selected');
-    selectedTokenEl = el;
-  }
-  function deselectAll() {
-    if (selectedTokenEl) selectedTokenEl.classList.remove('selected');
-    selectedTokenEl = null;
+    if (!el.resizing && !el.dragging) updateDimensions(el, url, tok.size || 64);
+    if (!el.dragging) { el.style.left = tok.x + 'px'; el.style.top = tok.y + 'px'; }
   }
 
   function removeTokenEl(id) {
@@ -537,16 +528,66 @@
     if (el) { el.remove(); tokenEls.delete(id); }
   }
 
-  function attachDrag(el, tokenId, handle) {
+  // --- GERENCIAMENTO DE PEÇAS DE MAPA ---
+  function upsertMapPieceEl(piece) {
+    mapPieceData.set(piece.id, piece);
+    let el = mapPieceEls.get(piece.id);
+    if (!el) {
+      el = document.createElement('div');
+      el.className = 'mapPiece';
+      el.dataset.id = piece.id;
+      el.dataset.type = 'map';
+      el.addEventListener('dragstart', (e) => e.preventDefault());
+
+      const img = document.createElement('div');
+      img.className = 'pieceImg';
+      el.appendChild(img);
+
+      const handle = document.createElement('div');
+      handle.className = 'resizeHandle';
+      el.appendChild(handle);
+
+      const rotHandle = document.createElement('div');
+      rotHandle.className = 'rotateHandle';
+      el.appendChild(rotHandle);
+
+      board.appendChild(el);
+      mapPieceEls.set(piece.id, el);
+      attachDrag(el, piece.id, handle, 'map');
+      attachResize(el, handle, piece.id, 'map');
+      attachRotate(el, rotHandle, piece.id, 'map');
+
+      el.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        if (currentTool !== 'select' || currentRole !== 'mestre') return;
+        openContextMenu('map', piece.id, e.clientX, e.clientY);
+      });
+    }
+    const img = el.querySelector('.pieceImg');
+    img.style.backgroundImage = `url(${piece.src_url})`;
+    img.style.transform = `rotate(${piece.rotation || 0}deg) scaleX(${piece.flip_x ? -1 : 1})`;
+    el.style.zIndex = Math.round(piece.z || 1); // Camada de mapa (z baixo)
+
+    if (!el.resizing && !el.dragging) updateDimensions(el, piece.src_url, piece.size || 128);
+    if (!el.dragging) { el.style.left = piece.x + 'px'; el.style.top = piece.y + 'px'; }
+  }
+
+  function removeMapPieceEl(id) {
+    const el = mapPieceEls.get(id);
+    if (el) { el.remove(); mapPieceEls.delete(id); }
+  }
+
+  // --- INTERAÇÕES DE ARRASTAR / REDIMENSIONAR / ROTACIONAR ---
+  function attachDrag(el, itemId, handle, type) {
     let dragging = false, startX, startY, origX, origY, lastSent = 0, moved = false, longPressTimer = null;
 
     el.addEventListener('pointerdown', (e) => {
       if (currentTool !== 'select') return;
+      if (type === 'map' && currentRole !== 'mestre') return; // Jogadores não movem o mapa
       if (e.target === handle || e.target.classList.contains('rotateHandle')) return;
-      selectToken(el);
-      dragging = true;
-      moved = false;
-      el.dragging = true;
+
+      selectElement(el);
+      dragging = true; moved = false; el.dragging = true;
       el.classList.add('dragging');
       el.setPointerCapture(e.pointerId);
       startX = e.clientX; startY = e.clientY;
@@ -556,10 +597,8 @@
       const px = e.clientX, py = e.clientY;
       longPressTimer = setTimeout(() => {
         if (dragging && !moved) {
-          dragging = false;
-          el.dragging = false;
-          el.classList.remove('dragging');
-          openTokenMenu(tokenId, px, py);
+          dragging = false; el.dragging = false; el.classList.remove('dragging');
+          openContextMenu(type, itemId, px, py);
         }
       }, 550);
     });
@@ -569,85 +608,98 @@
       const dx = (e.clientX - startX) / scale;
       const dy = (e.clientY - startY) / scale;
       if (Math.abs(e.clientX - startX) > 6 || Math.abs(e.clientY - startY) > 6) {
-        moved = true;
-        clearTimeout(longPressTimer);
+        moved = true; clearTimeout(longPressTimer);
       }
       const x = origX + dx, y = origY + dy;
-      el.style.left = x + 'px';
-      el.style.top = y + 'px';
+      el.style.left = x + 'px'; el.style.top = y + 'px';
+      
       const now = Date.now();
       if (now - lastSent > 100) {
         lastSent = now;
-        sb.rpc('move_token', { p_user_id: currentUserId, p_token_id: tokenId, p_x: x, p_y: y }).then(({ error }) => { if (error) console.error('mover token:', error); });
+        const rpcName = type === 'token' ? 'move_token' : 'move_map_element';
+        const paramName = type === 'token' ? 'p_token_id' : 'p_element_id';
+        sb.rpc(rpcName, { p_user_id: currentUserId, [paramName]: itemId, p_x: x, p_y: y }).then(({ error }) => { if (error) console.error('mover:', error); });
       }
     });
+
     function end() {
       clearTimeout(longPressTimer);
       if (!dragging) return;
-      dragging = false;
-      el.dragging = false;
-      el.classList.remove('dragging');
+      dragging = false; el.dragging = false; el.classList.remove('dragging');
       const x = parseFloat(el.style.left) || 0;
       const y = parseFloat(el.style.top) || 0;
-      sb.rpc('move_token', { p_user_id: currentUserId, p_token_id: tokenId, p_x: x, p_y: y }).then(({ error }) => { if (error) console.error('mover token:', error); });
+      const rpcName = type === 'token' ? 'move_token' : 'move_map_element';
+      const paramName = type === 'token' ? 'p_token_id' : 'p_element_id';
+      sb.rpc(rpcName, { p_user_id: currentUserId, [paramName]: itemId, p_x: x, p_y: y }).then(({ error }) => { if (error) console.error('mover final:', error); });
     }
     el.addEventListener('pointerup', end);
     el.addEventListener('pointercancel', end);
   }
 
-  function attachResize(el, handle, tokenId) {
+  function attachResize(el, handle, itemId, type) {
     let resizing = false, startX, startY, origSize, lastSent = 0;
+
     handle.addEventListener('pointerdown', (e) => {
+      if (type === 'map' && currentRole !== 'mestre') return;
       e.stopPropagation();
-      resizing = true;
-      el.resizing = true;
+      resizing = true; el.resizing = true;
       handle.setPointerCapture(e.pointerId);
       startX = e.clientX; startY = e.clientY;
-      const tok = tokenData.get(tokenId);
-      origSize = tok ? (tok.size || Math.max(el.offsetWidth, el.offsetHeight)) : 64;
+      const dataMap = type === 'token' ? tokenData : mapPieceData;
+      const item = dataMap.get(itemId);
+      origSize = item ? (item.size || Math.max(el.offsetWidth, el.offsetHeight)) : 64;
     });
+
     handle.addEventListener('pointermove', (e) => {
       if (!resizing) return;
       e.stopPropagation();
       const d = ((e.clientX - startX) + (e.clientY - startY)) / 2 / scale;
-      const newSize = Math.max(24, Math.min(600, origSize + d));
+      const newSize = Math.max(24, Math.min(1200, origSize + d));
 
-      const tok = tokenData.get(tokenId);
-      const url = imageForToken(tok);
-      const ar = tokenAspectRatios.get(url) || 1;
-      applyTokenSize(el, newSize, ar);
+      const dataMap = type === 'token' ? tokenData : mapPieceData;
+      const item = dataMap.get(itemId);
+      const url = type === 'token' ? imageForToken(item) : item.src_url;
+      const ar = aspectRatios.get(url) || 1;
+      applyElementSize(el, newSize, ar);
 
       const now = Date.now();
       if (now - lastSent > 100) {
         lastSent = now;
-        sb.rpc('resize_token', { p_user_id: currentUserId, p_token_id: tokenId, p_size: newSize }).then(({ error }) => { if (error) console.error('redimensionar token:', error); });
+        const rpcName = type === 'token' ? 'resize_token' : 'resize_map_element';
+        const paramName = type === 'token' ? 'p_token_id' : 'p_element_id';
+        sb.rpc(rpcName, { p_user_id: currentUserId, [paramName]: itemId, p_size: newSize }).then(({ error }) => { if (error) console.error('redimensionar:', error); });
       }
     });
+
     function end(e) {
       if (!resizing) return;
       e.stopPropagation();
-      resizing = false;
-      el.resizing = false;
-      const tok = tokenData.get(tokenId);
-      const url = imageForToken(tok);
-      const ar = tokenAspectRatios.get(url) || 1;
+      resizing = false; el.resizing = false;
+      const dataMap = type === 'token' ? tokenData : mapPieceData;
+      const item = dataMap.get(itemId);
+      const url = type === 'token' ? imageForToken(item) : item.src_url;
+      const ar = aspectRatios.get(url) || 1;
       const finalW = parseFloat(el.style.width) || 64;
       const finalH = parseFloat(el.style.height) || 64;
       const finalSize = ar >= 1 ? finalW : finalH;
 
-      sb.rpc('resize_token', { p_user_id: currentUserId, p_token_id: tokenId, p_size: finalSize }).then(({ error }) => { if (error) console.error('redimensionar token:', error); });
+      const rpcName = type === 'token' ? 'resize_token' : 'resize_map_element';
+      const paramName = type === 'token' ? 'p_token_id' : 'p_element_id';
+      sb.rpc(rpcName, { p_user_id: currentUserId, [paramName]: itemId, p_size: finalSize }).then(({ error }) => { if (error) console.error('redimensionar final:', error); });
     }
     handle.addEventListener('pointerup', end);
     handle.addEventListener('pointercancel', end);
   }
 
-  function attachRotate(el, handle, tokenId) {
+  function attachRotate(el, handle, itemId, type) {
     let rotating = false, lastSent = 0;
     handle.addEventListener('pointerdown', (e) => {
+      if (type === 'map' && currentRole !== 'mestre') return;
       e.stopPropagation();
       rotating = true;
       handle.setPointerCapture(e.pointerId);
     });
+
     handle.addEventListener('pointermove', (e) => {
       if (!rotating) return;
       e.stopPropagation();
@@ -656,21 +708,23 @@
       const centerY = rect.top + rect.height / 2;
       const rad = Math.atan2(e.clientY - centerY, e.clientX - centerX);
       let deg = Math.round((rad * (180 / Math.PI)) + 90);
-      if (deg < 0) deg += 360;
-      deg = deg % 360;
+      if (deg < 0) deg += 360; deg = deg % 360;
 
-      const img = el.querySelector('.tokenImg');
-      const tok = tokenData.get(tokenId);
-      const flip = tok ? tok.flip_x : false;
+      const img = el.querySelector('.pieceImg');
+      const dataMap = type === 'token' ? tokenData : mapPieceData;
+      const item = dataMap.get(itemId);
+      const flip = item ? item.flip_x : false;
       img.style.transform = `rotate(${deg}deg) scaleX(${flip ? -1 : 1})`;
 
       const now = Date.now();
       if (now - lastSent > 100) {
         lastSent = now;
-        sb.rpc('rotate_token', { p_user_id: currentUserId, p_token_id: tokenId, p_rotation: deg })
-          .then(({ error }) => { if (error) console.error('girar token:', error); });
+        const rpcName = type === 'token' ? 'rotate_token' : 'rotate_map_element';
+        const paramName = type === 'token' ? 'p_token_id' : 'p_element_id';
+        sb.rpc(rpcName, { p_user_id: currentUserId, [paramName]: itemId, p_rotation: deg }).then(({ error }) => { if (error) console.error('girar:', error); });
       }
     });
+
     function end(e) {
       if (!rotating) return;
       e.stopPropagation();
@@ -680,109 +734,142 @@
       const centerY = rect.top + rect.height / 2;
       const rad = Math.atan2(e.clientY - centerY, e.clientX - centerX);
       let deg = Math.round((rad * (180 / Math.PI)) + 90);
-      if (deg < 0) deg += 360;
-      deg = deg % 360;
+      if (deg < 0) deg += 360; deg = deg % 360;
 
-      sb.rpc('rotate_token', { p_user_id: currentUserId, p_token_id: tokenId, p_rotation: deg })
-        .then(({ error }) => { if (error) console.error('girar token:', error); });
+      const rpcName = type === 'token' ? 'rotate_token' : 'rotate_map_element';
+      const paramName = type === 'token' ? 'p_token_id' : 'p_element_id';
+      sb.rpc(rpcName, { p_user_id: currentUserId, [paramName]: itemId, p_rotation: deg }).then(({ error }) => { if (error) console.error('girar final:', error); });
     }
     handle.addEventListener('pointerup', end);
     handle.addEventListener('pointercancel', end);
   }
 
-  let menuTokenId = null;
+  // --- MENU DE CONTEXTO UNIFICADO ---
+  let contextTarget = null; // { type: 'token'|'map', id: string }
 
-  function openTokenMenu(tokenId, clientX, clientY) {
-    const tok = tokenData.get(tokenId);
-    if (!tok) return;
-    menuTokenId = tokenId;
+  function openContextMenu(type, id, clientX, clientY) {
+    contextTarget = { type, id };
+    
+    if (type === 'token') {
+      const tok = tokenData.get(id);
+      tokenStatesRow.style.display = 'flex';
+      menuAddState.style.display = 'block';
+      statesHr.style.display = 'block';
+      tokenStatesRow.innerHTML = '';
+      if (tok) {
+        const allImages = [tok.src_url, ...(tok.states || [])];
+        allImages.forEach((url, idx) => {
+          const thumb = document.createElement('div');
+          thumb.className = 'stateThumb' + (((tok.active_state || 0) === idx) ? ' active' : '');
+          thumb.style.backgroundImage = `url(${url})`;
+          thumb.addEventListener('click', async () => {
+            await sb.rpc('set_active_state', { p_user_id: currentUserId, p_token_id: id, p_state: idx });
+            closeContextMenu();
+          });
+          tokenStatesRow.appendChild(thumb);
+        });
+      }
+    } else {
+      tokenStatesRow.style.display = 'none';
+      menuAddState.style.display = 'none';
+      statesHr.style.display = 'none';
+    }
 
-    tokenStatesRow.innerHTML = '';
-    const allImages = [tok.src_url, ...(tok.states || [])];
-    allImages.forEach((url, idx) => {
-      const thumb = document.createElement('div');
-      thumb.className = 'stateThumb' + (((tok.active_state || 0) === idx) ? ' active' : '');
-      thumb.style.backgroundImage = `url(${url})`;
-      thumb.title = idx === 0 ? 'Estado base' : ('Estado ' + idx);
-      thumb.addEventListener('click', async () => {
-        const { error } = await sb.rpc('set_active_state', { p_user_id: currentUserId, p_token_id: tokenId, p_state: idx });
-        if (error) alert('Erro ao trocar estado: ' + error.message);
-        closeTokenMenu();
-      });
-      tokenStatesRow.appendChild(thumb);
-    });
-
-    tokenMenu.classList.add('open');
-    const menuW = 220, menuH = tokenMenu.offsetHeight || 260;
+    contextMenu.classList.add('open');
+    const menuW = 220, menuH = contextMenu.offsetHeight || 260;
     const x = Math.min(clientX, window.innerWidth - menuW - 8);
     const y = Math.min(clientY, window.innerHeight - menuH - 8);
-    tokenMenu.style.left = Math.max(8, x) + 'px';
-    tokenMenu.style.top = Math.max(8, y) + 'px';
+    contextMenu.style.left = Math.max(8, x) + 'px';
+    contextMenu.style.top = Math.max(8, y) + 'px';
   }
 
-  function closeTokenMenu() {
-    tokenMenu.classList.remove('open');
-    menuTokenId = null;
+  function closeContextMenu() {
+    contextMenu.classList.remove('open');
+    contextTarget = null;
   }
 
   document.addEventListener('pointerdown', (e) => {
-    if (tokenMenu.classList.contains('open') && !tokenMenu.contains(e.target)) closeTokenMenu();
+    if (contextMenu.classList.contains('open') && !contextMenu.contains(e.target)) closeContextMenu();
   });
 
-  function minTokenZ() {
-    let min = 1;
-    tokenData.forEach((t) => { if ((t.z || 0) < min) min = (t.z || 0); });
-    return min;
-  }
-
   menuFront.addEventListener('click', async () => {
-    if (!menuTokenId) return;
-    const { error } = await sb.rpc('set_token_z', { p_user_id: currentUserId, p_token_id: menuTokenId, p_z: Date.now() });
-    if (error) alert('Erro: ' + error.message);
-    closeTokenMenu();
+    if (!contextTarget) return;
+    const { type, id } = contextTarget;
+    const rpcName = type === 'token' ? 'set_token_z' : 'set_map_element_z';
+    const paramName = type === 'token' ? 'p_token_id' : 'p_element_id';
+    await sb.rpc(rpcName, { p_user_id: currentUserId, [paramName]: id, p_z: Date.now() });
+    closeContextMenu();
   });
 
   menuBack.addEventListener('click', async () => {
-    if (!menuTokenId) return;
-    const newZ = Math.max(1, minTokenZ() - 1);
-    const { error } = await sb.rpc('set_token_z', { p_user_id: currentUserId, p_token_id: menuTokenId, p_z: newZ });
-    if (error) alert('Erro: ' + error.message);
-    closeTokenMenu();
+    if (!contextTarget) return;
+    const { type, id } = contextTarget;
+    const dataMap = type === 'token' ? tokenData : mapPieceData;
+    let minZ = 1;
+    dataMap.forEach(item => { if ((item.z || 0) < minZ) minZ = item.z || 0; });
+    const rpcName = type === 'token' ? 'set_token_z' : 'set_map_element_z';
+    const paramName = type === 'token' ? 'p_token_id' : 'p_element_id';
+    await sb.rpc(rpcName, { p_user_id: currentUserId, [paramName]: id, p_z: Math.max(1, minZ - 1) });
+    closeContextMenu();
   });
 
   menuRotate.addEventListener('click', async () => {
-    if (!menuTokenId) return;
-    const tok = tokenData.get(menuTokenId);
-    const newRotation = ((tok.rotation || 0) + 90) % 360;
-    const { error } = await sb.rpc('rotate_token', { p_user_id: currentUserId, p_token_id: menuTokenId, p_rotation: newRotation });
-    if (error) alert('Erro: ' + error.message);
-    closeTokenMenu();
+    if (!contextTarget) return;
+    const { type, id } = contextTarget;
+    const dataMap = type === 'token' ? tokenData : mapPieceData;
+    const item = dataMap.get(id);
+    const newRot = ((item.rotation || 0) + 90) % 360;
+    const rpcName = type === 'token' ? 'rotate_token' : 'rotate_map_element';
+    const paramName = type === 'token' ? 'p_token_id' : 'p_element_id';
+    await sb.rpc(rpcName, { p_user_id: currentUserId, [paramName]: id, p_rotation: newRot });
+    closeContextMenu();
   });
 
   menuFlip.addEventListener('click', async () => {
-    if (!menuTokenId) return;
-    const tok = tokenData.get(menuTokenId);
-    const { error } = await sb.rpc('flip_token', { p_user_id: currentUserId, p_token_id: menuTokenId, p_flip: !tok.flip_x });
-    if (error) alert('Erro: ' + error.message);
-    closeTokenMenu();
+    if (!contextTarget) return;
+    const { type, id } = contextTarget;
+    const dataMap = type === 'token' ? tokenData : mapPieceData;
+    const item = dataMap.get(id);
+    const rpcName = type === 'token' ? 'flip_token' : 'flip_map_element';
+    const paramName = type === 'token' ? 'p_token_id' : 'p_element_id';
+    await sb.rpc(rpcName, { p_user_id: currentUserId, [paramName]: id, p_flip: !item.flip_x });
+    closeContextMenu();
   });
 
   menuDelete.addEventListener('click', async () => {
-    if (!menuTokenId) return;
-    if (!confirm('Apagar este token?')) return;
-    const { error } = await sb.rpc('delete_token', { p_user_id: currentUserId, p_token_id: menuTokenId });
-    if (error) alert('Erro: ' + error.message);
-    closeTokenMenu();
+    if (!contextTarget) return;
+    const { type, id } = contextTarget;
+    if (!confirm('Apagar este elemento?')) return;
+    const rpcName = type === 'token' ? 'delete_token' : 'delete_map_element';
+    const paramName = type === 'token' ? 'p_token_id' : 'p_element_id';
+    await sb.rpc(rpcName, { p_user_id: currentUserId, [paramName]: id });
+    closeContextMenu();
   });
 
   menuAddState.addEventListener('click', () => stateInput.click());
 
-  stateInput.addEventListener('change', async (e) => {
+  // --- UPLOAD E RECORTE DE IMAGENS ---
+  mapPieceInput.addEventListener('change', async (e) => {
     const file = e.target.files[0];
-    const tokenId = menuTokenId;
-    closeTokenMenu();
-    if (!file || !tokenId) return;
+    if (!file) return;
+    try {
+      const raw = await fileToDataURL(file);
+      openCropModal(raw, async (croppedDataURL) => {
+        try {
+          const mime = file.type.includes('png') ? 'image/png' : 'image/jpeg';
+          const small = await resizeDataURL(croppedDataURL, 1024, mime, 0.9);
+          const url = await uploadImage(small, 'map_pieces');
+          const { error } = await sb.rpc('add_map_element', { p_user_id: currentUserId, p_src_url: url, p_x: 40, p_y: 40, p_size: 256, p_z: Date.now() });
+          if (error) throw error;
+        } catch (err) { alert('Erro ao adicionar peça de mapa: ' + err.message); }
+      });
+    } catch (err) { alert('Erro ao carregar imagem: ' + err.message); }
+    mapPieceInput.value = '';
+  });
 
+  tokenInput.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
     try {
       const raw = await fileToDataURL(file);
       openCropModal(raw, async (croppedDataURL) => {
@@ -790,16 +877,12 @@
           const mime = file.type.includes('png') ? 'image/png' : 'image/jpeg';
           const small = await resizeDataURL(croppedDataURL, 512, mime, 0.9);
           const url = await uploadImage(small, 'tokens');
-          const { error } = await sb.rpc('add_token_state', { p_user_id: currentUserId, p_token_id: tokenId, p_url: url });
+          const { error } = await sb.rpc('add_token', { p_user_id: currentUserId, p_src_url: url, p_x: 40, p_y: 40, p_size: 96, p_z: Date.now() });
           if (error) throw error;
-        } catch (err) {
-          alert('Erro ao adicionar estado: ' + err.message);
-        }
+        } catch (err) { alert('Erro ao adicionar token: ' + err.message); }
       });
-    } catch (err) {
-      alert('Erro ao processar imagem: ' + err.message);
-    }
-    stateInput.value = '';
+    } catch (err) { alert('Erro ao carregar imagem: ' + err.message); }
+    tokenInput.value = '';
   });
 
   mapInput.addEventListener('change', async (e) => {
@@ -814,41 +897,17 @@
       const url = await uploadImage(resized, 'maps');
       const { error } = await sb.rpc('set_map', { p_user_id: currentUserId, p_map_url: url });
       if (error) throw error;
-    } catch (err) {
-      alert('Erro ao enviar mapa: ' + err.message);
-    }
+    } catch (err) { alert('Erro ao enviar mapa: ' + err.message); }
     mapInput.value = '';
   });
 
-  tokenInput.addEventListener('change', async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    try {
-      const raw = await fileToDataURL(file);
-      openCropModal(raw, async (croppedDataURL) => {
-        try {
-          const mime = file.type.includes('png') ? 'image/png' : 'image/jpeg';
-          const small = await resizeDataURL(croppedDataURL, 512, mime, 0.9);
-          const url = await uploadImage(small, 'tokens');
-          const { error } = await sb.rpc('add_token', { p_user_id: currentUserId, p_src_url: url, p_x: 40, p_y: 40, p_size: 96, p_z: Date.now() });
-          if (error) throw error;
-        } catch (err) {
-          alert('Erro ao adicionar token: ' + err.message);
-        }
-      });
-    } catch (err) {
-      alert('Erro ao carregar arquivo de imagem: ' + err.message);
-    }
-    tokenInput.value = '';
-  });
-
   clearBtn.addEventListener('click', async () => {
-    if (!confirm('Limpar mapa e todos os tokens da mesa?')) return;
+    if (!confirm('Limpar o mapa base e todos os tokens da mesa?')) return;
     const { error } = await sb.rpc('clear_board', { p_user_id: currentUserId });
     if (error) alert('Erro ao limpar a mesa: ' + error.message);
   });
 
+  // --- NAVEGAÇÃO E CAMERA DO TABULEIRO ---
   function applyBarState() {
     const topHidden = localStorage.getItem('tabletop_topbar_hidden') === '1';
     const sideHidden = localStorage.getItem('tabletop_sidebar_hidden') === '1';
@@ -875,71 +934,32 @@
   let boardX = 0, boardY = 0;
   const activePointers = new Map();
   let panStartX, panStartY, panOrigX = 0, panOrigY = 0;
-  let pinchStartDist = 0, pinchStartScale = 1, pinchStartBoardX = 0, pinchStartBoardY = 0, pinchCenterLocal = null;
 
-  function boardLocalStyle() {
-    board.style.left = boardX + 'px';
-    board.style.top = boardY + 'px';
-  }
-
-  function pointerDistAndCenter() {
-    const pts = [...activePointers.values()];
-    const dx = pts[0].x - pts[1].x, dy = pts[0].y - pts[1].y;
-    const dist = Math.hypot(dx, dy);
-    const rect = boardWrap.getBoundingClientRect();
-    const cx = (pts[0].x + pts[1].x) / 2 - rect.left;
-    const cy = (pts[0].y + pts[1].y) / 2 - rect.top;
-    return { dist, cx, cy };
-  }
+  function boardLocalStyle() { board.style.left = boardX + 'px'; board.style.top = boardY + 'px'; }
 
   boardWrap.addEventListener('dragstart', (e) => e.preventDefault());
-
   boardWrap.addEventListener('pointerdown', (e) => {
-    if (currentTool === 'select' && e.target.closest('.token')) return;
+    if (currentTool === 'select' && e.target.closest('.token, .mapPiece')) return;
     deselectAll();
     boardWrap.setPointerCapture(e.pointerId);
     activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-
     if (activePointers.size === 1) {
       panStartX = e.clientX; panStartY = e.clientY;
       panOrigX = boardX; panOrigY = boardY;
-    } else if (activePointers.size === 2) {
-      const { dist, cx, cy } = pointerDistAndCenter();
-      pinchStartDist = dist;
-      pinchStartScale = scale;
-      pinchStartBoardX = boardX;
-      pinchStartBoardY = boardY;
-      pinchCenterLocal = { cx, cy };
     }
   });
 
   boardWrap.addEventListener('pointermove', (e) => {
     if (!activePointers.has(e.pointerId)) return;
     activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-
-    if (activePointers.size === 2) {
-      const { dist, cx, cy } = pointerDistAndCenter();
-      const ratio = dist / (pinchStartDist || dist);
-      scale = Math.min(10, Math.max(0.05, pinchStartScale * ratio));
-      boardX = cx - (scale / pinchStartScale) * (cx - pinchStartBoardX);
-      boardY = cy - (scale / pinchStartScale) * (cy - pinchStartBoardY);
-      applyZoom();
-      boardLocalStyle();
-    } else if (activePointers.size === 1) {
+    if (activePointers.size === 1) {
       boardX = panOrigX + (e.clientX - panStartX);
       boardY = panOrigY + (e.clientY - panStartY);
       boardLocalStyle();
     }
   });
 
-  function releasePointer(e) {
-    activePointers.delete(e.pointerId);
-    if (activePointers.size === 1) {
-      const p = [...activePointers.values()][0];
-      panStartX = p.x; panStartY = p.y;
-      panOrigX = boardX; panOrigY = boardY;
-    }
-  }
+  function releasePointer(e) { activePointers.delete(e.pointerId); }
   boardWrap.addEventListener('pointerup', releasePointer);
   boardWrap.addEventListener('pointercancel', releasePointer);
 
@@ -951,40 +971,42 @@
     scale = Math.min(10, Math.max(0.05, scale * (e.deltaY < 0 ? 1.1 : 0.9)));
     boardX = cx - (scale / oldScale) * (cx - boardX);
     boardY = cy - (scale / oldScale) * (cy - boardY);
-    applyZoom();
-    boardLocalStyle();
+    applyZoom(); boardLocalStyle();
   }, { passive: false });
 
-  settingsBtn.addEventListener('click', () => {
-    inpUrl.value = localStorage.getItem('tabletop_sb_url') || '';
-    inpKey.value = localStorage.getItem('tabletop_sb_key') || '';
-    setupError.textContent = '';
-    setupOverlay.classList.remove('hidden');
-  });
-
-  async function loadSceneTokens(sceneId) {
-    tokenEls.forEach((el) => el.remove());
-    tokenEls.clear();
-    tokenData.clear();
+  // --- CARREGAMENTO INICIAL E CANAIS DE REALTIME ---
+  async function loadSceneContent(sceneId) {
+    tokenEls.forEach((el) => el.remove()); tokenEls.clear(); tokenData.clear();
+    mapPieceEls.forEach((el) => el.remove()); mapPieceEls.clear(); mapPieceData.clear();
     if (!sceneId) return;
-    const { data: toks, error } = await sb.from('tokens').select('*').eq('scene_id', sceneId);
-    if (error) throw error;
+
+    // Tokens
+    const { data: toks, error: tErr } = await sb.from('tokens').select('*').eq('scene_id', sceneId);
+    if (tErr) throw tErr;
     (toks || []).forEach(upsertTokenEl);
+
+    // Peças de mapa
+    const { data: pieces, error: mErr } = await sb.from('map_elements').select('*').eq('scene_id', sceneId);
+    if (mErr) throw mErr;
+    (pieces || []).forEach(upsertMapPieceEl);
   }
 
-  function subscribeTokensChannel(sceneId) {
-    if (tokensChannel) { sb.removeChannel(tokensChannel); tokensChannel = null; }
+  function subscribeRealtimeChannels(sceneId) {
+    if (tokensChannel) sb.removeChannel(tokensChannel);
+    if (mapElementsChannel) sb.removeChannel(mapElementsChannel);
     if (!sceneId) return;
-    tokensChannel = sb.channel('tokens-sync-' + sceneId)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'tokens', filter: 'scene_id=eq.' + sceneId }, (payload) => {
-        if (payload.eventType === 'DELETE') {
-          removeTokenEl(payload.old.id);
-          tokenData.delete(payload.old.id);
-        } else {
-          upsertTokenEl(payload.new);
-        }
-      })
-      .subscribe();
+
+    tokensChannel = sb.channel('tokens-' + sceneId)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tokens', filter: 'scene_id=eq.' + sceneId }, (p) => {
+        if (p.eventType === 'DELETE') removeTokenEl(p.old.id);
+        else upsertTokenEl(p.new);
+      }).subscribe();
+
+    mapElementsChannel = sb.channel('map-elements-' + sceneId)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'map_elements', filter: 'scene_id=eq.' + sceneId }, (p) => {
+        if (p.eventType === 'DELETE') removeMapPieceEl(p.old.id);
+        else upsertMapPieceEl(p.new);
+      }).subscribe();
   }
 
   async function loadBoardAndTokens() {
@@ -993,8 +1015,8 @@
     renderMap(boardRow ? boardRow.map_url : null);
     currentSceneId = boardRow ? boardRow.active_scene_id : null;
 
-    await loadSceneTokens(currentSceneId);
-    subscribeTokensChannel(currentSceneId);
+    await loadSceneContent(currentSceneId);
+    subscribeRealtimeChannels(currentSceneId);
 
     sb.channel('board-sync')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'board' }, async (payload) => {
@@ -1002,13 +1024,11 @@
         renderMap(payload.new.map_url);
         if (payload.new.active_scene_id !== currentSceneId) {
           currentSceneId = payload.new.active_scene_id;
-          await loadSceneTokens(currentSceneId);
-          subscribeTokensChannel(currentSceneId);
+          await loadSceneContent(currentSceneId);
+          subscribeRealtimeChannels(currentSceneId);
         }
       })
-      .subscribe((status) => {
-        if (status === 'SUBSCRIBED') connDot.classList.add('ok');
-      });
+      .subscribe((status) => { if (status === 'SUBSCRIBED') connDot.classList.add('ok'); });
   }
 
   async function refreshRoleUI() {
@@ -1036,16 +1056,9 @@
     try {
       await loadBoardAndTokens();
     } catch (err) {
-      console.error('Erro ao carregar dados do Supabase:', err);
-      placeholder.textContent = 'Erro ao carregar mesa: ' + err.message + '. Pressione F12 para ver detalhes no console.';
-      return;
+      console.error('Erro ao carregar mesa:', err);
+      placeholder.textContent = 'Erro ao carregar mesa: ' + err.message;
     }
-
-    sb.channel('profiles-sync')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => {
-        refreshRoleUI().catch(() => {});
-      })
-      .subscribe();
   }
 
   async function connect(url, key) {
@@ -1061,172 +1074,52 @@
       const savedUserId = localStorage.getItem('tabletop_user_id');
       const savedUsername = localStorage.getItem('tabletop_username');
       if (savedUserId) {
-        const { data: profile, error: profErr } = await sb.from('profiles').select('id, display_name, role').eq('id', savedUserId).maybeSingle();
-        if (profErr) throw profErr;
-        if (profile) {
-          await loadProfileAndEnter({ id: profile.id, username: profile.display_name || savedUsername });
-        } else {
-          localStorage.removeItem('tabletop_user_id');
-          localStorage.removeItem('tabletop_username');
-          placeholder.textContent = 'Faça login para ver a mesa.';
+        const { data: profile } = await sb.from('profiles').select('id, display_name, role').eq('id', savedUserId).maybeSingle();
+        if (profile) await loadProfileAndEnter({ id: profile.id, username: profile.display_name || savedUsername });
+        else {
+          localStorage.removeItem('tabletop_user_id'); localStorage.removeItem('tabletop_username');
           loginOverlay.classList.remove('hidden');
         }
-      } else {
-        placeholder.textContent = 'Faça login para ver a mesa.';
-        loginOverlay.classList.remove('hidden');
-      }
+      } else { loginOverlay.classList.remove('hidden'); }
     } catch (err) {
       setupError.textContent = 'Falha ao conectar: ' + err.message;
-      placeholder.textContent = 'Não foi possível conectar. Verifique a URL e a chave.';
       setupOverlay.classList.remove('hidden');
     }
   }
 
   btnConnect.addEventListener('click', () => {
-    const url = inpUrl.value.trim();
-    const key = inpKey.value.trim();
-    if (!url || !key) { setupError.textContent = 'Preencha a URL e a chave.'; return; }
-    connect(url, key);
+    const url = inpUrl.value.trim(), key = inpKey.value.trim();
+    if (url && key) connect(url, key);
   });
 
   btnLogin.addEventListener('click', async () => {
     loginError.textContent = '';
-    const username = inpUsername.value.trim();
-    const password = inpPassword.value;
-    if (!username || !password) { loginError.textContent = 'Preencha usuário e senha.'; return; }
+    const username = inpUsername.value.trim(), password = inpPassword.value;
+    if (!username || !password) return;
     try {
       const { data, error } = await sb.rpc('login_user', { p_username: username, p_password: password });
       if (error) throw error;
-      if (!data || !data.length) { loginError.textContent = 'Usuário ou senha errados.'; return; }
+      if (!data || !data.length) { loginError.textContent = 'Usuário ou senha incorretos.'; return; }
       await loadProfileAndEnter({ id: data[0].out_id, username: data[0].out_username, role: data[0].out_role });
-    } catch (err) {
-      loginError.textContent = 'Erro ao entrar: ' + err.message;
-    }
+    } catch (err) { loginError.textContent = err.message; }
   });
 
   btnSignup.addEventListener('click', async () => {
     loginError.textContent = '';
-    const username = inpUsername.value.trim();
-    const password = inpPassword.value;
-    if (!username || !password) { loginError.textContent = 'Preencha usuário e senha.'; return; }
+    const username = inpUsername.value.trim(), password = inpPassword.value;
+    if (!username || !password) return;
     try {
       const { data, error } = await sb.rpc('signup_user', { p_username: username, p_password: password });
       if (error) throw error;
       if (!data || !data.length) { loginError.textContent = 'Não foi possível criar a conta.'; return; }
       await loadProfileAndEnter({ id: data[0].out_id, username: data[0].out_username, role: data[0].out_role });
-    } catch (err) {
-      loginError.textContent = 'Erro ao criar conta: ' + err.message;
-    }
+    } catch (err) { loginError.textContent = err.message; }
   });
 
   claimMestreBtn.addEventListener('click', async () => {
     const { error } = await sb.rpc('claim_mestre', { p_user_id: currentUserId });
-    if (error) { alert('Erro ao virar mestre: ' + error.message); await refreshRoleUI(); return; }
+    if (error) alert('Erro: ' + error.message);
     await refreshRoleUI();
-  });
-
-  async function openPlayersPanel() {
-    playersList.innerHTML = 'Carregando...';
-    playersOverlay.classList.remove('hidden');
-    const { data: players, error } = await sb.from('profiles').select('*').order('display_name');
-    if (error) { playersList.textContent = 'Erro ao carregar: ' + error.message; return; }
-    playersList.innerHTML = '';
-    (players || []).forEach((p) => {
-      const row = document.createElement('div');
-      row.className = 'playerRow';
-      const isMe = p.id === currentUserId;
-      row.innerHTML = `<span class="name">${p.display_name || '(sem nome)'}${isMe ? ' (você)' : ''}</span>
-        <span class="roleTag">${p.role === 'mestre' ? '👑 mestre' : '🧑 jogador'}</span>`;
-      const btn = document.createElement('button');
-      btn.textContent = p.role === 'mestre' ? 'Tornar jogador' : 'Tornar mestre';
-      btn.addEventListener('click', async () => {
-        const newRole = p.role === 'mestre' ? 'jogador' : 'mestre';
-        const { error } = await sb.rpc('set_role', { p_acting_user_id: currentUserId, p_target_user_id: p.id, p_new_role: newRole });
-        if (error) { alert('Erro: ' + error.message); return; }
-        await refreshRoleUI();
-        await openPlayersPanel();
-      });
-      row.appendChild(btn);
-      playersList.appendChild(row);
-    });
-  }
-  managePlayersBtn.addEventListener('click', openPlayersPanel);
-  closePlayersBtn.addEventListener('click', () => playersOverlay.classList.add('hidden'));
-
-  async function openScenesPanel() {
-    scenesList.innerHTML = 'Carregando...';
-    scenesOverlay.classList.remove('hidden');
-    const { data: scenes, error } = await sb.from('scenes').select('*').order('created_at');
-    if (error) { scenesList.textContent = 'Erro ao carregar: ' + error.message; return; }
-    scenesList.innerHTML = '';
-    (scenes || []).forEach((s) => {
-      const row = document.createElement('div');
-      row.className = 'sceneRow';
-      const isActive = s.id === currentSceneId;
-      const thumb = document.createElement('div');
-      thumb.className = 'thumb';
-      if (s.map_url) thumb.style.backgroundImage = `url(${s.map_url})`;
-      row.appendChild(thumb);
-      const name = document.createElement('span');
-      name.className = 'name';
-      name.textContent = s.name;
-      row.appendChild(name);
-      if (isActive) {
-        const tag = document.createElement('span');
-        tag.className = 'activeTag';
-        tag.textContent = '● atual';
-        row.appendChild(tag);
-      } else {
-        const useBtn = document.createElement('button');
-        useBtn.textContent = 'Usar';
-        useBtn.addEventListener('click', async () => {
-          const { error } = await sb.rpc('set_scene', { p_user_id: currentUserId, p_scene_id: s.id });
-          if (error) { alert('Erro: ' + error.message); return; }
-          scenesOverlay.classList.add('hidden');
-        });
-        row.appendChild(useBtn);
-
-        const delBtn = document.createElement('button');
-        delBtn.className = 'danger';
-        delBtn.textContent = '🗑️';
-        delBtn.title = 'Apagar cena';
-        delBtn.addEventListener('click', async () => {
-          if (!confirm('Apagar a cena "' + s.name + '" e todos os tokens dela?')) return;
-          const { error } = await sb.rpc('delete_scene', { p_user_id: currentUserId, p_scene_id: s.id });
-          if (error) { alert('Erro: ' + error.message); return; }
-          await openScenesPanel();
-        });
-        row.appendChild(delBtn);
-      }
-      scenesList.appendChild(row);
-    });
-  }
-  scenesBtn.addEventListener('click', openScenesPanel);
-  closeScenesBtn.addEventListener('click', () => scenesOverlay.classList.add('hidden'));
-
-  newSceneBtn.addEventListener('click', () => {
-    const name = prompt('Nome da nova cena (ex.: Cidade, Masmorra...):');
-    if (name === null) return;
-    newSceneInput.dataset.sceneName = name;
-    newSceneInput.click();
-  });
-
-  newSceneInput.addEventListener('change', async (e) => {
-    const file = e.target.files[0];
-    const name = newSceneInput.dataset.sceneName || 'Nova cena';
-    if (!file) return;
-    try {
-      const raw = await fileToDataURL(file);
-      const mime = file.type.includes('png') ? 'image/png' : 'image/jpeg';
-      const resized = await resizeDataURL(raw, 4096, mime, 0.92);
-      const url = await uploadImage(resized, 'maps');
-      const { error } = await sb.rpc('create_scene', { p_user_id: currentUserId, p_name: name, p_map_url: url });
-      if (error) throw error;
-      scenesOverlay.classList.add('hidden');
-    } catch (err) {
-      alert('Erro ao criar cena: ' + err.message);
-    }
-    newSceneInput.value = '';
   });
 
   logoutBtn.addEventListener('click', () => {
@@ -1235,25 +1128,16 @@
     location.reload();
   });
 
-  document.addEventListener('keydown', (e) => {
-    if (!selectedTokenEl) return;
-    const id = selectedTokenEl.dataset.id;
-    if (e.key === 'PageUp') {
-      e.preventDefault();
-      sb.rpc('set_token_z', { p_user_id: currentUserId, p_token_id: id, p_z: Date.now() }).then(() => {});
-    } else if (e.key === 'PageDown') {
-      e.preventDefault();
-      const newZ = Math.max(1, minTokenZ() - 1);
-      sb.rpc('set_token_z', { p_user_id: currentUserId, p_token_id: id, p_z: newZ }).then(() => {});
-    }
+  settingsBtn.addEventListener('click', () => {
+    inpUrl.value = localStorage.getItem('tabletop_sb_url') || '';
+    inpKey.value = localStorage.getItem('tabletop_sb_key') || '';
+    setupOverlay.classList.remove('hidden');
   });
 
   applyZoom();
   const savedUrl = localStorage.getItem('tabletop_sb_url');
   const savedKey = localStorage.getItem('tabletop_sb_key');
-  if (savedUrl && savedKey) {
-    connect(savedUrl, savedKey);
-  }
+  if (savedUrl && savedKey) connect(savedUrl, savedKey);
 })();
 </script>
 </body>
