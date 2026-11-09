@@ -50,6 +50,8 @@
   button.primary, label.btn.primary { background: var(--accent); color: var(--accent-text); }
   button.danger { background: var(--danger); color: #fff; }
   input[type=file] { display: none; }
+  input[type=range] { accent-color: var(--accent); }
+  input[type=number] { width: 88px; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--panel-border); background: var(--bg); color: var(--text); font-size: 12px; }
   #boardWrap { position: fixed; inset: 0; overflow: hidden; touch-action: none;
     background: linear-gradient(45deg, rgba(128,128,128,.08) 25%, transparent 25%) 0 0/20px 20px,
                 linear-gradient(-45deg, rgba(128,128,128,.08) 25%, transparent 25%) 0 0/20px 20px; }
@@ -68,7 +70,7 @@
   .token.selected .tokenImg { outline: 2px dashed var(--accent); outline-offset: 4px; }
 
   #tokenMenu { position: fixed; z-index: 60; background: var(--panel); border: 1px solid var(--panel-border);
-    border-radius: 10px; padding: 6px; display: none; min-width: 200px; box-shadow: 0 6px 20px rgba(0,0,0,.4); }
+    border-radius: 10px; padding: 6px; display: none; min-width: 220px; box-shadow: 0 6px 20px rgba(0,0,0,.4); }
   #tokenMenu.open { display: block; }
   #tokenMenu button { width: 100%; justify-content: flex-start; background: transparent; border-radius: 6px; margin: 1px 0; }
   #tokenMenu button:hover { background: var(--panel-border); }
@@ -77,9 +79,21 @@
   #tokenMenu .stateThumb { width: 36px; height: 36px; border-radius: 6px; background-size: contain;
     background-position: center; background-repeat: no-repeat; border: 2px solid var(--panel-border); cursor: pointer; }
   #tokenMenu .stateThumb.active { border-color: var(--accent); }
+  #tokenMenu .rotationBlock { display: flex; flex-direction: column; gap: 6px; padding: 4px 2px; }
+  #tokenMenu .rotationInline { display: flex; gap: 8px; align-items: center; }
+  #tokenMenu .rotationInline button { flex: 1; width: auto; }
   footer { position: fixed; left: 0; right: 0; bottom: env(safe-area-inset-bottom, 0px); z-index: 20;
     padding: 4px 14px; font-size: 10px; color: var(--text-dim); background: rgba(38,40,47,.85);
     backdrop-filter: blur(4px); pointer-events: none; }
+
+  #cropOverlay { position: fixed; inset: 0; background: rgba(0,0,0,.72); display: flex; align-items: center; justify-content: center; z-index: 80; padding: 16px; }
+  #cropCard { background: var(--panel); border: 1px solid var(--panel-border); border-radius: 12px; padding: 16px; width: min(90vw, 420px); }
+  #cropCard h2 { margin: 0 0 10px; font-size: 16px; }
+  #cropCanvas { width: 100%; max-width: 340px; aspect-ratio: 1; display: block; margin: 8px auto 12px; background: var(--bg); border: 1px solid var(--panel-border); border-radius: 10px; cursor: grab; touch-action: none; }
+  .cropActions { display: flex; justify-content: space-between; gap: 8px; }
+  .cropActions button { flex: 1; justify-content: center; }
+  .cropZoomRow { display: flex; gap: 8px; align-items: center; margin: 10px 0 16px; }
+  .cropZoomRow label { flex: 1; color: var(--text-dim); font-size: 12px; }
 
   /* Telas de configuração e login (compartilham o mesmo visual de card) */
   #setupOverlay, #loginOverlay { position: fixed; inset: 0; background: rgba(0,0,0,.6); display: flex;
@@ -212,6 +226,21 @@
     </div>
   </div>
 
+  <div id="cropOverlay" class="hidden">
+    <div id="cropCard">
+      <h2>Recortar token</h2>
+      <canvas id="cropCanvas" width="320" height="320"></canvas>
+      <div class="cropZoomRow">
+        <label for="cropZoom">Zoom</label>
+        <input id="cropZoom" type="range" min="1" max="3" step="0.05" value="1">
+      </div>
+      <div class="cropActions">
+        <button id="cropCancel">Cancelar</button>
+        <button id="cropApply" class="primary">Usar recorte</button>
+      </div>
+    </div>
+  </div>
+
   <div id="tokenMenu">
     <div id="tokenStatesRow" class="statesRow"></div>
     <button id="menuAddState" class="mestre-only">➕ Adicionar estado (imagem)</button>
@@ -220,7 +249,15 @@
     <button id="menuFront">⬆️ Trazer para frente</button>
     <button id="menuBack">⬇️ Mandar para trás</button>
     <hr>
-    <button id="menuRotate">🔄 Girar 90°</button>
+    <div class="rotationBlock">
+      <label>Rotação</label>
+      <input id="menuRotationSlider" type="range" min="0" max="360" step="1" value="0">
+      <div class="rotationInline">
+        <input id="menuRotationValue" type="number" min="0" max="360" step="1" value="0">
+        <button id="menuApplyRotation">Aplicar</button>
+      </div>
+    </div>
+    <hr>
     <button id="menuFlip">↔️ Espelhar</button>
     <hr>
     <button id="menuDelete" class="mestre-only danger">🗑️ Apagar token</button>
@@ -245,6 +282,12 @@
   const zoomOutBtn = document.getElementById('zoomOut');
   const settingsBtn = document.getElementById('settingsBtn');
   const connDot = document.getElementById('connDot');
+
+  const cropOverlay = document.getElementById('cropOverlay');
+  const cropCanvas = document.getElementById('cropCanvas');
+  const cropZoom = document.getElementById('cropZoom');
+  const cropCancel = document.getElementById('cropCancel');
+  const cropApply = document.getElementById('cropApply');
 
   const setupOverlay = document.getElementById('setupOverlay');
   const inpUrl = document.getElementById('inpUrl');
@@ -272,7 +315,9 @@
   const stateInput = document.getElementById('stateInput');
   const menuFront = document.getElementById('menuFront');
   const menuBack = document.getElementById('menuBack');
-  const menuRotate = document.getElementById('menuRotate');
+  const menuRotationSlider = document.getElementById('menuRotationSlider');
+  const menuRotationValue = document.getElementById('menuRotationValue');
+  const menuApplyRotation = document.getElementById('menuApplyRotation');
   const menuFlip = document.getElementById('menuFlip');
   const menuDelete = document.getElementById('menuDelete');
   const claimMestreBtn = document.getElementById('claimMestreBtn');
@@ -299,6 +344,10 @@
   let scale = 1;
   let tokenEls = new Map(); // id -> element
   let currentMapUrl = null;
+
+  function clamp(value, min, max) {
+    return Math.min(max, Math.max(min, value));
+  }
 
   function fileToDataURL(file) {
     return new Promise((resolve, reject) => {
@@ -346,6 +395,142 @@
     const { data } = sb.storage.from('tabletop').getPublicUrl(path);
     return data.publicUrl;
   }
+
+  const cropState = { img: null, targetType: null, tokenId: null, zoom: 1, panX: 0, panY: 0, dragging: false, startX: 0, startY: 0, startPanX: 0, startPanY: 0 };
+
+  function renderCropPreview() {
+    const ctx = cropCanvas.getContext('2d');
+    const img = cropState.img;
+    if (!img) return;
+
+    const size = cropCanvas.width;
+    const base = Math.min(img.naturalWidth, img.naturalHeight);
+    const cropSize = (base / cropState.zoom) * 0.92;
+    const maxPan = Math.max(0, (base - cropSize) / 2);
+    const sourceX = (img.naturalWidth - base) / 2 + (cropState.panX * maxPan * 2);
+    const sourceY = (img.naturalHeight - base) / 2 + (cropState.panY * maxPan * 2);
+
+    ctx.clearRect(0, 0, size, size);
+    ctx.fillStyle = '#111318';
+    ctx.fillRect(0, 0, size, size);
+    ctx.drawImage(img, sourceX, sourceY, cropSize, cropSize, 0, 0, size, size);
+
+    ctx.strokeStyle = 'rgba(108, 140, 255, 0.95)';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(1, 1, size - 2, size - 2);
+    ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(18, 18, size - 36, size - 36);
+  }
+
+  function closeCropEditor() {
+    cropOverlay.classList.add('hidden');
+    cropState.img = null;
+    cropState.targetType = null;
+    cropState.tokenId = null;
+    cropState.zoom = 1;
+    cropState.panX = 0;
+    cropState.panY = 0;
+    cropState.dragging = false;
+  }
+
+  function openCropEditor(file, targetType, tokenId = null) {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      cropState.img = img;
+      cropState.targetType = targetType;
+      cropState.tokenId = tokenId;
+      cropState.zoom = 1;
+      cropState.panX = 0;
+      cropState.panY = 0;
+      renderCropPreview();
+      cropOverlay.classList.remove('hidden');
+      URL.revokeObjectURL(url);
+    };
+    img.src = url;
+  }
+
+  function exportCropDataURL() {
+    const img = cropState.img;
+    if (!img) return null;
+
+    const out = document.createElement('canvas');
+    const size = 512;
+    out.width = size;
+    out.height = size;
+    const ctx = out.getContext('2d');
+
+    const base = Math.min(img.naturalWidth, img.naturalHeight);
+    const cropSize = (base / cropState.zoom) * 0.92;
+    const maxPan = Math.max(0, (base - cropSize) / 2);
+    const sourceX = (img.naturalWidth - base) / 2 + (cropState.panX * maxPan * 2);
+    const sourceY = (img.naturalHeight - base) / 2 + (cropState.panY * maxPan * 2);
+
+    ctx.clearRect(0, 0, size, size);
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, size, size);
+    ctx.drawImage(img, sourceX, sourceY, cropSize, cropSize, 0, 0, size, size);
+    return out.toDataURL('image/png');
+  }
+
+  cropZoom.addEventListener('input', () => {
+    cropState.zoom = Number(cropZoom.value);
+    renderCropPreview();
+  });
+
+  cropCanvas.addEventListener('pointerdown', (e) => {
+    if (!cropState.img) return;
+    cropState.dragging = true;
+    cropCanvas.setPointerCapture(e.pointerId);
+    cropState.startX = e.clientX;
+    cropState.startY = e.clientY;
+    cropState.startPanX = cropState.panX;
+    cropState.startPanY = cropState.panY;
+  });
+
+  cropCanvas.addEventListener('pointermove', (e) => {
+    if (!cropState.dragging || !cropState.img) return;
+    const dx = e.clientX - cropState.startX;
+    const dy = e.clientY - cropState.startY;
+    cropState.panX = clamp(cropState.startPanX + (dx / 220), -1, 1);
+    cropState.panY = clamp(cropState.startPanY + (dy / 220), -1, 1);
+    renderCropPreview();
+  });
+
+  function stopCropDrag(e) {
+    if (e && e.pointerId) cropCanvas.releasePointerCapture(e.pointerId);
+    cropState.dragging = false;
+  }
+  cropCanvas.addEventListener('pointerup', stopCropDrag);
+  cropCanvas.addEventListener('pointercancel', stopCropDrag);
+
+  cropCancel.addEventListener('click', closeCropEditor);
+
+  cropApply.addEventListener('click', async () => {
+    const action = { type: cropState.targetType, tokenId: cropState.tokenId };
+    const dataURL = exportCropDataURL();
+    closeCropEditor();
+    if (!dataURL) return;
+
+    try {
+      const encoded = await resizeDataURL(dataURL, 512, 'image/png', 0.92);
+      if (action.type === 'state' && action.tokenId) {
+        const url = await uploadImage(encoded, 'tokens');
+        const { error } = await sb.rpc('add_token_state', { p_user_id: currentUserId, p_token_id: action.tokenId, p_url: url });
+        if (error) throw error;
+      } else if (action.type === 'token') {
+        const url = await uploadImage(encoded, 'tokens');
+        const { error } = await sb.rpc('add_token', { p_user_id: currentUserId, p_src_url: url, p_x: 40, p_y: 40, p_size: 96, p_z: Date.now() });
+        if (error) throw error;
+      }
+    } catch (err) {
+      alert('Erro ao recortar e enviar a imagem: ' + err.message);
+    }
+
+    stateInput.value = '';
+    tokenInput.value = '';
+  });
 
   function applyZoom() { board.style.transform = `scale(${scale})`; }
 
@@ -522,10 +707,17 @@
 
   let menuTokenId = null;
 
+  function syncRotationInputs(rotation) {
+    const normalized = ((Number(rotation) || 0) % 360 + 360) % 360;
+    menuRotationSlider.value = String(normalized);
+    menuRotationValue.value = String(Math.round(normalized));
+  }
+
   function openTokenMenu(tokenId, clientX, clientY) {
     const tok = tokenData.get(tokenId);
     if (!tok) return;
     menuTokenId = tokenId;
+    syncRotationInputs(tok.rotation || 0);
 
     // Miniaturas de estado: a base (0) + cada variação salva.
     tokenStatesRow.innerHTML = '';
@@ -584,11 +776,24 @@
     closeTokenMenu();
   });
 
-  menuRotate.addEventListener('click', async () => {
+  menuRotationSlider.addEventListener('input', () => {
+    menuRotationValue.value = menuRotationSlider.value;
+  });
+
+  menuRotationValue.addEventListener('input', () => {
+    const value = Number(menuRotationValue.value);
+    if (Number.isFinite(value)) {
+      const normalized = ((value % 360) + 360) % 360;
+      menuRotationSlider.value = String(normalized);
+      menuRotationValue.value = String(Math.round(normalized));
+    }
+  });
+
+  menuApplyRotation.addEventListener('click', async () => {
     if (!menuTokenId) return;
-    const tok = tokenData.get(menuTokenId);
-    const newRotation = ((tok.rotation || 0) + 90) % 360;
-    const { error } = await sb.rpc('rotate_token', { p_user_id: currentUserId, p_token_id: menuTokenId, p_rotation: newRotation });
+    const nextRotation = Number(menuRotationValue.value);
+    if (!Number.isFinite(nextRotation)) return;
+    const { error } = await sb.rpc('rotate_token', { p_user_id: currentUserId, p_token_id: menuTokenId, p_rotation: nextRotation });
     if (error) alert('Erro: ' + error.message);
     closeTokenMenu();
   });
@@ -614,18 +819,9 @@
   stateInput.addEventListener('change', async (e) => {
     const file = e.target.files[0];
     const tokenId = menuTokenId;
-    closeTokenMenu();
     if (!file || !tokenId) return;
-    try {
-      const raw = await fileToDataURL(file);
-      const mime = file.type.includes('png') ? 'image/png' : 'image/jpeg';
-      const small = await resizeDataURL(raw, 512, mime, 0.9);
-      const url = await uploadImage(small, 'tokens');
-      const { error } = await sb.rpc('add_token_state', { p_user_id: currentUserId, p_token_id: tokenId, p_url: url });
-      if (error) throw error;
-    } catch (err) {
-      alert('Erro ao adicionar estado: ' + err.message);
-    }
+    closeTokenMenu();
+    openCropEditor(file, 'state', tokenId);
     stateInput.value = '';
   });
 
@@ -650,16 +846,7 @@
   tokenInput.addEventListener('change', async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    try {
-      const raw = await fileToDataURL(file);
-      const mime = file.type.includes('png') ? 'image/png' : 'image/jpeg';
-      const small = await resizeDataURL(raw, 512, mime, 0.9);
-      const url = await uploadImage(small, 'tokens');
-      const { error } = await sb.rpc('add_token', { p_user_id: currentUserId, p_src_url: url, p_x: 40, p_y: 40, p_size: 96, p_z: Date.now() });
-      if (error) throw error;
-    } catch (err) {
-      alert('Erro ao adicionar token: ' + err.message);
-    }
+    openCropEditor(file, 'token');
     tokenInput.value = '';
   });
 
