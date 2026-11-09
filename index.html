@@ -6,7 +6,7 @@
 <title>Tabletop — Supabase</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 
-<!-- Cropper.js CSS & JS para recorte interativo -->
+<!-- Cropper.js CSS & JS -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
 
@@ -39,8 +39,7 @@
     border-radius: 10px 0 0 10px; padding: 8px 6px; display: flex; flex-direction: column; gap: 6px;
     align-items: center; transition: transform .2s ease; max-height: 80vh; overflow-y: auto; }
   #sideToolbar.collapsed { transform: translateY(-50%) translateX(100%); }
-  #sideToolbar button, #sideToolbar label.btn { width: 42px; height: 42px; padding: 0; justify-content: center;
-    font-size: 18px; }
+  #sideToolbar button, #sideToolbar label.btn { width: 42px; height: 42px; padding: 0; justify-content: center; font-size: 18px; }
   #sideToolbar hr { width: 100%; border: none; border-top: 1px solid var(--panel-border); margin: 2px 0; }
   #sideToolbar .toolBtn.active { background: var(--accent); color: var(--accent-text); }
 
@@ -48,13 +47,16 @@
     background: var(--panel); border: 1px solid var(--panel-border); border-right: none;
     border-radius: 8px 0 0 8px; padding: 10px 2px; color: var(--text-dim); cursor: pointer; }
   #sideToolbar.collapsed ~ #sideToolbarToggle { right: 0; }
+
   #connDot { width: 10px; height: 10px; border-radius: 50%; background: var(--danger); margin-right: auto; }
   #connDot.ok { background: var(--ok); }
+
   button, label.btn { background: var(--panel-border); color: var(--text); border: none; border-radius: 8px;
     padding: 8px 12px; font-size: 13px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
   button.primary, label.btn.primary { background: var(--accent); color: var(--accent-text); }
   button.danger { background: var(--danger); color: #fff; }
   input[type=file] { display: none; }
+
   #boardWrap { position: fixed; inset: 0; overflow: hidden; touch-action: none;
     background: linear-gradient(45deg, rgba(128,128,128,.08) 25%, transparent 25%) 0 0/20px 20px,
                 linear-gradient(-45deg, rgba(128,128,128,.08) 25%, transparent 25%) 0 0/20px 20px; }
@@ -94,17 +96,19 @@
     padding: 4px 14px; font-size: 10px; color: var(--text-dim); background: rgba(38,40,47,.85);
     backdrop-filter: blur(4px); pointer-events: none; }
 
-  #setupOverlay, #loginOverlay, #cropOverlay { position: fixed; inset: 0; background: rgba(0,0,0,.75); display: flex;
+  #setupOverlay, #loginOverlay, #cropOverlay, #mapEditorOverlay, #playersOverlay, #scenesOverlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,.75); display: flex;
     align-items: center; justify-content: center; z-index: 100; padding: 16px; }
-  #setupOverlay.hidden, #loginOverlay.hidden, #cropOverlay.hidden { display: none; }
-  #setupCard, #loginCard, #cropCard { background: var(--panel); border: 1px solid var(--panel-border); border-radius: 12px;
-    padding: 20px; max-width: 480px; width: 100%; }
-  #setupCard h2, #loginCard h2, #cropCard h2 { margin-top: 0; font-size: 16px; }
-  #setupCard p, #loginCard p, #cropCard p { font-size: 13px; color: var(--text-dim); line-height: 1.5; }
-  #setupCard input, #loginCard input { width: 100%; padding: 8px 10px; margin: 6px 0 12px; border-radius: 8px;
+  .hidden { display: none !important; }
+
+  .card { background: var(--panel); border: 1px solid var(--panel-border); border-radius: 12px;
+    padding: 20px; max-width: 480px; width: 100%; max-height: 80vh; overflow-y: auto; }
+  .card h2 { margin-top: 0; font-size: 16px; }
+  .card p { font-size: 13px; color: var(--text-dim); line-height: 1.5; }
+  .card input { width: 100%; padding: 8px 10px; margin: 6px 0 12px; border-radius: 8px;
     border: 1px solid var(--panel-border); background: var(--bg); color: var(--text); font-size: 13px; }
-  #setupError, #loginError { color: var(--danger); font-size: 12px; min-height: 16px; }
-  .row { display: flex; gap: 8px; }
+  
+  .row { display: flex; gap: 8px; margin-top: 10px; }
   .row button { flex: 1; justify-content: center; }
   #roleBadge { font-size: 12px; color: var(--text-dim); padding: 4px 8px; background: var(--panel-border); border-radius: 6px; }
   body.jogador .mestre-only { display: none !important; }
@@ -113,12 +117,6 @@
     display: flex; align-items: center; justify-content: center; overflow: hidden; border-radius: 8px; }
   #cropImg { max-width: 100%; max-height: 350px; display: block; }
 
-  #playersOverlay, #scenesOverlay { position: fixed; inset: 0; background: rgba(0,0,0,.6); display: flex;
-    align-items: center; justify-content: center; z-index: 50; padding: 16px; }
-  #playersCard, #scenesCard { background: var(--panel); border: 1px solid var(--panel-border); border-radius: 12px;
-    padding: 20px; max-width: 440px; width: 100%; max-height: 80vh; overflow-y: auto; }
-  #playersCard h2, #scenesCard h2 { margin-top: 0; font-size: 16px; }
-  #playersCard p, #scenesCard p { font-size: 13px; color: var(--text-dim); line-height: 1.5; }
   .playerRow, .sceneRow { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--panel-border); }
   .playerRow .name, .sceneRow .name { flex: 1; font-size: 13px; }
   .playerRow .roleTag { font-size: 11px; color: var(--text-dim); }
@@ -129,28 +127,30 @@
 </head>
 <body>
 
-  <div id="setupOverlay">
-    <div id="setupCard">
+  <!-- Conexão Supabase -->
+  <div id="setupOverlay" class="hidden">
+    <div class="card">
       <h2>Conectar ao Supabase</h2>
       <p>Cole o <strong>Project URL</strong> e a <strong>anon public key</strong> do seu projeto.</p>
       <label>Project URL</label>
       <input id="inpUrl" placeholder="https://xxxxx.supabase.co">
       <label>Anon public key</label>
       <input id="inpKey" placeholder="eyJhbGciOi...">
-      <div id="setupError"></div>
-      <button class="primary" id="btnConnect">Conectar</button>
+      <div id="setupError" style="color:var(--danger); font-size:12px; margin-bottom:8px;"></div>
+      <button class="primary" id="btnConnect" style="width:100%">Conectar</button>
     </div>
   </div>
 
+  <!-- Login / Cadastro -->
   <div id="loginOverlay" class="hidden">
-    <div id="loginCard">
+    <div class="card">
       <h2>Entrar na mesa</h2>
-      <p>Escolha um usuário e uma senha. Se é a primeira vez, crie uma conta.</p>
+      <p>Escolha um usuário e uma senha.</p>
       <label>Usuário</label>
-      <input id="inpUsername" placeholder="seu-nome" autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false">
+      <input id="inpUsername" placeholder="seu-nome" autocomplete="username">
       <label>Senha</label>
-      <input id="inpPassword" type="password" placeholder="••••••••" autocomplete="current-password" autocapitalize="off" autocorrect="off" spellcheck="false">
-      <div id="loginError"></div>
+      <input id="inpPassword" type="password" placeholder="••••••••" autocomplete="current-password">
+      <div id="loginError" style="color:var(--danger); font-size:12px; margin-bottom:8px;"></div>
       <div class="row">
         <button class="primary" id="btnLogin">Entrar</button>
         <button id="btnSignup">Criar conta</button>
@@ -158,10 +158,11 @@
     </div>
   </div>
 
+  <!-- Modal de Recorte (Cropper) -->
   <div id="cropOverlay" class="hidden">
-    <div id="cropCard">
+    <div class="card">
       <h2>Recortar Imagem</h2>
-      <p>Ajuste a caixa de seleção para remover bordas indesejadas.</p>
+      <p>Ajuste o retângulo de seleção para remover bordas vazias.</p>
       <div id="cropContainer">
         <img id="cropImg" src="">
       </div>
@@ -172,60 +173,84 @@
     </div>
   </div>
 
-  <header id="topBar">
-    <span id="connDot" title="status da conexão"></span>
-    <h1>Tabletop</h1>
-    <span id="roleBadge" class="hidden"></span>
-    <label class="btn mestre-only" title="Importar mapa base">
-      🗺️ Mapa Base
-      <input type="file" id="mapInput" accept="image/png,image/jpeg,image/webp">
-    </label>
-    <label class="btn mestre-only" title="Adicionar peça de cenário ao mapa">
-      🧩 Peça de Mapa
-      <input type="file" id="mapPieceInput" accept="image/png,image/jpeg,image/webp">
-    </label>
-    <label class="btn mestre-only" title="Adicionar token de personagem">
-      🧙 Token
-      <input type="file" id="tokenInput" accept="image/png,image/jpeg,image/webp">
-    </label>
-    <button id="zoomOut" title="Menos zoom">−</button>
-    <button id="zoomIn" title="Mais zoom">+</button>
-    <button id="scenesBtn" class="mestre-only">🎬 Cenas</button>
-    <button id="managePlayersBtn" class="mestre-only hidden">👥 Jogadores</button>
-    <button id="claimMestreBtn" class="primary hidden">👑 Virar mestre desta mesa</button>
-    <button id="settingsBtn">⚙️</button>
-    <button id="clearBtn" class="danger mestre-only" title="Limpar tokens e elementos da cena">🗑️ Limpar</button>
-    <button id="logoutBtn" class="hidden">Sair</button>
-  </header>
-  <button id="topBarToggle" title="Esconder/mostrar barra superior">▲</button>
+  <!-- Editor de Mapa (Interface Dedicada) -->
+  <div id="mapEditorOverlay" class="hidden">
+    <div class="card">
+      <h2>🗺️ Editor de Mapa & Cenário</h2>
+      <p>Altere o mapa base da cena atual ou adicione peças modulares de cenário.</p>
+      
+      <div style="margin: 16px 0; display:flex; flex-direction:column; gap:10px;">
+        <label class="btn primary" style="justify-content:center;">
+          🗺️ Trocar Mapa Base da Cena
+          <input type="file" id="mapInput" accept="image/png,image/jpeg,image/webp">
+        </label>
+        
+        <label class="btn" style="justify-content:center;">
+          🧩 Adicionar Peça de Cenário (Árvore, Muro, etc)
+          <input type="file" id="mapPieceInput" accept="image/png,image/jpeg,image/webp">
+        </label>
+      </div>
 
-  <div id="sideToolbar">
-    <button class="toolBtn active" id="toolSelectBtn" data-tool="select" title="Selecionar/Mover peças e tokens">🖱️</button>
-    <button class="toolBtn" id="toolMoveBtn" data-tool="move" title="Mover câmera">✋</button>
-  </div>
-  <button id="sideToolbarToggle" title="Esconder/mostrar barra de ferramentas">▶</button>
-
-  <div id="playersOverlay" class="hidden">
-    <div id="playersCard" class="card">
-      <h2>Jogadores da mesa</h2>
-      <p>Gerenciar papéis dos usuários.</p>
-      <div id="playersList"></div>
-      <button id="closePlayersBtn">Fechar</button>
+      <button id="closeMapEditorBtn" style="width:100%; margin-top:10px;">Fechar Editor</button>
     </div>
   </div>
 
+  <!-- Painel de Cenas -->
   <div id="scenesOverlay" class="hidden">
-    <div id="scenesCard" class="card">
-      <h2>Cenas</h2>
+    <div class="card">
+      <h2>🎬 Cenas</h2>
+      <p>Gerencie as cenas da mesa.</p>
       <div id="scenesList"></div>
       <div class="row" style="margin-top:10px;">
         <button class="primary" id="newSceneBtn">➕ Nova cena</button>
         <input type="file" id="newSceneInput" accept="image/png,image/jpeg,image/webp" class="hidden">
       </div>
-      <button id="closeScenesBtn">Fechar</button>
+      <button id="closeScenesBtn" style="width:100%; margin-top:10px;">Fechar</button>
     </div>
   </div>
 
+  <!-- Painel de Jogadores -->
+  <div id="playersOverlay" class="hidden">
+    <div class="card">
+      <h2>👥 Jogadores da mesa</h2>
+      <p>Gerencie quem é mestre ou jogador.</p>
+      <div id="playersList"></div>
+      <button id="closePlayersBtn" style="width:100%; margin-top:10px;">Fechar</button>
+    </div>
+  </div>
+
+  <!-- Barra Superior -->
+  <header id="topBar">
+    <span id="connDot" title="status da conexão"></span>
+    <h1>Tabletop</h1>
+    <span id="roleBadge" class="hidden"></span>
+    
+    <button class="mestre-only" id="openMapEditorBtn" title="Abrir editor de mapa">🗺️ Editor de Mapa</button>
+    
+    <label class="btn mestre-only" title="Adicionar token">
+      🧙 Token
+      <input type="file" id="tokenInput" accept="image/png,image/jpeg,image/webp">
+    </label>
+
+    <button id="zoomOut" title="Menos zoom">−</button>
+    <button id="zoomIn" title="Mais zoom">+</button>
+    <button id="scenesBtn" class="mestre-only">🎬 Cenas</button>
+    <button id="managePlayersBtn" class="mestre-only hidden">👥 Jogadores</button>
+    <button id="claimMestreBtn" class="primary hidden">👑 Virar mestre</button>
+    <button id="settingsBtn">⚙️</button>
+    <button id="clearBtn" class="danger mestre-only" title="Limpar tokens/peças">🗑️ Limpar</button>
+    <button id="logoutBtn" class="hidden">Sair</button>
+  </header>
+  <button id="topBarToggle" title="Esconder/mostrar barra">▲</button>
+
+  <!-- Barra Lateral de Ferramentas -->
+  <div id="sideToolbar">
+    <button class="toolBtn active" id="toolSelectBtn" data-tool="select" title="Selecionar e Mover">🖱️</button>
+    <button class="toolBtn" id="toolMoveBtn" data-tool="move" title="Mover Câmera">✋</button>
+  </div>
+  <button id="sideToolbarToggle" title="Esconder/mostrar ferramentas">▶</button>
+
+  <!-- Tabuleiro -->
   <div id="boardWrap">
     <div id="placeholder">Conectando...</div>
     <div id="board">
@@ -233,9 +258,10 @@
     </div>
   </div>
 
+  <!-- Menu de Contexto (Botão Direito) -->
   <div id="contextMenu">
     <div id="tokenStatesRow" class="statesRow"></div>
-    <button id="menuAddState" class="mestre-only">➕ Adicionar estado (imagem)</button>
+    <button id="menuAddState" class="mestre-only">➕ Adicionar estado</button>
     <input type="file" id="stateInput" accept="image/png,image/jpeg,image/webp" class="hidden">
     <hr id="statesHr">
     <button id="menuFront">⬆️ Trazer para frente</button>
@@ -259,8 +285,14 @@
   const board = document.getElementById('board');
   const mapImg = document.getElementById('mapImg');
   const placeholder = document.getElementById('placeholder');
+  
+  // Inputs e Botões do Editor de Mapa
+  const openMapEditorBtn = document.getElementById('openMapEditorBtn');
+  const mapEditorOverlay = document.getElementById('mapEditorOverlay');
+  const closeMapEditorBtn = document.getElementById('closeMapEditorBtn');
   const mapInput = document.getElementById('mapInput');
   const mapPieceInput = document.getElementById('mapPieceInput');
+  
   const tokenInput = document.getElementById('tokenInput');
   const clearBtn = document.getElementById('clearBtn');
   const zoomInBtn = document.getElementById('zoomIn');
@@ -280,8 +312,10 @@
   const loginError = document.getElementById('loginError');
   const btnLogin = document.getElementById('btnLogin');
   const btnSignup = document.getElementById('btnSignup');
+  
   const roleBadge = document.getElementById('roleBadge');
   const logoutBtn = document.getElementById('logoutBtn');
+  
   const scenesBtn = document.getElementById('scenesBtn');
   const scenesOverlay = document.getElementById('scenesOverlay');
   const scenesList = document.getElementById('scenesList');
@@ -335,8 +369,7 @@
   let tokenData = new Map();
   let mapPieceEls = new Map();
   let mapPieceData = new Map();
-
-  const aspectRatios = new Map();
+  let aspectRatios = new Map();
 
   function fileToDataURL(file) {
     return new Promise((resolve, reject) => {
@@ -423,6 +456,10 @@
     callback(croppedDataURL);
   });
 
+  // Editor Modal Handlers
+  openMapEditorBtn.addEventListener('click', () => mapEditorOverlay.classList.remove('hidden'));
+  closeMapEditorBtn.addEventListener('click', () => mapEditorOverlay.classList.add('hidden'));
+
   function applyZoom() { board.style.transform = `scale(${scale})`; }
 
   function renderMap(url) {
@@ -471,7 +508,7 @@
     selectedEl = null;
   }
 
-  // --- GERENCIAMENTO DE TOKENS ---
+  // --- TOKENS ---
   function imageForToken(tok) {
     if (tok.active_state && tok.states && tok.states[tok.active_state - 1]) {
       return tok.states[tok.active_state - 1];
@@ -517,7 +554,7 @@
     const url = imageForToken(tok);
     img.style.backgroundImage = `url(${url})`;
     img.style.transform = `rotate(${tok.rotation || 0}deg) scaleX(${tok.flip_x ? -1 : 1})`;
-    el.style.zIndex = Math.round(10000 + (tok.z || 0)); // Tokens ficam acima dos elementos de mapa
+    el.style.zIndex = Math.round(10000 + (tok.z || 0));
 
     if (!el.resizing && !el.dragging) updateDimensions(el, url, tok.size || 64);
     if (!el.dragging) { el.style.left = tok.x + 'px'; el.style.top = tok.y + 'px'; }
@@ -528,7 +565,7 @@
     if (el) { el.remove(); tokenEls.delete(id); }
   }
 
-  // --- GERENCIAMENTO DE PEÇAS DE MAPA ---
+  // --- PEÇAS DE MAPA ---
   function upsertMapPieceEl(piece) {
     mapPieceData.set(piece.id, piece);
     let el = mapPieceEls.get(piece.id);
@@ -566,7 +603,7 @@
     const img = el.querySelector('.pieceImg');
     img.style.backgroundImage = `url(${piece.src_url})`;
     img.style.transform = `rotate(${piece.rotation || 0}deg) scaleX(${piece.flip_x ? -1 : 1})`;
-    el.style.zIndex = Math.round(piece.z || 1); // Camada de mapa (z baixo)
+    el.style.zIndex = Math.round(piece.z || 1);
 
     if (!el.resizing && !el.dragging) updateDimensions(el, piece.src_url, piece.size || 128);
     if (!el.dragging) { el.style.left = piece.x + 'px'; el.style.top = piece.y + 'px'; }
@@ -577,13 +614,13 @@
     if (el) { el.remove(); mapPieceEls.delete(id); }
   }
 
-  // --- INTERAÇÕES DE ARRASTAR / REDIMENSIONAR / ROTACIONAR ---
+  // --- DRAG, RESIZE, ROTATE ---
   function attachDrag(el, itemId, handle, type) {
     let dragging = false, startX, startY, origX, origY, lastSent = 0, moved = false, longPressTimer = null;
 
     el.addEventListener('pointerdown', (e) => {
       if (currentTool !== 'select') return;
-      if (type === 'map' && currentRole !== 'mestre') return; // Jogadores não movem o mapa
+      if (type === 'map' && currentRole !== 'mestre') return;
       if (e.target === handle || e.target.classList.contains('rotateHandle')) return;
 
       selectElement(el);
@@ -618,7 +655,7 @@
         lastSent = now;
         const rpcName = type === 'token' ? 'move_token' : 'move_map_element';
         const paramName = type === 'token' ? 'p_token_id' : 'p_element_id';
-        sb.rpc(rpcName, { p_user_id: currentUserId, [paramName]: itemId, p_x: x, p_y: y }).then(({ error }) => { if (error) console.error('mover:', error); });
+        sb.rpc(rpcName, { p_user_id: currentUserId, [paramName]: itemId, p_x: x, p_y: y }).then(({ error }) => { if (error) console.error(error); });
       }
     });
 
@@ -630,7 +667,7 @@
       const y = parseFloat(el.style.top) || 0;
       const rpcName = type === 'token' ? 'move_token' : 'move_map_element';
       const paramName = type === 'token' ? 'p_token_id' : 'p_element_id';
-      sb.rpc(rpcName, { p_user_id: currentUserId, [paramName]: itemId, p_x: x, p_y: y }).then(({ error }) => { if (error) console.error('mover final:', error); });
+      sb.rpc(rpcName, { p_user_id: currentUserId, [paramName]: itemId, p_x: x, p_y: y }).then(({ error }) => { if (error) console.error(error); });
     }
     el.addEventListener('pointerup', end);
     el.addEventListener('pointercancel', end);
@@ -667,7 +704,7 @@
         lastSent = now;
         const rpcName = type === 'token' ? 'resize_token' : 'resize_map_element';
         const paramName = type === 'token' ? 'p_token_id' : 'p_element_id';
-        sb.rpc(rpcName, { p_user_id: currentUserId, [paramName]: itemId, p_size: newSize }).then(({ error }) => { if (error) console.error('redimensionar:', error); });
+        sb.rpc(rpcName, { p_user_id: currentUserId, [paramName]: itemId, p_size: newSize }).then(({ error }) => { if (error) console.error(error); });
       }
     });
 
@@ -685,7 +722,7 @@
 
       const rpcName = type === 'token' ? 'resize_token' : 'resize_map_element';
       const paramName = type === 'token' ? 'p_token_id' : 'p_element_id';
-      sb.rpc(rpcName, { p_user_id: currentUserId, [paramName]: itemId, p_size: finalSize }).then(({ error }) => { if (error) console.error('redimensionar final:', error); });
+      sb.rpc(rpcName, { p_user_id: currentUserId, [paramName]: itemId, p_size: finalSize }).then(({ error }) => { if (error) console.error(error); });
     }
     handle.addEventListener('pointerup', end);
     handle.addEventListener('pointercancel', end);
@@ -721,7 +758,7 @@
         lastSent = now;
         const rpcName = type === 'token' ? 'rotate_token' : 'rotate_map_element';
         const paramName = type === 'token' ? 'p_token_id' : 'p_element_id';
-        sb.rpc(rpcName, { p_user_id: currentUserId, [paramName]: itemId, p_rotation: deg }).then(({ error }) => { if (error) console.error('girar:', error); });
+        sb.rpc(rpcName, { p_user_id: currentUserId, [paramName]: itemId, p_rotation: deg }).then(({ error }) => { if (error) console.error(error); });
       }
     });
 
@@ -738,18 +775,17 @@
 
       const rpcName = type === 'token' ? 'rotate_token' : 'rotate_map_element';
       const paramName = type === 'token' ? 'p_token_id' : 'p_element_id';
-      sb.rpc(rpcName, { p_user_id: currentUserId, [paramName]: itemId, p_rotation: deg }).then(({ error }) => { if (error) console.error('girar final:', error); });
+      sb.rpc(rpcName, { p_user_id: currentUserId, [paramName]: itemId, p_rotation: deg }).then(({ error }) => { if (error) console.error(error); });
     }
     handle.addEventListener('pointerup', end);
     handle.addEventListener('pointercancel', end);
   }
 
-  // --- MENU DE CONTEXTO UNIFICADO ---
-  let contextTarget = null; // { type: 'token'|'map', id: string }
+  // --- MENU DE CONTEXTO ---
+  let contextTarget = null;
 
   function openContextMenu(type, id, clientX, clientY) {
     contextTarget = { type, id };
-    
     if (type === 'token') {
       const tok = tokenData.get(id);
       tokenStatesRow.style.display = 'flex';
@@ -848,7 +884,26 @@
 
   menuAddState.addEventListener('click', () => stateInput.click());
 
-  // --- UPLOAD E RECORTE DE IMAGENS ---
+  stateInput.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    const tokenId = contextTarget?.id;
+    closeContextMenu();
+    if (!file || !tokenId) return;
+    try {
+      const raw = await fileToDataURL(file);
+      openCropModal(raw, async (croppedDataURL) => {
+        try {
+          const mime = file.type.includes('png') ? 'image/png' : 'image/jpeg';
+          const small = await resizeDataURL(croppedDataURL, 512, mime, 0.9);
+          const url = await uploadImage(small, 'tokens');
+          await sb.rpc('add_token_state', { p_user_id: currentUserId, p_token_id: tokenId, p_url: url });
+        } catch (err) { alert(err.message); }
+      });
+    } catch (err) { alert(err.message); }
+    stateInput.value = '';
+  });
+
+  // --- UPLOADS ---
   mapPieceInput.addEventListener('change', async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -861,9 +916,10 @@
           const url = await uploadImage(small, 'map_pieces');
           const { error } = await sb.rpc('add_map_element', { p_user_id: currentUserId, p_src_url: url, p_x: 40, p_y: 40, p_size: 256, p_z: Date.now() });
           if (error) throw error;
-        } catch (err) { alert('Erro ao adicionar peça de mapa: ' + err.message); }
+          mapEditorOverlay.classList.add('hidden');
+        } catch (err) { alert(err.message); }
       });
-    } catch (err) { alert('Erro ao carregar imagem: ' + err.message); }
+    } catch (err) { alert(err.message); }
     mapPieceInput.value = '';
   });
 
@@ -879,9 +935,9 @@
           const url = await uploadImage(small, 'tokens');
           const { error } = await sb.rpc('add_token', { p_user_id: currentUserId, p_src_url: url, p_x: 40, p_y: 40, p_size: 96, p_z: Date.now() });
           if (error) throw error;
-        } catch (err) { alert('Erro ao adicionar token: ' + err.message); }
+        } catch (err) { alert(err.message); }
       });
-    } catch (err) { alert('Erro ao carregar imagem: ' + err.message); }
+    } catch (err) { alert(err.message); }
     tokenInput.value = '';
   });
 
@@ -897,37 +953,121 @@
       const url = await uploadImage(resized, 'maps');
       const { error } = await sb.rpc('set_map', { p_user_id: currentUserId, p_map_url: url });
       if (error) throw error;
-    } catch (err) { alert('Erro ao enviar mapa: ' + err.message); }
+      mapEditorOverlay.classList.add('hidden');
+    } catch (err) { alert(err.message); }
     mapInput.value = '';
   });
 
   clearBtn.addEventListener('click', async () => {
-    if (!confirm('Limpar o mapa base e todos os tokens da mesa?')) return;
+    if (!confirm('Limpar o mapa base e todos os tokens/peças?')) return;
     const { error } = await sb.rpc('clear_board', { p_user_id: currentUserId });
-    if (error) alert('Erro ao limpar a mesa: ' + error.message);
+    if (error) alert(error.message);
   });
 
-  // --- NAVEGAÇÃO E CAMERA DO TABULEIRO ---
-  function applyBarState() {
-    const topHidden = localStorage.getItem('tabletop_topbar_hidden') === '1';
-    const sideHidden = localStorage.getItem('tabletop_sidebar_hidden') === '1';
-    topBar.classList.toggle('collapsed', topHidden);
-    topBarToggle.textContent = topHidden ? '▼' : '▲';
-    sideToolbar.classList.toggle('collapsed', sideHidden);
-    sideToolbarToggle.textContent = sideHidden ? '◀' : '▶';
+  // --- PAINEL DE CENAS ---
+  async function openScenesPanel() {
+    scenesList.innerHTML = 'Carregando...';
+    scenesOverlay.classList.remove('hidden');
+    const { data: scenes, error } = await sb.from('scenes').select('*').order('created_at');
+    if (error) { scenesList.textContent = error.message; return; }
+    scenesList.innerHTML = '';
+    (scenes || []).forEach((s) => {
+      const row = document.createElement('div');
+      row.className = 'sceneRow';
+      const isActive = s.id === currentSceneId;
+      const thumb = document.createElement('div');
+      thumb.className = 'thumb';
+      if (s.map_url) thumb.style.backgroundImage = `url(${s.map_url})`;
+      row.appendChild(thumb);
+      const name = document.createElement('span');
+      name.className = 'name';
+      name.textContent = s.name;
+      row.appendChild(name);
+      if (isActive) {
+        const tag = document.createElement('span');
+        tag.className = 'activeTag';
+        tag.textContent = '● atual';
+        row.appendChild(tag);
+      } else {
+        const useBtn = document.createElement('button');
+        useBtn.textContent = 'Usar';
+        useBtn.addEventListener('click', async () => {
+          await sb.rpc('set_scene', { p_user_id: currentUserId, p_scene_id: s.id });
+          scenesOverlay.classList.add('hidden');
+        });
+        row.appendChild(useBtn);
+
+        const delBtn = document.createElement('button');
+        delBtn.className = 'danger';
+        delBtn.textContent = '🗑️';
+        delBtn.addEventListener('click', async () => {
+          if (!confirm('Apagar cena?')) return;
+          await sb.rpc('delete_scene', { p_user_id: currentUserId, p_scene_id: s.id });
+          openScenesPanel();
+        });
+        row.appendChild(delBtn);
+      }
+      scenesList.appendChild(row);
+    });
   }
-  topBarToggle.addEventListener('click', () => {
-    const hidden = topBar.classList.toggle('collapsed');
-    localStorage.setItem('tabletop_topbar_hidden', hidden ? '1' : '0');
-    topBarToggle.textContent = hidden ? '▼' : '▲';
-  });
-  sideToolbarToggle.addEventListener('click', () => {
-    const hidden = sideToolbar.classList.toggle('collapsed');
-    localStorage.setItem('tabletop_sidebar_hidden', hidden ? '1' : '0');
-    sideToolbarToggle.textContent = hidden ? '◀' : '▶';
-  });
-  applyBarState();
+  if (scenesBtn) scenesBtn.addEventListener('click', openScenesPanel);
+  if (closeScenesBtn) closeScenesBtn.addEventListener('click', () => scenesOverlay.classList.add('hidden'));
 
+  if (newSceneBtn) {
+    newSceneBtn.addEventListener('click', () => {
+      const name = prompt('Nome da nova cena:');
+      if (name === null) return;
+      newSceneInput.dataset.sceneName = name;
+      newSceneInput.click();
+    });
+  }
+
+  if (newSceneInput) {
+    newSceneInput.addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      const name = newSceneInput.dataset.sceneName || 'Nova cena';
+      if (!file) return;
+      try {
+        const raw = await fileToDataURL(file);
+        const mime = file.type.includes('png') ? 'image/png' : 'image/jpeg';
+        const resized = await resizeDataURL(raw, 4096, mime, 0.92);
+        const url = await uploadImage(resized, 'maps');
+        await sb.rpc('create_scene', { p_user_id: currentUserId, p_name: name, p_map_url: url });
+        scenesOverlay.classList.add('hidden');
+      } catch (err) { alert(err.message); }
+      newSceneInput.value = '';
+    });
+  }
+
+  // --- PAINEL DE JOGADORES ---
+  async function openPlayersPanel() {
+    playersList.innerHTML = 'Carregando...';
+    playersOverlay.classList.remove('hidden');
+    const { data: players, error } = await sb.from('profiles').select('*').order('display_name');
+    if (error) { playersList.textContent = error.message; return; }
+    playersList.innerHTML = '';
+    (players || []).forEach((p) => {
+      const row = document.createElement('div');
+      row.className = 'playerRow';
+      const isMe = p.id === currentUserId;
+      row.innerHTML = `<span class="name">${p.display_name || 'Usuário'}${isMe ? ' (você)' : ''}</span>
+        <span class="roleTag">${p.role === 'mestre' ? '👑 mestre' : '🧑 jogador'}</span>`;
+      const btn = document.createElement('button');
+      btn.textContent = p.role === 'mestre' ? 'Tornar jogador' : 'Tornar mestre';
+      btn.addEventListener('click', async () => {
+        const newRole = p.role === 'mestre' ? 'jogador' : 'mestre';
+        await sb.rpc('set_role', { p_acting_user_id: currentUserId, p_target_user_id: p.id, p_new_role: newRole });
+        refreshRoleUI();
+        openPlayersPanel();
+      });
+      row.appendChild(btn);
+      playersList.appendChild(row);
+    });
+  }
+  if (managePlayersBtn) managePlayersBtn.addEventListener('click', openPlayersPanel);
+  if (closePlayersBtn) closePlayersBtn.addEventListener('click', () => playersOverlay.classList.add('hidden'));
+
+  // --- NAVEGAÇÃO / PAN & ZOOM ---
   zoomInBtn.addEventListener('click', () => { scale = Math.min(scale * 1.2, 10); applyZoom(); });
   zoomOutBtn.addEventListener('click', () => { scale = Math.max(scale / 1.2, 0.05); applyZoom(); });
 
@@ -974,20 +1114,16 @@
     applyZoom(); boardLocalStyle();
   }, { passive: false });
 
-  // --- CARREGAMENTO INICIAL E CANAIS DE REALTIME ---
+  // --- CARREGAMENTO E SINCRONIZAÇÃO ---
   async function loadSceneContent(sceneId) {
     tokenEls.forEach((el) => el.remove()); tokenEls.clear(); tokenData.clear();
     mapPieceEls.forEach((el) => el.remove()); mapPieceEls.clear(); mapPieceData.clear();
     if (!sceneId) return;
 
-    // Tokens
-    const { data: toks, error: tErr } = await sb.from('tokens').select('*').eq('scene_id', sceneId);
-    if (tErr) throw tErr;
+    const { data: toks } = await sb.from('tokens').select('*').eq('scene_id', sceneId);
     (toks || []).forEach(upsertTokenEl);
 
-    // Peças de mapa
-    const { data: pieces, error: mErr } = await sb.from('map_elements').select('*').eq('scene_id', sceneId);
-    if (mErr) throw mErr;
+    const { data: pieces } = await sb.from('map_elements').select('*').eq('scene_id', sceneId);
     (pieces || []).forEach(upsertMapPieceEl);
   }
 
@@ -1010,8 +1146,7 @@
   }
 
   async function loadBoardAndTokens() {
-    const { data: boardRow, error: boardErr } = await sb.from('board').select('*').eq('id', 1).maybeSingle();
-    if (boardErr) throw boardErr;
+    const { data: boardRow } = await sb.from('board').select('*').eq('id', 1).maybeSingle();
     renderMap(boardRow ? boardRow.map_url : null);
     currentSceneId = boardRow ? boardRow.active_scene_id : null;
 
@@ -1032,17 +1167,15 @@
   }
 
   async function refreshRoleUI() {
-    const { data: profile, error } = await sb.from('profiles').select('*').eq('id', currentUserId).maybeSingle();
-    if (error) throw error;
+    const { data: profile } = await sb.from('profiles').select('*').eq('id', currentUserId).maybeSingle();
     currentRole = (profile && profile.role === 'mestre') ? 'mestre' : 'jogador';
     document.body.classList.toggle('jogador', currentRole !== 'mestre');
     roleBadge.textContent = currentRole === 'mestre' ? ('👑 Mestre (' + (profile.display_name || '') + ')') : ('🧑 Jogador (' + (profile.display_name || '') + ')');
     roleBadge.classList.remove('hidden');
-    managePlayersBtn.classList.toggle('hidden', currentRole !== 'mestre');
+    if (managePlayersBtn) managePlayersBtn.classList.toggle('hidden', currentRole !== 'mestre');
 
-    const { count, error: countErr } = await sb.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'mestre');
-    if (countErr) throw countErr;
-    claimMestreBtn.classList.toggle('hidden', currentRole === 'mestre' || (count || 0) > 0);
+    const { count } = await sb.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'mestre');
+    if (claimMestreBtn) claimMestreBtn.classList.toggle('hidden', currentRole === 'mestre' || (count || 0) > 0);
   }
 
   async function loadProfileAndEnter(userRow) {
@@ -1053,12 +1186,7 @@
     logoutBtn.classList.remove('hidden');
     loginOverlay.classList.add('hidden');
     placeholder.textContent = 'Carregando mesa...';
-    try {
-      await loadBoardAndTokens();
-    } catch (err) {
-      console.error('Erro ao carregar mesa:', err);
-      placeholder.textContent = 'Erro ao carregar mesa: ' + err.message;
-    }
+    try { await loadBoardAndTokens(); } catch (err) { placeholder.textContent = 'Erro ao carregar: ' + err.message; }
   }
 
   async function connect(url, key) {
@@ -1076,13 +1204,10 @@
       if (savedUserId) {
         const { data: profile } = await sb.from('profiles').select('id, display_name, role').eq('id', savedUserId).maybeSingle();
         if (profile) await loadProfileAndEnter({ id: profile.id, username: profile.display_name || savedUsername });
-        else {
-          localStorage.removeItem('tabletop_user_id'); localStorage.removeItem('tabletop_username');
-          loginOverlay.classList.remove('hidden');
-        }
+        else { localStorage.removeItem('tabletop_user_id'); loginOverlay.classList.remove('hidden'); }
       } else { loginOverlay.classList.remove('hidden'); }
     } catch (err) {
-      setupError.textContent = 'Falha ao conectar: ' + err.message;
+      setupError.textContent = err.message;
       setupOverlay.classList.remove('hidden');
     }
   }
@@ -1111,16 +1236,17 @@
     try {
       const { data, error } = await sb.rpc('signup_user', { p_username: username, p_password: password });
       if (error) throw error;
-      if (!data || !data.length) { loginError.textContent = 'Não foi possível criar a conta.'; return; }
+      if (!data || !data.length) { loginError.textContent = 'Erro ao criar conta.'; return; }
       await loadProfileAndEnter({ id: data[0].out_id, username: data[0].out_username, role: data[0].out_role });
     } catch (err) { loginError.textContent = err.message; }
   });
 
-  claimMestreBtn.addEventListener('click', async () => {
-    const { error } = await sb.rpc('claim_mestre', { p_user_id: currentUserId });
-    if (error) alert('Erro: ' + error.message);
-    await refreshRoleUI();
-  });
+  if (claimMestreBtn) {
+    claimMestreBtn.addEventListener('click', async () => {
+      await sb.rpc('claim_mestre', { p_user_id: currentUserId });
+      refreshRoleUI();
+    });
+  }
 
   logoutBtn.addEventListener('click', () => {
     localStorage.removeItem('tabletop_user_id');
@@ -1138,6 +1264,7 @@
   const savedUrl = localStorage.getItem('tabletop_sb_url');
   const savedKey = localStorage.getItem('tabletop_sb_key');
   if (savedUrl && savedKey) connect(savedUrl, savedKey);
+  else setupOverlay.classList.remove('hidden');
 })();
 </script>
 </body>
