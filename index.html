@@ -68,9 +68,7 @@
   .token { position: absolute; touch-action: none; cursor: grab; user-select: none; -webkit-user-drag: none; }
   .token.dragging { opacity: .85; }
 
-  /* Peças de mapa ficam travadas por padrão (fora do modo editor) */
   .mapPiece { position: absolute; touch-action: none; user-select: none; -webkit-user-drag: none; pointer-events: none; }
-  /* No modo editor, peças de mapa ganham interatividade igual aos tokens */
   body.map-editor-active .mapPiece { pointer-events: auto; cursor: grab; }
   .mapPiece.dragging { opacity: .85; }
 
@@ -291,7 +289,6 @@
   const mapImg = document.getElementById('mapImg');
   const placeholder = document.getElementById('placeholder');
   
-  // Navegações da Barra Superior
   const normalNav = document.getElementById('normalNav');
   const editorNav = document.getElementById('editorNav');
   const openMapEditorBtn = document.getElementById('openMapEditorBtn');
@@ -462,14 +459,12 @@
     callback(croppedDataURL);
   });
 
-  // Alternar para o modo Editor de Mapa na barra superior
   openMapEditorBtn.addEventListener('click', () => {
     document.body.classList.add('map-editor-active');
     normalNav.classList.add('hidden');
     editorNav.classList.remove('hidden');
   });
 
-  // Sair do modo Editor de Mapa
   closeMapEditorBtn.addEventListener('click', () => {
     document.body.classList.remove('map-editor-active');
     editorNav.classList.add('hidden');
@@ -613,7 +608,6 @@
 
       el.addEventListener('contextmenu', (e) => {
         e.preventDefault();
-        // Só permite menu de contexto no mapa se estiver no modo editor e for mestre
         if (!document.body.classList.contains('map-editor-active') || currentTool !== 'select' || currentRole !== 'mestre') return;
         openContextMenu('map', piece.id, e.clientX, e.clientY);
       });
@@ -912,8 +906,7 @@
       const raw = await fileToDataURL(file);
       openCropModal(raw, async (croppedDataURL) => {
         try {
-          const mime = file.type.includes('png') ? 'image/png' : 'image/jpeg';
-          const small = await resizeDataURL(croppedDataURL, 512, mime, 0.9);
+          const small = await resizeDataURL(croppedDataURL, 512, 'image/png', 0.9);
           const url = await uploadImage(small, 'tokens');
           await sb.rpc('add_token_state', { p_user_id: currentUserId, p_token_id: tokenId, p_url: url });
         } catch (err) { alert(err.message); }
@@ -930,14 +923,20 @@
       const raw = await fileToDataURL(file);
       openCropModal(raw, async (croppedDataURL) => {
         try {
-          const mime = file.type.includes('png') ? 'image/png' : 'image/jpeg';
-          const small = await resizeDataURL(croppedDataURL, 1024, mime, 0.9);
+          const small = await resizeDataURL(croppedDataURL, 1024, 'image/png', 0.9);
           const url = await uploadImage(small, 'map_pieces');
-          const { error } = await sb.rpc('add_map_element', { p_user_id: currentUserId, p_src_url: url, p_x: 40, p_y: 40, p_size: 256, p_z: Date.now() });
+          const { error } = await sb.rpc('add_map_element', { 
+            p_user_id: currentUserId, 
+            p_src_url: url, 
+            p_x: 40, 
+            p_y: 40, 
+            p_size: 256, 
+            p_z: Date.now() 
+          });
           if (error) throw error;
-        } catch (err) { alert(err.message); }
+        } catch (err) { alert('Erro ao adicionar peça de mapa: ' + err.message); }
       });
-    } catch (err) { alert(err.message); }
+    } catch (err) { alert('Erro ao carregar imagem: ' + err.message); }
     mapPieceInput.value = '';
   });
 
@@ -948,14 +947,20 @@
       const raw = await fileToDataURL(file);
       openCropModal(raw, async (croppedDataURL) => {
         try {
-          const mime = file.type.includes('png') ? 'image/png' : 'image/jpeg';
-          const small = await resizeDataURL(croppedDataURL, 512, mime, 0.9);
+          const small = await resizeDataURL(croppedDataURL, 512, 'image/png', 0.9);
           const url = await uploadImage(small, 'tokens');
-          const { error } = await sb.rpc('add_token', { p_user_id: currentUserId, p_src_url: url, p_x: 40, p_y: 40, p_size: 96, p_z: Date.now() });
+          const { error } = await sb.rpc('add_token', { 
+            p_user_id: currentUserId, 
+            p_src_url: url, 
+            p_x: 40, 
+            p_y: 40, 
+            p_size: 96, 
+            p_z: Date.now() 
+          });
           if (error) throw error;
-        } catch (err) { alert(err.message); }
+        } catch (err) { alert('Erro ao adicionar token: ' + err.message); }
       });
-    } catch (err) { alert(err.message); }
+    } catch (err) { alert('Erro ao carregar imagem: ' + err.message); }
     tokenInput.value = '';
   });
 
@@ -966,8 +971,7 @@
     placeholder.textContent = 'Enviando mapa...';
     try {
       const raw = await fileToDataURL(file);
-      const mime = file.type.includes('png') ? 'image/png' : 'image/jpeg';
-      const resized = await resizeDataURL(raw, 4096, mime, 0.92);
+      const resized = await resizeDataURL(raw, 4096, 'image/png', 0.92);
       const url = await uploadImage(resized, 'maps');
       const { error } = await sb.rpc('set_map', { p_user_id: currentUserId, p_map_url: url });
       if (error) throw error;
@@ -1046,8 +1050,7 @@
       if (!file) return;
       try {
         const raw = await fileToDataURL(file);
-        const mime = file.type.includes('png') ? 'image/png' : 'image/jpeg';
-        const resized = await resizeDataURL(raw, 4096, mime, 0.92);
+        const resized = await resizeDataURL(raw, 4096, 'image/png', 0.92);
         const url = await uploadImage(resized, 'maps');
         await sb.rpc('create_scene', { p_user_id: currentUserId, p_name: name, p_map_url: url });
         scenesOverlay.classList.add('hidden');
@@ -1097,9 +1100,8 @@
   boardWrap.addEventListener('dragstart', (e) => e.preventDefault());
   boardWrap.addEventListener('pointerdown', (e) => {
     if (currentTool === 'select' && e.target.closest('.token')) return;
-    // Se for mapPiece, só deixa interagir se estiver no modo editor
     if (currentTool === 'select' && e.target.closest('.mapPiece') && !document.body.classList.contains('map-editor-active')) {
-      // Deixa passar para o pan da câmera se não estiver no editor
+      // Deixa passar para pan
     } else if (currentTool === 'select' && e.target.closest('.mapPiece') && document.body.classList.contains('map-editor-active')) {
       return;
     }
@@ -1136,6 +1138,27 @@
     boardY = cy - (scale / oldScale) * (cy - boardY);
     applyZoom(); boardLocalStyle();
   }, { passive: false });
+
+  // --- CONTROLE DE EXIBIÇÃO DA BARRA SUPERIOR ---
+  function applyBarState() {
+    const topHidden = localStorage.getItem('tabletop_topbar_hidden') === '1';
+    const sideHidden = localStorage.getItem('tabletop_sidebar_hidden') === '1';
+    topBar.classList.toggle('collapsed', topHidden);
+    topBarToggle.textContent = topHidden ? '▼' : '▲';
+    sideToolbar.classList.toggle('collapsed', sideHidden);
+    sideToolbarToggle.textContent = sideHidden ? '◀' : '▶';
+  }
+  topBarToggle.addEventListener('click', () => {
+    const hidden = topBar.classList.toggle('collapsed');
+    localStorage.setItem('tabletop_topbar_hidden', hidden ? '1' : '0');
+    topBarToggle.textContent = hidden ? '▼' : '▲';
+  });
+  sideToolbarToggle.addEventListener('click', () => {
+    const hidden = sideToolbar.classList.toggle('collapsed');
+    localStorage.setItem('tabletop_sidebar_hidden', hidden ? '1' : '0');
+    sideToolbarToggle.textContent = hidden ? '◀' : '▶';
+  });
+  applyBarState();
 
   // --- CARREGAMENTO E SINCRONIZAÇÃO ---
   async function loadSceneContent(sceneId) {
@@ -1231,7 +1254,7 @@
       } else { loginOverlay.classList.remove('hidden'); }
     } catch (err) {
       setupError.textContent = err.message;
-      setupOverlay.classList.remove('hidden');
+      setupOverlay.classList.add('hidden');
     }
   }
 
