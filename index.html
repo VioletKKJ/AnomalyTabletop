@@ -57,14 +57,23 @@
   #mapImg { display: block; max-width: none; user-select: none; -webkit-user-drag: none; pointer-events: none; }
   #placeholder { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
     color: var(--text-dim); font-size: 14px; text-align: center; padding: 20px; }
+  
   .token { position: absolute; touch-action: none; cursor: grab; }
   .token.dragging { opacity: .85; }
   .token .tokenImg { position: absolute; inset: 0; background-size: contain; background-position: center;
     background-repeat: no-repeat; filter: drop-shadow(0 2px 4px rgba(0,0,0,.45)); pointer-events: none; }
+  
+  /* Alça de redimensionamento (canto inferior direito) */
   .token .resizeHandle { position: absolute; right: -6px; bottom: -6px; width: 16px; height: 16px;
     border-radius: 50%; background: var(--accent); border: 2px solid var(--bg); touch-action: none;
     cursor: nwse-resize; display: none; }
-  .token.selected .resizeHandle { display: block; }
+  
+  /* Alça de rotação livre (topo) */
+  .token .rotateHandle { position: absolute; left: 50%; top: -22px; transform: translateX(-50%);
+    width: 16px; height: 16px; border-radius: 50%; background: var(--ok); border: 2px solid var(--bg);
+    touch-action: none; cursor: grab; display: none; }
+
+  .token.selected .resizeHandle, .token.selected .rotateHandle { display: block; }
   .token.selected .tokenImg { outline: 2px dashed var(--accent); outline-offset: 4px; }
 
   #tokenMenu { position: fixed; z-index: 60; background: var(--panel); border: 1px solid var(--panel-border);
@@ -77,11 +86,11 @@
   #tokenMenu .stateThumb { width: 36px; height: 36px; border-radius: 6px; background-size: contain;
     background-position: center; background-repeat: no-repeat; border: 2px solid var(--panel-border); cursor: pointer; }
   #tokenMenu .stateThumb.active { border-color: var(--accent); }
+  
   footer { position: fixed; left: 0; right: 0; bottom: env(safe-area-inset-bottom, 0px); z-index: 20;
     padding: 4px 14px; font-size: 10px; color: var(--text-dim); background: rgba(38,40,47,.85);
     backdrop-filter: blur(4px); pointer-events: none; }
 
-  /* Telas de configuração e login (compartilham o mesmo visual de card) */
   #setupOverlay, #loginOverlay { position: fixed; inset: 0; background: rgba(0,0,0,.6); display: flex;
     align-items: center; justify-content: center; z-index: 50; padding: 16px; }
   #setupOverlay.hidden, #loginOverlay.hidden { display: none; }
@@ -95,7 +104,6 @@
   #loginCard .row { display: flex; gap: 8px; }
   #loginCard .row button { flex: 1; justify-content: center; }
   #roleBadge { font-size: 12px; color: var(--text-dim); padding: 4px 8px; background: var(--panel-border); border-radius: 6px; }
-  /* Controles que só o mestre deve ver */
   body.jogador .mestre-only { display: none !important; }
 
   #playersOverlay { position: fixed; inset: 0; background: rgba(0,0,0,.6); display: flex;
@@ -179,7 +187,6 @@
   <div id="sideToolbar">
     <button class="toolBtn active" id="toolSelectBtn" data-tool="select" title="Selecionar: move tokens; ainda dá pra navegar a câmera">🖱️</button>
     <button class="toolBtn" id="toolMoveBtn" data-tool="move" title="Mover câmera: só navega, não mexe nos tokens">✋</button>
-    <!-- Mais ferramentas (régua, desenho...) entram aqui depois -->
   </div>
   <button id="sideToolbarToggle" title="Esconder/mostrar barra de ferramentas">▶</button>
 
@@ -215,6 +222,7 @@
   <div id="tokenMenu">
     <div id="tokenStatesRow" class="statesRow"></div>
     <button id="menuAddState" class="mestre-only">➕ Adicionar estado (imagem)</button>
+    <button id="menuCrop" class="mestre-only">✂️ Recortar bordas transparentes</button>
     <input type="file" id="stateInput" accept="image/png,image/jpeg,image/webp" class="hidden">
     <hr>
     <button id="menuFront">⬆️ Trazer para frente</button>
@@ -269,6 +277,7 @@
   const tokenMenu = document.getElementById('tokenMenu');
   const tokenStatesRow = document.getElementById('tokenStatesRow');
   const menuAddState = document.getElementById('menuAddState');
+  const menuCrop = document.getElementById('menuCrop');
   const stateInput = document.getElementById('stateInput');
   const menuFront = document.getElementById('menuFront');
   const menuBack = document.getElementById('menuBack');
@@ -309,8 +318,6 @@
     });
   }
 
-  // mimeType deve ser o tipo original do arquivo (image/png mantém transparência;
-  // usar JPEG num PNG com transparência pinta o fundo de preto).
   function resizeDataURL(dataURL, maxDim, mimeType, quality) {
     return new Promise((resolve) => {
       const img = new Image();
@@ -362,7 +369,7 @@
     }
   }
 
-  const tokenData = new Map(); // id -> última linha conhecida (pra abrir o menu com dados atuais)
+  const tokenData = new Map(); // id -> última linha conhecida
 
   function imageForToken(tok) {
     if (tok.active_state && tok.states && tok.states[tok.active_state - 1]) {
@@ -381,13 +388,21 @@
       const img = document.createElement('div');
       img.className = 'tokenImg';
       el.appendChild(img);
+      
       const handle = document.createElement('div');
       handle.className = 'resizeHandle';
       el.appendChild(handle);
+
+      const rotHandle = document.createElement('div');
+      rotHandle.className = 'rotateHandle';
+      el.appendChild(rotHandle);
+
       board.appendChild(el);
       tokenEls.set(tok.id, el);
       attachDrag(el, tok.id, handle);
       attachResize(el, handle, tok.id);
+      attachRotate(el, rotHandle, tok.id);
+
       el.addEventListener('contextmenu', (e) => {
         e.preventDefault();
         if (currentTool !== 'select') return;
@@ -429,8 +444,8 @@
     let dragging = false, startX, startY, origX, origY, lastSent = 0, moved = false, longPressTimer = null;
 
     el.addEventListener('pointerdown', (e) => {
-      if (currentTool !== 'select') return; // ferramenta "mover câmera": token não reage, passa pra câmera
-      if (e.target === handle) return; // a alça tem sua própria lógica
+      if (currentTool !== 'select') return;
+      if (e.target === handle || e.target.classList.contains('rotateHandle')) return;
       selectToken(el);
       dragging = true;
       moved = false;
@@ -441,7 +456,6 @@
       origX = parseFloat(el.style.left) || 0;
       origY = parseFloat(el.style.top) || 0;
 
-      // Toque longo (sem arrastar) abre o menu de contexto, igual botão direito no PC.
       const px = e.clientX, py = e.clientY;
       longPressTimer = setTimeout(() => {
         if (dragging && !moved) {
@@ -464,7 +478,6 @@
       const x = origX + dx, y = origY + dy;
       el.style.left = x + 'px';
       el.style.top = y + 'px';
-      // Throttle: manda posição pro servidor no máximo a cada 100ms durante o arraste
       const now = Date.now();
       if (now - lastSent > 100) {
         lastSent = now;
@@ -520,6 +533,56 @@
     handle.addEventListener('pointercancel', end);
   }
 
+  // Rotação livre por alça
+  function attachRotate(el, handle, tokenId) {
+    let rotating = false, lastSent = 0;
+    handle.addEventListener('pointerdown', (e) => {
+      e.stopPropagation();
+      rotating = true;
+      handle.setPointerCapture(e.pointerId);
+    });
+    handle.addEventListener('pointermove', (e) => {
+      if (!rotating) return;
+      e.stopPropagation();
+      const rect = el.getBoundingClientRect();
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
+      const rad = Math.atan2(e.clientY - centerY, e.clientX - centerX);
+      let deg = Math.round((rad * (180 / Math.PI)) + 90);
+      if (deg < 0) deg += 360;
+      deg = deg % 360;
+
+      const img = el.querySelector('.tokenImg');
+      const tok = tokenData.get(tokenId);
+      const flip = tok ? tok.flip_x : false;
+      img.style.transform = `rotate(${deg}deg) scaleX(${flip ? -1 : 1})`;
+
+      const now = Date.now();
+      if (now - lastSent > 100) {
+        lastSent = now;
+        sb.rpc('rotate_token', { p_user_id: currentUserId, p_token_id: tokenId, p_rotation: deg })
+          .then(({ error }) => { if (error) console.error('girar token:', error); });
+      }
+    });
+    function end(e) {
+      if (!rotating) return;
+      e.stopPropagation();
+      rotating = false;
+      const rect = el.getBoundingClientRect();
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
+      const rad = Math.atan2(e.clientY - centerY, e.clientX - centerX);
+      let deg = Math.round((rad * (180 / Math.PI)) + 90);
+      if (deg < 0) deg += 360;
+      deg = deg % 360;
+
+      sb.rpc('rotate_token', { p_user_id: currentUserId, p_token_id: tokenId, p_rotation: deg })
+        .then(({ error }) => { if (error) console.error('girar token:', error); });
+    }
+    handle.addEventListener('pointerup', end);
+    handle.addEventListener('pointercancel', end);
+  }
+
   let menuTokenId = null;
 
   function openTokenMenu(tokenId, clientX, clientY) {
@@ -527,7 +590,6 @@
     if (!tok) return;
     menuTokenId = tokenId;
 
-    // Miniaturas de estado: a base (0) + cada variação salva.
     tokenStatesRow.innerHTML = '';
     const allImages = [tok.src_url, ...(tok.states || [])];
     allImages.forEach((url, idx) => {
@@ -560,9 +622,6 @@
     if (tokenMenu.classList.contains('open') && !tokenMenu.contains(e.target)) closeTokenMenu();
   });
 
-  // O mapa fica sempre na camada "0". Tokens nunca devem ter z menor que 1,
-  // senão eles somem pra trás do próprio mapa — por isso "mandar pra trás"
-  // calcula o menor z entre os tokens atuais e nunca deixa passar de 1.
   function minTokenZ() {
     let min = 1;
     tokenData.forEach((t) => { if ((t.z || 0) < min) min = (t.z || 0); });
@@ -610,6 +669,78 @@
   });
 
   menuAddState.addEventListener('click', () => stateInput.click());
+
+  // Lógica de Recorte Automático (Auto-trim de transparência)
+  async function trimImageTransparency(dataURL) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx.drawImage(img, 0, 0);
+
+        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imgData.data;
+        let top = null, bottom = null, left = null, right = null;
+
+        for (let y = 0; y < canvas.height; y++) {
+          for (let x = 0; x < canvas.width; x++) {
+            const alpha = data[(y * canvas.width + x) * 4 + 3];
+            if (alpha > 10) {
+              if (top === null) top = y;
+              if (bottom === null || y > bottom) bottom = y;
+              if (left === null || x < left) left = x;
+              if (right === null || x > right) right = x;
+            }
+          }
+        }
+
+        if (top === null || left === null) {
+          resolve(dataURL);
+          return;
+        }
+
+        const cropWidth = right - left + 1;
+        const cropHeight = bottom - top + 1;
+
+        const cropCanvas = document.createElement('canvas');
+        cropCanvas.width = cropWidth;
+        cropCanvas.height = cropHeight;
+        const cropCtx = cropCanvas.getContext('2d');
+        cropCtx.drawImage(canvas, left, top, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight);
+
+        resolve(cropCanvas.toDataURL('image/png'));
+      };
+      img.onerror = reject;
+      img.src = dataURL;
+    });
+  }
+
+  menuCrop.addEventListener('click', async () => {
+    const tokenId = menuTokenId;
+    closeTokenMenu();
+    if (!tokenId) return;
+    const tok = tokenData.get(tokenId);
+    if (!tok) return;
+
+    try {
+      const currentUrl = imageForToken(tok);
+      const response = await fetch(currentUrl);
+      const blob = await response.blob();
+      const readerDataURL = await fileToDataURL(blob);
+
+      const trimmedDataURL = await trimImageTransparency(readerDataURL);
+      const newUrl = await uploadImage(trimmedDataURL, 'tokens');
+
+      const { error } = await sb.rpc('update_token_image', { p_user_id: currentUserId, p_token_id: tokenId, p_url: newUrl });
+      if (error) throw error;
+    } catch (err) {
+      alert('Erro ao recortar imagem: ' + err.message);
+    }
+  });
 
   stateInput.addEventListener('change', async (e) => {
     const file = e.target.files[0];
@@ -692,9 +823,8 @@
   zoomInBtn.addEventListener('click', () => { scale = Math.min(scale * 1.2, 10); applyZoom(); });
   zoomOutBtn.addEventListener('click', () => { scale = Math.max(scale / 1.2, 0.05); applyZoom(); });
 
-  // Pan (1 dedo/mouse) e pinça para zoom (2 dedos) no fundo do tabuleiro (não em cima de tokens).
   let boardX = 0, boardY = 0;
-  const activePointers = new Map(); // pointerId -> {x, y}
+  const activePointers = new Map();
   let panStartX, panStartY, panOrigX = 0, panOrigY = 0;
   let pinchStartDist = 0, pinchStartScale = 1, pinchStartBoardX = 0, pinchStartBoardY = 0, pinchCenterLocal = null;
 
@@ -740,7 +870,6 @@
       const { dist, cx, cy } = pointerDistAndCenter();
       const ratio = dist / (pinchStartDist || dist);
       scale = Math.min(10, Math.max(0.05, pinchStartScale * ratio));
-      // Mantém o ponto do meio da pinça fixo na tela enquanto dá zoom.
       boardX = cx - (scale / pinchStartScale) * (cx - pinchStartBoardX);
       boardY = cy - (scale / pinchStartScale) * (cy - pinchStartBoardY);
       applyZoom();
@@ -754,7 +883,6 @@
 
   function releasePointer(e) {
     activePointers.delete(e.pointerId);
-    // Se sair de 2 dedos para 1, reinicia a referência do pan com o dedo restante.
     if (activePointers.size === 1) {
       const p = [...activePointers.values()][0];
       panStartX = p.x; panStartY = p.y;
@@ -764,7 +892,6 @@
   boardWrap.addEventListener('pointerup', releasePointer);
   boardWrap.addEventListener('pointercancel', releasePointer);
 
-  // Zoom com roda do mouse / trackpad (desktop)
   boardWrap.addEventListener('wheel', (e) => {
     e.preventDefault();
     const rect = boardWrap.getBoundingClientRect();
@@ -842,7 +969,6 @@
     roleBadge.classList.remove('hidden');
     managePlayersBtn.classList.toggle('hidden', currentRole !== 'mestre');
 
-    // Se ainda não existe nenhum mestre na mesa, qualquer um pode assumir.
     const { count } = await sb.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'mestre');
     claimMestreBtn.classList.toggle('hidden', currentRole === 'mestre' || (count || 0) > 0);
   }
@@ -857,7 +983,6 @@
     placeholder.textContent = 'Carregando mesa...';
     await loadBoardAndTokens();
 
-    // Mantém o papel atualizado em tempo real (ex.: alguém te promoveu/rebaixou agora).
     sb.channel('profiles-sync')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => {
         refreshRoleUI().catch(() => {});
@@ -878,7 +1003,6 @@
       const savedUserId = localStorage.getItem('tabletop_user_id');
       const savedUsername = localStorage.getItem('tabletop_username');
       if (savedUserId) {
-        // Confirma que a conta ainda existe (não foi apagada do banco).
         const { data: profile } = await sb.from('profiles').select('id, display_name, role').eq('id', savedUserId).maybeSingle();
         if (profile) {
           await loadProfileAndEnter({ id: profile.id, username: profile.display_name || savedUsername });
@@ -1023,7 +1147,7 @@
 
   newSceneBtn.addEventListener('click', () => {
     const name = prompt('Nome da nova cena (ex.: Cidade, Masmorra...):');
-    if (name === null) return; // cancelou
+    if (name === null) return;
     newSceneInput.dataset.sceneName = name;
     newSceneInput.click();
   });
