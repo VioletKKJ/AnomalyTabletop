@@ -326,7 +326,6 @@
   let tokenEls = new Map();
   let currentMapUrl = null;
 
-  // Cache para guardar a proporção (aspect ratio) de cada URL de imagem e ajustar o hitbox
   const tokenAspectRatios = new Map();
 
   function fileToDataURL(file) {
@@ -442,38 +441,37 @@
     return tok.src_url;
   }
 
-  // Atualiza as dimensões e hitbox do token proporcionalmente ao seu recorte (aspect ratio)
+  function applyTokenSize(el, size, ar) {
+    let w, h;
+    if (ar >= 1) {
+      w = size;
+      h = size / ar;
+    } else {
+      h = size;
+      w = size * ar;
+    }
+    el.style.width = w + 'px';
+    el.style.height = h + 'px';
+  }
+
   function updateTokenDimensions(el, tok) {
     const url = imageForToken(tok);
-    const baseSize = tok.size || 64;
+    const size = tok.size || 64;
 
     if (tokenAspectRatios.has(url)) {
-      applyTokenSize(el, baseSize, tokenAspectRatios.get(url));
+      applyTokenSize(el, size, tokenAspectRatios.get(url));
     } else {
       const tempImg = new Image();
       tempImg.src = url;
       tempImg.onload = () => {
         const ar = (tempImg.naturalWidth && tempImg.naturalHeight) ? (tempImg.naturalWidth / tempImg.naturalHeight) : 1;
         tokenAspectRatios.set(url, ar);
-        applyTokenSize(el, baseSize, ar);
+        applyTokenSize(el, size, ar);
       };
       tempImg.onerror = () => {
-        applyTokenSize(el, baseSize, 1);
+        applyTokenSize(el, size, 1);
       };
     }
-  }
-
-  function applyTokenSize(el, baseSize, ar) {
-    let w, h;
-    if (ar >= 1) {
-      w = baseSize;
-      h = baseSize / ar;
-    } else {
-      h = baseSize;
-      w = baseSize * ar;
-    }
-    el.style.width = w + 'px';
-    el.style.height = h + 'px';
   }
 
   function upsertTokenEl(tok) {
@@ -596,31 +594,31 @@
   }
 
   function attachResize(el, handle, tokenId) {
-    let resizing = false, startX, startY, origWidth, origHeight, lastSent = 0;
+    let resizing = false, startX, startY, origSize, lastSent = 0;
     handle.addEventListener('pointerdown', (e) => {
       e.stopPropagation();
       resizing = true;
       el.resizing = true;
       handle.setPointerCapture(e.pointerId);
       startX = e.clientX; startY = e.clientY;
-      origWidth = parseFloat(el.style.width) || 64;
-      origHeight = parseFloat(el.style.height) || 64;
+      const tok = tokenData.get(tokenId);
+      origSize = tok ? (tok.size || Math.max(el.offsetWidth, el.offsetHeight)) : 64;
     });
     handle.addEventListener('pointermove', (e) => {
       if (!resizing) return;
       e.stopPropagation();
       const d = ((e.clientX - startX) + (e.clientY - startY)) / 2 / scale;
-      const ar = origWidth / origHeight;
-      const newWidth = Math.max(24, Math.min(600, origWidth + d));
-      const newHeight = newWidth / ar;
+      const newSize = Math.max(24, Math.min(600, origSize + d));
 
-      el.style.width = newWidth + 'px';
-      el.style.height = newHeight + 'px';
+      const tok = tokenData.get(tokenId);
+      const url = imageForToken(tok);
+      const ar = tokenAspectRatios.get(url) || 1;
+      applyTokenSize(el, newSize, ar);
 
       const now = Date.now();
       if (now - lastSent > 100) {
         lastSent = now;
-        sb.rpc('resize_token', { p_user_id: currentUserId, p_token_id: tokenId, p_size: newWidth }).then(({ error }) => { if (error) console.error('redimensionar token:', error); });
+        sb.rpc('resize_token', { p_user_id: currentUserId, p_token_id: tokenId, p_size: newSize }).then(({ error }) => { if (error) console.error('redimensionar token:', error); });
       }
     });
     function end(e) {
@@ -628,8 +626,14 @@
       e.stopPropagation();
       resizing = false;
       el.resizing = false;
-      const newWidth = parseFloat(el.style.width) || 64;
-      sb.rpc('resize_token', { p_user_id: currentUserId, p_token_id: tokenId, p_size: newWidth }).then(({ error }) => { if (error) console.error('redimensionar token:', error); });
+      const tok = tokenData.get(tokenId);
+      const url = imageForToken(tok);
+      const ar = tokenAspectRatios.get(url) || 1;
+      const finalW = parseFloat(el.style.width) || 64;
+      const finalH = parseFloat(el.style.height) || 64;
+      const finalSize = ar >= 1 ? finalW : finalH;
+
+      sb.rpc('resize_token', { p_user_id: currentUserId, p_token_id: tokenId, p_size: finalSize }).then(({ error }) => { if (error) console.error('redimensionar token:', error); });
     }
     handle.addEventListener('pointerup', end);
     handle.addEventListener('pointercancel', end);
