@@ -60,20 +60,28 @@
   #boardWrap { position: fixed; inset: 0; overflow: hidden; touch-action: none;
     background: linear-gradient(45deg, rgba(128,128,128,.08) 25%, transparent 25%) 0 0/20px 20px,
                 linear-gradient(-45deg, rgba(128,128,128,.08) 25%, transparent 25%) 0 0/20px 20px; }
-  #board { position: absolute; top: 0; left: 0; transform-origin: 0 0; }
-  #mapImg { display: block; max-width: none; user-select: none; -webkit-user-drag: none; pointer-events: none; }
-  #placeholder { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
-    color: var(--text-dim); font-size: 14px; text-align: center; padding: 20px; }
+  #board { position: absolute; top: 0; left: 0; transform-origin: 0 0; will-change: transform; width: 1px; height: 1px; }
   
-  .token { position: absolute; touch-action: none; cursor: grab; user-select: none; -webkit-user-drag: none; }
+  /* Camada do Grid Infinito em CSS/SVG */
+  #gridLayer { position: absolute; left: -20000px; top: -20000px; width: 40000px; height: 40000px; pointer-events: none; z-index: 50; display: none; }
+  
+  #mapPiecesLayer { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
+  body.map-editor-active #mapPiecesLayer { pointer-events: auto; }
+  
+  #tokensLayer { position: absolute; inset: 0; z-index: 10000; pointer-events: none; }
+  #tokensLayer > * { pointer-events: auto; }
+
+  #placeholder { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    color: var(--text-dim); font-size: 14px; text-align: center; padding: 20px; z-index: 0; }
+  
+  .token { position: absolute; touch-action: none; cursor: grab; user-select: none; -webkit-user-drag: none; will-change: left, top; }
   .token.dragging { opacity: .85; }
 
-  .mapPiece { position: absolute; touch-action: none; user-select: none; -webkit-user-drag: none; pointer-events: none; }
+  .mapPiece { position: absolute; touch-action: none; user-select: none; -webkit-user-drag: none; pointer-events: none; will-change: left, top; }
   body.map-editor-active .mapPiece { pointer-events: auto; cursor: grab; }
   .mapPiece.dragging { opacity: .85; }
 
-  .pieceImg { position: absolute; inset: 0; background-size: contain; background-position: center;
-    background-repeat: no-repeat; filter: drop-shadow(0 2px 4px rgba(0,0,0,.45)); pointer-events: none; user-select: none; -webkit-user-drag: none; }
+  .pieceImg { position: absolute; inset: 0; background-size: contain; background-position: center; background-repeat: no-repeat; pointer-events: none; user-select: none; -webkit-user-drag: none; image-rendering: auto; }
   
   .resizeHandle { position: absolute; right: -6px; bottom: -6px; width: 16px; height: 16px;
     border-radius: 50%; background: var(--accent); border: 2px solid var(--bg); touch-action: none;
@@ -86,7 +94,7 @@
   .selected .resizeHandle, .selected .rotateHandle { display: block; }
   .selected .pieceImg { outline: 2px dashed var(--accent); outline-offset: 4px; }
 
-  #contextMenu { position: fixed; z-index: 60; background: var(--panel); border: 1px solid var(--panel-border);
+  #contextMenu { position: fixed; z-index: 60000; background: var(--panel); border: 1px solid var(--panel-border);
     border-radius: 10px; padding: 6px; display: none; min-width: 200px; box-shadow: 0 6px 20px rgba(0,0,0,.4); }
   #contextMenu.open { display: block; }
   #contextMenu button { width: 100%; justify-content: flex-start; background: transparent; border-radius: 6px; margin: 1px 0; }
@@ -101,17 +109,19 @@
     padding: 4px 14px; font-size: 10px; color: var(--text-dim); background: rgba(38,40,47,.85);
     backdrop-filter: blur(4px); pointer-events: none; }
 
-  #setupOverlay, #loginOverlay, #cropOverlay, #playersOverlay, #scenesOverlay {
+  #setupOverlay, #loginOverlay, #cropOverlay, #playersOverlay, #scenesOverlay, #gridOverlay {
     position: fixed; inset: 0; background: rgba(0,0,0,.75); display: flex;
-    align-items: center; justify-content: center; z-index: 100; padding: 16px; }
+    align-items: center; justify-content: center; z-index: 100000; padding: 16px; }
   .hidden { display: none !important; }
 
   .card { background: var(--panel); border: 1px solid var(--panel-border); border-radius: 12px;
     padding: 20px; max-width: 480px; width: 100%; max-height: 80vh; overflow-y: auto; }
   .card h2 { margin-top: 0; font-size: 16px; }
   .card p { font-size: 13px; color: var(--text-dim); line-height: 1.5; }
-  .card input { width: 100%; padding: 8px 10px; margin: 6px 0 12px; border-radius: 8px;
+  .card input[type="text"], .card input[type="password"], .card select { width: 100%; padding: 8px 10px; margin: 6px 0 12px; border-radius: 8px;
     border: 1px solid var(--panel-border); background: var(--bg); color: var(--text); font-size: 13px; }
+  .card label { font-size: 12px; color: var(--text-dim); display: block; margin-top: 8px; }
+  .card input[type="range"], .card input[type="color"] { width: 100%; margin: 6px 0 12px; accent-color: var(--accent); }
   
   .row { display: flex; gap: 8px; margin-top: 10px; }
   .row button { flex: 1; justify-content: center; }
@@ -202,6 +212,44 @@
     </div>
   </div>
 
+  <!-- Painel de Configuração do Grid -->
+  <div id="gridOverlay" class="hidden">
+    <div class="card">
+      <h2>📐 Configuração do Grid</h2>
+      <p>Personalize o estilo e as dimensões do grid do tabuleiro.</p>
+      
+      <label>Exibir Grid</label>
+      <select id="gridEnabled">
+        <option value="true">Sim (Ligado)</option>
+        <option value="false" selected>Não (Desligado)</option>
+      </select>
+
+      <label>Estilo do Grid</label>
+      <select id="gridType">
+        <option value="square">Ortogonal (Quadrado)</option>
+        <option value="isometric" selected>Isométrico</option>
+      </select>
+
+      <label>Tamanho da Célula (px)</label>
+      <input type="range" id="gridSize" min="20" max="300" value="64">
+      <span id="gridSizeVal" style="font-size:11px; color:var(--text-dim);">64px</span>
+
+      <label>Cor das Linhas</label>
+      <input type="color" id="gridColor" value="#ffffff">
+
+      <label>Opacidade das Linhas (<span id="gridOpacityVal">0.4</span>)</label>
+      <input type="range" id="gridOpacity" min="0.05" max="1" step="0.05" value="0.4">
+
+      <label>Espessura da Linha (px)</label>
+      <input type="range" id="gridLineWidth" min="1" max="5" value="1">
+      <span id="gridLineWidthVal" style="font-size:11px; color:var(--text-dim);">1px</span>
+
+      <div class="row" style="margin-top:16px;">
+        <button id="closeGridBtn" style="width:100%">Fechar</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Barra Superior -->
   <header id="topBar">
     <span id="connDot" title="status da conexão"></span>
@@ -219,6 +267,7 @@
 
       <button id="zoomOut" title="Menos zoom">−</button>
       <button id="zoomIn" title="Mais zoom">+</button>
+      <button id="gridBtn" class="mestre-only" title="Configurar Grid">📐 Grid</button>
       <button id="scenesBtn" class="mestre-only">🎬 Cenas</button>
       <button id="managePlayersBtn" class="mestre-only hidden">👥 Jogadores</button>
       <button id="claimMestreBtn" class="primary hidden">👑 Virar mestre</button>
@@ -257,7 +306,9 @@
   <div id="boardWrap">
     <div id="placeholder">Conectando...</div>
     <div id="board">
-      <img id="mapImg" style="display:none" draggable="false">
+      <div id="mapPiecesLayer"></div>
+      <div id="gridLayer"></div>
+      <div id="tokensLayer"></div>
     </div>
   </div>
 
@@ -286,7 +337,9 @@
   const sideToolbarToggle = document.getElementById('sideToolbarToggle');
   const boardWrap = document.getElementById('boardWrap');
   const board = document.getElementById('board');
-  const mapImg = document.getElementById('mapImg');
+  const gridLayer = document.getElementById('gridLayer');
+  const mapPiecesLayer = document.getElementById('mapPiecesLayer');
+  const tokensLayer = document.getElementById('tokensLayer');
   const placeholder = document.getElementById('placeholder');
   
   const normalNav = document.getElementById('normalNav');
@@ -325,6 +378,29 @@
   const newSceneBtn = document.getElementById('newSceneBtn');
   const newSceneInput = document.getElementById('newSceneInput');
   const closeScenesBtn = document.getElementById('closeScenesBtn');
+
+  // Elementos do Grid
+  const gridBtn = document.getElementById('gridBtn');
+  const gridOverlay = document.getElementById('gridOverlay');
+  const closeGridBtn = document.getElementById('closeGridBtn');
+  const gridEnabledSel = document.getElementById('gridEnabled');
+  const gridTypeSel = document.getElementById('gridType');
+  const gridSizeRange = document.getElementById('gridSize');
+  const gridSizeVal = document.getElementById('gridSizeVal');
+  const gridColorInp = document.getElementById('gridColor');
+  const gridOpacityRange = document.getElementById('gridOpacity');
+  const gridOpacityVal = document.getElementById('gridOpacityVal');
+  const gridLineWidthRange = document.getElementById('gridLineWidth');
+  const gridLineWidthVal = document.getElementById('gridLineWidthVal');
+  
+  let gridConfig = {
+    enabled: false,
+    type: 'isometric',
+    size: 64,
+    color: '#ffffff',
+    opacity: 0.4,
+    lineWidth: 1
+  };
   
   const contextMenu = document.getElementById('contextMenu');
   const tokenStatesRow = document.getElementById('tokenStatesRow');
@@ -373,6 +449,75 @@
   let mapPieceEls = new Map();
   let mapPieceData = new Map();
   let aspectRatios = new Map();
+  let baseMapId = null;
+
+  // --- RENDERIZAÇÃO DO GRID VIA SVG PATTERN INFINITO E TRANSPARENTE ---
+  function drawGrid() {
+    if (!gridConfig.enabled) {
+      gridLayer.style.display = 'none';
+      return;
+    }
+    gridLayer.style.display = 'block';
+    gridLayer.style.opacity = gridConfig.opacity;
+
+    const size = parseInt(gridConfig.size) || 64;
+    const stroke = gridConfig.color;
+    const lw = gridConfig.lineWidth;
+
+    let svgDataUrl = '';
+
+    if (gridConfig.type === 'square') {
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}">
+        <path d="M ${size} 0 L 0 0 0 ${size}" fill="none" stroke="${stroke}" stroke-width="${lw}"/>
+      </svg>`;
+      svgDataUrl = `url('data:image/svg+xml;utf8,${encodeURIComponent(svg)}')`;
+    } else if (gridConfig.type === 'isometric') {
+      const w = size;
+      const h = size / 2;
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}">
+        <path d="M 0 ${h/2} L ${w/2} 0 L ${w} ${h/2} L ${w/2} ${h} Z" fill="none" stroke="${stroke}" stroke-width="${lw}"/>
+      </svg>`;
+      svgDataUrl = `url('data:image/svg+xml;utf8,${encodeURIComponent(svg)}')`;
+    }
+
+    gridLayer.style.backgroundImage = svgDataUrl;
+    gridLayer.style.backgroundRepeat = 'repeat';
+    gridLayer.style.backgroundSize = gridConfig.type === 'square' ? `${size}px ${size}px` : `${size}px ${size/2}px`;
+  }
+
+  // Controles do painel de Grid
+  if (gridBtn) {
+    gridBtn.addEventListener('click', () => {
+      gridEnabledSel.value = String(gridConfig.enabled);
+      gridTypeSel.value = gridConfig.type;
+      gridSizeRange.value = gridConfig.size;
+      gridSizeVal.textContent = gridConfig.size + 'px';
+      gridColorInp.value = gridConfig.color;
+      gridOpacityRange.value = gridConfig.opacity;
+      gridOpacityVal.textContent = gridConfig.opacity;
+      gridLineWidthRange.value = gridConfig.lineWidth;
+      gridLineWidthVal.textContent = gridConfig.lineWidth + 'px';
+      gridOverlay.classList.remove('hidden');
+    });
+  }
+  if (closeGridBtn) {
+    closeGridBtn.addEventListener('click', () => gridOverlay.classList.add('hidden'));
+  }
+
+  [gridEnabledSel, gridTypeSel, gridSizeRange, gridColorInp, gridOpacityRange, gridLineWidthRange].forEach(inp => {
+    inp.addEventListener('input', () => {
+      gridConfig.enabled = gridEnabledSel.value === 'true';
+      gridConfig.type = gridTypeSel.value;
+      gridConfig.size = parseInt(gridSizeRange.value) || 64;
+      gridSizeVal.textContent = gridConfig.size + 'px';
+      gridConfig.color = gridColorInp.value;
+      gridConfig.opacity = parseFloat(gridOpacityRange.value) || 0.4;
+      gridOpacityVal.textContent = gridConfig.opacity;
+      gridConfig.lineWidth = parseInt(gridLineWidthRange.value) || 1;
+      gridLineWidthVal.textContent = gridConfig.lineWidth + 'px';
+      drawGrid();
+    });
+  });
 
   function fileToDataURL(file) {
     return new Promise((resolve, reject) => {
@@ -474,18 +619,6 @@
 
   function applyZoom() { board.style.transform = `scale(${scale})`; }
 
-  function renderMap(url) {
-    if (url) {
-      mapImg.src = url;
-      mapImg.style.display = 'block';
-      placeholder.style.display = 'none';
-    } else {
-      mapImg.style.display = 'none';
-      placeholder.style.display = 'flex';
-      placeholder.textContent = 'Importe um mapa base ou adicione peças para começar.';
-    }
-  }
-
   function applyElementSize(el, size, ar) {
     let w, h;
     if (ar >= 1) { w = size; h = size / ar; }
@@ -550,7 +683,7 @@
       rotHandle.className = 'rotateHandle';
       el.appendChild(rotHandle);
 
-      board.appendChild(el);
+      tokensLayer.appendChild(el);
       tokenEls.set(tok.id, el);
       attachDrag(el, tok.id, handle, 'token');
       attachResize(el, handle, tok.id, 'token');
@@ -574,7 +707,7 @@
 
   function removeTokenEl(id) {
     const el = tokenEls.get(id);
-    if (el) { el.remove(); tokenEls.delete(id); }
+    if (el) { el.remove(); tokenEls.delete(id); tokenData.delete(id); }
   }
 
   // --- PEÇAS DE MAPA ---
@@ -600,7 +733,7 @@
       rotHandle.className = 'rotateHandle';
       el.appendChild(rotHandle);
 
-      board.appendChild(el);
+      mapPiecesLayer.appendChild(el);
       mapPieceEls.set(piece.id, el);
       attachDrag(el, piece.id, handle, 'map');
       attachResize(el, handle, piece.id, 'map');
@@ -617,13 +750,13 @@
     img.style.transform = `rotate(${piece.rotation || 0}deg) scaleX(${piece.flip_x ? -1 : 1})`;
     el.style.zIndex = Math.round(piece.z || 1);
 
-    if (!el.resizing && !el.dragging) updateDimensions(el, piece.src_url, piece.size || 128);
+    if (!el.resizing && !el.dragging) updateDimensions(el, piece.src_url, piece.size || 1024);
     if (!el.dragging) { el.style.left = piece.x + 'px'; el.style.top = piece.y + 'px'; }
   }
 
   function removeMapPieceEl(id) {
     const el = mapPieceEls.get(id);
-    if (el) { el.remove(); mapPieceEls.delete(id); }
+    if (el) { el.remove(); mapPieceEls.delete(id); mapPieceData.delete(id); }
   }
 
   // --- DRAG, RESIZE, ROTATE ---
@@ -666,9 +799,13 @@
       const now = Date.now();
       if (now - lastSent > 100) {
         lastSent = now;
-        const rpcName = type === 'token' ? 'move_token' : 'move_map_element';
-        const paramName = type === 'token' ? 'p_token_id' : 'p_element_id';
-        sb.rpc(rpcName, { p_user_id: currentUserId, [paramName]: itemId, p_x: x, p_y: y }).then(({ error }) => { if (error) console.error(error); });
+        if (type === 'token') {
+          sb.rpc('move_token', { p_user_id: currentUserId, p_token_id: itemId, p_x: x, p_y: y }).then(({ error }) => { if (error) console.error(error); });
+        } else if (itemId === baseMapId) {
+          sb.rpc('move_base_map_element', { p_user_id: currentUserId, p_element_id: itemId, p_x: x, p_y: y }).then(({ error }) => { if (error) console.error(error); });
+        } else {
+          sb.rpc('move_map_element', { p_user_id: currentUserId, p_element_id: itemId, p_x: x, p_y: y }).then(({ error }) => { if (error) console.error(error); });
+        }
       }
     });
 
@@ -678,9 +815,13 @@
       dragging = false; el.dragging = false; el.classList.remove('dragging');
       const x = parseFloat(el.style.left) || 0;
       const y = parseFloat(el.style.top) || 0;
-      const rpcName = type === 'token' ? 'move_token' : 'move_map_element';
-      const paramName = type === 'token' ? 'p_token_id' : 'p_element_id';
-      sb.rpc(rpcName, { p_user_id: currentUserId, [paramName]: itemId, p_x: x, p_y: y }).then(({ error }) => { if (error) console.error(error); });
+      if (type === 'token') {
+        sb.rpc('move_token', { p_user_id: currentUserId, p_token_id: itemId, p_x: x, p_y: y }).then(({ error }) => { if (error) console.error(error); });
+      } else if (itemId === baseMapId) {
+        sb.rpc('move_base_map_element', { p_user_id: currentUserId, p_element_id: itemId, p_x: x, p_y: y }).then(({ error }) => { if (error) console.error(error); });
+      } else {
+        sb.rpc('move_map_element', { p_user_id: currentUserId, p_element_id: itemId, p_x: x, p_y: y }).then(({ error }) => { if (error) console.error(error); });
+      }
     }
     el.addEventListener('pointerup', end);
     el.addEventListener('pointercancel', end);
@@ -704,7 +845,7 @@
       if (!resizing) return;
       e.stopPropagation();
       const d = ((e.clientX - startX) + (e.clientY - startY)) / 2 / scale;
-      const newSize = Math.max(24, Math.min(1200, origSize + d));
+      const newSize = Math.max(24, Math.min(8000, origSize + d));
 
       const dataMap = type === 'token' ? tokenData : mapPieceData;
       const item = dataMap.get(itemId);
@@ -715,9 +856,13 @@
       const now = Date.now();
       if (now - lastSent > 100) {
         lastSent = now;
-        const rpcName = type === 'token' ? 'resize_token' : 'resize_map_element';
-        const paramName = type === 'token' ? 'p_token_id' : 'p_element_id';
-        sb.rpc(rpcName, { p_user_id: currentUserId, [paramName]: itemId, p_size: newSize }).then(({ error }) => { if (error) console.error(error); });
+        if (type === 'token') {
+          sb.rpc('resize_token', { p_user_id: currentUserId, p_token_id: itemId, p_size: newSize }).then(({ error }) => { if (error) console.error(error); });
+        } else if (itemId === baseMapId) {
+          sb.rpc('resize_base_map_element', { p_user_id: currentUserId, p_element_id: itemId, p_size: newSize }).then(({ error }) => { if (error) console.error(error); });
+        } else {
+          sb.rpc('resize_map_element', { p_user_id: currentUserId, p_element_id: itemId, p_size: newSize }).then(({ error }) => { if (error) console.error(error); });
+        }
       }
     });
 
@@ -733,9 +878,13 @@
       const finalH = parseFloat(el.style.height) || 64;
       const finalSize = ar >= 1 ? finalW : finalH;
 
-      const rpcName = type === 'token' ? 'resize_token' : 'resize_map_element';
-      const paramName = type === 'token' ? 'p_token_id' : 'p_element_id';
-      sb.rpc(rpcName, { p_user_id: currentUserId, [paramName]: itemId, p_size: finalSize }).then(({ error }) => { if (error) console.error(error); });
+      if (type === 'token') {
+        sb.rpc('resize_token', { p_user_id: currentUserId, p_token_id: itemId, p_size: finalSize }).then(({ error }) => { if (error) console.error(error); });
+      } else if (itemId === baseMapId) {
+        sb.rpc('resize_base_map_element', { p_user_id: currentUserId, p_element_id: itemId, p_size: finalSize }).then(({ error }) => { if (error) console.error(error); });
+      } else {
+        sb.rpc('resize_map_element', { p_user_id: currentUserId, p_element_id: itemId, p_size: finalSize }).then(({ error }) => { if (error) console.error(error); });
+      }
     }
     handle.addEventListener('pointerup', end);
     handle.addEventListener('pointercancel', end);
@@ -769,9 +918,13 @@
       const now = Date.now();
       if (now - lastSent > 100) {
         lastSent = now;
-        const rpcName = type === 'token' ? 'rotate_token' : 'rotate_map_element';
-        const paramName = type === 'token' ? 'p_token_id' : 'p_element_id';
-        sb.rpc(rpcName, { p_user_id: currentUserId, [paramName]: itemId, p_rotation: deg }).then(({ error }) => { if (error) console.error(error); });
+        if (type === 'token') {
+          sb.rpc('rotate_token', { p_user_id: currentUserId, p_token_id: itemId, p_rotation: deg }).then(({ error }) => { if (error) console.error(error); });
+        } else if (itemId === baseMapId) {
+          sb.rpc('rotate_base_map_element', { p_user_id: currentUserId, p_element_id: itemId, p_rotation: deg }).then(({ error }) => { if (error) console.error(error); });
+        } else {
+          sb.rpc('rotate_map_element', { p_user_id: currentUserId, p_element_id: itemId, p_rotation: deg }).then(({ error }) => { if (error) console.error(error); });
+        }
       }
     });
 
@@ -786,9 +939,13 @@
       let deg = Math.round((rad * (180 / Math.PI)) + 90);
       if (deg < 0) deg += 360; deg = deg % 360;
 
-      const rpcName = type === 'token' ? 'rotate_token' : 'rotate_map_element';
-      const paramName = type === 'token' ? 'p_token_id' : 'p_element_id';
-      sb.rpc(rpcName, { p_user_id: currentUserId, [paramName]: itemId, p_rotation: deg }).then(({ error }) => { if (error) console.error(error); });
+      if (type === 'token') {
+        sb.rpc('rotate_token', { p_user_id: currentUserId, p_token_id: itemId, p_rotation: deg }).then(({ error }) => { if (error) console.error(error); });
+      } else if (itemId === baseMapId) {
+        sb.rpc('rotate_base_map_element', { p_user_id: currentUserId, p_element_id: itemId, p_rotation: deg }).then(({ error }) => { if (error) console.error(error); });
+      } else {
+        sb.rpc('rotate_map_element', { p_user_id: currentUserId, p_element_id: itemId, p_rotation: deg }).then(({ error }) => { if (error) console.error(error); });
+      }
     }
     handle.addEventListener('pointerup', end);
     handle.addEventListener('pointercancel', end);
@@ -824,6 +981,12 @@
       statesHr.style.display = 'none';
     }
 
+    if (type === 'map' && id === baseMapId) {
+      menuDelete.style.display = 'none';
+    } else {
+      menuDelete.style.display = 'block';
+    }
+
     contextMenu.classList.add('open');
     const menuW = 220, menuH = contextMenu.offsetHeight || 260;
     const x = Math.min(clientX, window.innerWidth - menuW - 8);
@@ -844,7 +1007,7 @@
   menuFront.addEventListener('click', async () => {
     if (!contextTarget) return;
     const { type, id } = contextTarget;
-    const rpcName = type === 'token' ? 'set_token_z' : 'set_map_element_z';
+    const rpcName = type === 'token' ? 'set_token_z' : (id === baseMapId ? 'set_base_map_element_z' : 'set_map_element_z');
     const paramName = type === 'token' ? 'p_token_id' : 'p_element_id';
     await sb.rpc(rpcName, { p_user_id: currentUserId, [paramName]: id, p_z: Date.now() });
     closeContextMenu();
@@ -856,7 +1019,7 @@
     const dataMap = type === 'token' ? tokenData : mapPieceData;
     let minZ = 1;
     dataMap.forEach(item => { if ((item.z || 0) < minZ) minZ = item.z || 0; });
-    const rpcName = type === 'token' ? 'set_token_z' : 'set_map_element_z';
+    const rpcName = type === 'token' ? 'set_token_z' : (id === baseMapId ? 'set_base_map_element_z' : 'set_map_element_z');
     const paramName = type === 'token' ? 'p_token_id' : 'p_element_id';
     await sb.rpc(rpcName, { p_user_id: currentUserId, [paramName]: id, p_z: Math.max(1, minZ - 1) });
     closeContextMenu();
@@ -868,7 +1031,7 @@
     const dataMap = type === 'token' ? tokenData : mapPieceData;
     const item = dataMap.get(id);
     const newRot = ((item.rotation || 0) + 90) % 360;
-    const rpcName = type === 'token' ? 'rotate_token' : 'rotate_map_element';
+    const rpcName = type === 'token' ? 'rotate_token' : (id === baseMapId ? 'rotate_base_map_element' : 'rotate_map_element');
     const paramName = type === 'token' ? 'p_token_id' : 'p_element_id';
     await sb.rpc(rpcName, { p_user_id: currentUserId, [paramName]: id, p_rotation: newRot });
     closeContextMenu();
@@ -879,7 +1042,7 @@
     const { type, id } = contextTarget;
     const dataMap = type === 'token' ? tokenData : mapPieceData;
     const item = dataMap.get(id);
-    const rpcName = type === 'token' ? 'flip_token' : 'flip_map_element';
+    const rpcName = type === 'token' ? 'flip_token' : (id === baseMapId ? 'flip_base_map_element' : 'flip_map_element');
     const paramName = type === 'token' ? 'p_token_id' : 'p_element_id';
     await sb.rpc(rpcName, { p_user_id: currentUserId, [paramName]: id, p_flip: !item.flip_x });
     closeContextMenu();
@@ -888,9 +1051,14 @@
   menuDelete.addEventListener('click', async () => {
     if (!contextTarget) return;
     const { type, id } = contextTarget;
+    if (id === baseMapId) return;
     if (!confirm('Apagar este elemento?')) return;
     const rpcName = type === 'token' ? 'delete_token' : 'delete_map_element';
     const paramName = type === 'token' ? 'p_token_id' : 'p_element_id';
+    
+    if (type === 'token') removeTokenEl(id);
+    else removeMapPieceEl(id);
+    
     await sb.rpc(rpcName, { p_user_id: currentUserId, [paramName]: id });
     closeContextMenu();
   });
@@ -900,32 +1068,48 @@
   stateInput.addEventListener('change', async (e) => {
     const file = e.target.files[0];
     const tokenId = contextTarget?.id;
+    stateInput.value = '';
     closeContextMenu();
     if (!file || !tokenId) return;
     try {
       const raw = await fileToDataURL(file);
       openCropModal(raw, async (croppedDataURL) => {
         try {
-          const small = await resizeDataURL(croppedDataURL, 512, 'image/png', 0.9);
+          const small = await resizeDataURL(croppedDataURL, 1024, 'image/png', 0.95);
           const url = await uploadImage(small, 'tokens');
           await sb.rpc('add_token_state', { p_user_id: currentUserId, p_token_id: tokenId, p_url: url });
         } catch (err) { alert(err.message); }
       });
     } catch (err) { alert(err.message); }
-    stateInput.value = '';
   });
 
-  // --- UPLOADS ---
+  // --- UPLOADS & CROP HANDLERS COM RENDERIZAÇÃO OTIMISTA INSTANTÂNEA ---
   mapPieceInput.addEventListener('change', async (e) => {
     const file = e.target.files[0];
+    mapPieceInput.value = '';
     if (!file) return;
     try {
       const raw = await fileToDataURL(file);
       openCropModal(raw, async (croppedDataURL) => {
         try {
-          const small = await resizeDataURL(croppedDataURL, 1024, 'image/png', 0.9);
+          const small = await resizeDataURL(croppedDataURL, 2048, 'image/png', 0.95);
           const url = await uploadImage(small, 'map_pieces');
-          const { error } = await sb.rpc('add_map_element', { 
+          
+          const tempId = 'temp-' + Date.now();
+          const optimisticPiece = {
+            id: tempId,
+            scene_id: currentSceneId,
+            src_url: url,
+            x: 40,
+            y: 40,
+            size: 256,
+            z: Date.now(),
+            rotation: 0,
+            flip_x: false
+          };
+          upsertMapPieceEl(optimisticPiece);
+
+          const { data, error } = await sb.rpc('add_map_element', { 
             p_user_id: currentUserId, 
             p_src_url: url, 
             p_x: 40, 
@@ -934,22 +1118,44 @@
             p_z: Date.now() 
           });
           if (error) throw error;
+
+          removeMapPieceEl(tempId);
+          if (data && data.length) {
+            upsertMapPieceEl(data[0]);
+          }
         } catch (err) { alert('Erro ao adicionar peça de mapa: ' + err.message); }
       });
     } catch (err) { alert('Erro ao carregar imagem: ' + err.message); }
-    mapPieceInput.value = '';
   });
 
   tokenInput.addEventListener('change', async (e) => {
     const file = e.target.files[0];
+    tokenInput.value = '';
     if (!file) return;
     try {
       const raw = await fileToDataURL(file);
       openCropModal(raw, async (croppedDataURL) => {
         try {
-          const small = await resizeDataURL(croppedDataURL, 512, 'image/png', 0.9);
+          const small = await resizeDataURL(croppedDataURL, 1024, 'image/png', 0.95);
           const url = await uploadImage(small, 'tokens');
-          const { error } = await sb.rpc('add_token', { 
+          
+          const tempId = 'temp-' + Date.now();
+          const optimisticToken = {
+            id: tempId,
+            scene_id: currentSceneId,
+            src_url: url,
+            x: 40,
+            y: 40,
+            size: 96,
+            z: Date.now(),
+            rotation: 0,
+            flip_x: false,
+            active_state: 0,
+            states: []
+          };
+          upsertTokenEl(optimisticToken);
+
+          const { data, error } = await sb.rpc('add_token', { 
             p_user_id: currentUserId, 
             p_src_url: url, 
             p_x: 40, 
@@ -958,29 +1164,43 @@
             p_z: Date.now() 
           });
           if (error) throw error;
+
+          removeTokenEl(tempId);
+          if (data && data.length) {
+            upsertTokenEl(data[0]);
+          }
         } catch (err) { alert('Erro ao adicionar token: ' + err.message); }
       });
     } catch (err) { alert('Erro ao carregar imagem: ' + err.message); }
-    tokenInput.value = '';
   });
 
   mapInput.addEventListener('change', async (e) => {
     const file = e.target.files[0];
+    mapInput.value = '';
     if (!file) return;
     placeholder.style.display = 'flex';
-    placeholder.textContent = 'Enviando mapa...';
+    placeholder.textContent = 'Enviando mapa base...';
     try {
       const raw = await fileToDataURL(file);
-      const resized = await resizeDataURL(raw, 4096, 'image/png', 0.92);
+      const resized = await resizeDataURL(raw, 4096, 'image/png', 0.95);
       const url = await uploadImage(resized, 'maps');
-      const { error } = await sb.rpc('set_map', { p_user_id: currentUserId, p_map_url: url });
+      const { data, error } = await sb.rpc('set_map', { p_user_id: currentUserId, p_map_url: url });
       if (error) throw error;
-    } catch (err) { alert(err.message); }
-    mapInput.value = '';
+      if (data && data.length) {
+        baseMapId = data[0].id;
+        upsertMapPieceEl(data[0]);
+      }
+      placeholder.style.display = 'none';
+    } catch (err) { alert(err.message); placeholder.style.display = 'none'; }
   });
 
   clearBtn.addEventListener('click', async () => {
     if (!confirm('Limpar o mapa base e todos os tokens/peças?')) return;
+    tokenEls.forEach(el => el.remove()); tokenEls.clear(); tokenData.clear();
+    mapPieceEls.forEach(el => el.remove()); mapPieceEls.clear(); mapPieceData.clear();
+    baseMapId = null;
+    placeholder.style.display = 'flex';
+    placeholder.textContent = 'Importe um mapa base ou adicione peças para começar.';
     const { error } = await sb.rpc('clear_board', { p_user_id: currentUserId });
     if (error) alert(error.message);
   });
@@ -1047,6 +1267,7 @@
     newSceneInput.addEventListener('change', async (e) => {
       const file = e.target.files[0];
       const name = newSceneInput.dataset.sceneName || 'Nova cena';
+      newSceneInput.value = '';
       if (!file) return;
       try {
         const raw = await fileToDataURL(file);
@@ -1055,7 +1276,6 @@
         await sb.rpc('create_scene', { p_user_id: currentUserId, p_name: name, p_map_url: url });
         scenesOverlay.classList.add('hidden');
       } catch (err) { alert(err.message); }
-      newSceneInput.value = '';
     });
   }
 
@@ -1100,11 +1320,7 @@
   boardWrap.addEventListener('dragstart', (e) => e.preventDefault());
   boardWrap.addEventListener('pointerdown', (e) => {
     if (currentTool === 'select' && e.target.closest('.token')) return;
-    if (currentTool === 'select' && e.target.closest('.mapPiece') && !document.body.classList.contains('map-editor-active')) {
-      // Deixa passar para pan
-    } else if (currentTool === 'select' && e.target.closest('.mapPiece') && document.body.classList.contains('map-editor-active')) {
-      return;
-    }
+    if (currentTool === 'select' && e.target.closest('.mapPiece') && document.body.classList.contains('map-editor-active')) return;
     deselectAll();
     boardWrap.setPointerCapture(e.pointerId);
     activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
@@ -1164,10 +1380,31 @@
   async function loadSceneContent(sceneId) {
     tokenEls.forEach((el) => el.remove()); tokenEls.clear(); tokenData.clear();
     mapPieceEls.forEach((el) => el.remove()); mapPieceEls.clear(); mapPieceData.clear();
+    baseMapId = null;
     if (!sceneId) return;
 
     const { data: toks } = await sb.from('tokens').select('*').eq('scene_id', sceneId);
     (toks || []).forEach(upsertTokenEl);
+
+    const { data: boardRow } = await sb.from('board').select('*').eq('id', 1).maybeSingle();
+    if (boardRow && boardRow.map_url) {
+      baseMapId = boardRow.map_id || 'base-map';
+      upsertMapPieceEl({
+        id: baseMapId,
+        scene_id: sceneId,
+        src_url: boardRow.map_url,
+        x: boardRow.map_x || 0,
+        y: boardRow.map_y || 0,
+        size: boardRow.map_size || 1024,
+        z: boardRow.map_z || 0,
+        rotation: boardRow.map_rotation || 0,
+        flip_x: boardRow.map_flip_x || false
+      });
+      placeholder.style.display = 'none';
+    } else {
+      placeholder.style.display = 'flex';
+      placeholder.textContent = 'Importe um mapa base ou adicione peças para começar.';
+    }
 
     const { data: pieces } = await sb.from('map_elements').select('*').eq('scene_id', sceneId);
     (pieces || []).forEach(upsertMapPieceEl);
@@ -1179,21 +1416,24 @@
     if (!sceneId) return;
 
     tokensChannel = sb.channel('tokens-' + sceneId)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'tokens', filter: 'scene_id=eq.' + sceneId }, (p) => {
-        if (p.eventType === 'DELETE') removeTokenEl(p.old.id);
-        else upsertTokenEl(p.new);
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tokens' }, (p) => {
+        if (p.eventType === 'DELETE' || (p.old && p.old.id)) {
+          if (!p.new || p.new.scene_id !== sceneId) removeTokenEl(p.old ? p.old.id : p.new.id);
+        }
+        if (p.new && p.new.scene_id === sceneId) upsertTokenEl(p.new);
       }).subscribe();
 
     mapElementsChannel = sb.channel('map-elements-' + sceneId)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'map_elements', filter: 'scene_id=eq.' + sceneId }, (p) => {
-        if (p.eventType === 'DELETE') removeMapPieceEl(p.old.id);
-        else upsertMapPieceEl(p.new);
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'map_elements' }, (p) => {
+        if (p.eventType === 'DELETE' || (p.old && p.old.id)) {
+          if (!p.new || p.new.scene_id !== sceneId) removeMapPieceEl(p.old ? p.old.id : p.new.id);
+        }
+        if (p.new && p.new.scene_id === sceneId) upsertMapPieceEl(p.new);
       }).subscribe();
   }
 
   async function loadBoardAndTokens() {
     const { data: boardRow } = await sb.from('board').select('*').eq('id', 1).maybeSingle();
-    renderMap(boardRow ? boardRow.map_url : null);
     currentSceneId = boardRow ? boardRow.active_scene_id : null;
 
     await loadSceneContent(currentSceneId);
@@ -1202,8 +1442,7 @@
     sb.channel('board-sync')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'board' }, async (payload) => {
         if (!payload.new) return;
-        renderMap(payload.new.map_url);
-        if (payload.new.active_scene_id !== currentSceneId) {
+        if (payload.new.active_scene_id !== currentSceneId || payload.new.map_url) {
           currentSceneId = payload.new.active_scene_id;
           await loadSceneContent(currentSceneId);
           subscribeRealtimeChannels(currentSceneId);
@@ -1307,6 +1546,8 @@
   });
 
   applyZoom();
+  drawGrid();
+
   const savedUrl = localStorage.getItem('tabletop_sb_url');
   const savedKey = localStorage.getItem('tabletop_sb_key');
   if (savedUrl && savedKey) connect(savedUrl, savedKey);
