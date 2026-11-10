@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>Tabletop — Supabase</title>
+<title>Anomaly VTT</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 
 <!-- Cropper.js CSS & JS -->
@@ -12,54 +12,74 @@
 
 <style>
   :root {
-    --bg: #1b1d22; --panel: #26282f; --panel-border: #383b44;
-    --text: #e8e9ec; --text-dim: #9a9ea8; --accent: #6c8cff;
-    --accent-text: #0b0d12; --danger: #ff6b6b; --ok: #6cff9e;
+    --bg: #121318; 
+    --panel: #1a1c24; 
+    --panel-border: #2e3142;
+    --text: #f0f1f5; 
+    --text-dim: #8b90a0; 
+    --accent: #9d4edf; 
+    --accent-hover: #b565d8;
+    --accent-gradient: linear-gradient(135deg, #7b2cbf 0%, #9d4edf 100%);
+    --accent-text: #ffffff; 
+    --danger: #ff5252; 
+    --ok: #00e676;
   }
+
   * { box-sizing: border-box; user-select: none; -webkit-user-select: none; }
   .hidden { display: none !important; }
-  html, body { height: 100%; margin: 0; font-family: system-ui, sans-serif; background: var(--bg); color: var(--text);
+  html, body { height: 100%; margin: 0; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text);
     overscroll-behavior: none; touch-action: none; }
   body { position: relative; }
 
+  /* Barra Superior */
   #topBar { position: fixed; top: env(safe-area-inset-top, 0px); left: 0; right: 0; z-index: 30;
-    padding: 10px 14px; background: var(--panel); border-bottom: 1px solid var(--panel-border);
-    display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
-    transition: transform .2s ease; }
+    padding: 8px 16px; background: rgba(26, 28, 36, 0.9); border-bottom: 1px solid var(--panel-border);
+    backdrop-filter: blur(8px); display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+    transition: transform .25s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
   #topBar.collapsed { transform: translateY(-100%); }
-  #topBar h1 { font-size: 15px; margin: 0 8px 0 0; font-weight: 600; color: var(--text-dim); }
+  
+  .brandTitle { display: flex; align-items: center; gap: 8px; margin-right: 8px; }
+  .brandTitle h1 { font-size: 16px; margin: 0; font-weight: 700; letter-spacing: 0.5px;
+    background: linear-gradient(135deg, #e0aaff, #9d4edf); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
 
   #topBarToggle { position: fixed; top: env(safe-area-inset-top, 0px); left: 50%; transform: translateX(-50%);
     z-index: 31; background: var(--panel); border: 1px solid var(--panel-border); border-top: none;
-    border-radius: 0 0 8px 8px; padding: 2px 14px; color: var(--text-dim); cursor: pointer; }
+    border-radius: 0 0 10px 10px; padding: 4px 16px; color: var(--accent); cursor: pointer; font-size: 11px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3); transition: background .2s, color .2s; }
+  #topBarToggle:hover { background: var(--panel-border); color: #fff; }
   #topBar.collapsed ~ #topBarToggle { top: 0; }
 
-  #sideToolbar { position: fixed; right: 0; top: 50%; transform: translateY(-50%); z-index: 30;
-    background: var(--panel); border: 1px solid var(--panel-border); border-right: none;
-    border-radius: 10px 0 0 10px; padding: 8px 6px; display: flex; flex-direction: column; gap: 6px;
-    align-items: center; transition: transform .2s ease; max-height: 80vh; overflow-y: auto; }
-  #sideToolbar.collapsed { transform: translateY(-50%) translateX(100%); }
-  #sideToolbar button, #sideToolbar label.btn { width: 42px; height: 42px; padding: 0; justify-content: center; font-size: 18px; }
+  /* Barra Lateral de Ferramentas */
+  #sideToolbar { position: fixed; right: 12px; top: 50%; transform: translateY(-50%); z-index: 30;
+    background: rgba(26, 28, 36, 0.9); border: 1px solid var(--panel-border);
+    backdrop-filter: blur(8px); border-radius: 12px; padding: 8px 6px; display: flex; flex-direction: column; gap: 8px;
+    align-items: center; transition: transform .25s ease; max-height: 80vh; overflow-y: auto;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.4); }
+  #sideToolbar.collapsed { transform: translateY(-50%) translateX(calc(100% + 20px)); }
+  #sideToolbar button, #sideToolbar label.btn { width: 44px; height: 44px; padding: 0; justify-content: center; font-size: 18px; border-radius: 10px; }
   #sideToolbar hr { width: 100%; border: none; border-top: 1px solid var(--panel-border); margin: 2px 0; }
-  #sideToolbar .toolBtn.active { background: var(--accent); color: var(--accent-text); }
+  #sideToolbar .toolBtn.active { background: var(--accent-gradient); color: var(--accent-text); box-shadow: 0 0 12px rgba(157, 78, 223, 0.5); }
 
   #sideToolbarToggle { position: fixed; right: 0; top: calc(50% - 90px); z-index: 31;
     background: var(--panel); border: 1px solid var(--panel-border); border-right: none;
-    border-radius: 8px 0 0 8px; padding: 10px 2px; color: var(--text-dim); cursor: pointer; }
+    border-radius: 10px 0 0 10px; padding: 12px 4px; color: var(--accent); cursor: pointer; font-size: 11px; }
   #sideToolbar.collapsed ~ #sideToolbarToggle { right: 0; }
 
-  #connDot { width: 10px; height: 10px; border-radius: 50%; background: var(--danger); margin-right: auto; }
-  #connDot.ok { background: var(--ok); }
+  #connDot { width: 8px; height: 8px; border-radius: 50%; background: var(--danger); box-shadow: 0 0 8px var(--danger); transition: background .3s; }
+  #connDot.ok { background: var(--ok); box-shadow: 0 0 8px var(--ok); }
 
-  button, label.btn { background: var(--panel-border); color: var(--text); border: none; border-radius: 8px;
-    padding: 8px 12px; font-size: 13px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
-  button.primary, label.btn.primary { background: var(--accent); color: var(--accent-text); }
-  button.danger { background: var(--danger); color: #fff; }
+  button, label.btn { background: var(--panel-border); color: var(--text); border: 1px solid transparent; border-radius: 8px;
+    padding: 7px 14px; font-size: 13px; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
+    transition: all .2s ease; }
+  button:hover, label.btn:hover { background: #3a3e54; border-color: rgba(157, 78, 223, 0.3); }
+  button.primary, label.btn.primary { background: var(--accent-gradient); color: var(--accent-text); border: none; box-shadow: 0 2px 10px rgba(123, 44, 191, 0.4); }
+  button.primary:hover, label.btn.primary:hover { opacity: 0.95; transform: translateY(-1px); box-shadow: 0 4px 14px rgba(157, 78, 223, 0.6); }
+  button.danger { background: rgba(255, 82, 82, 0.15); color: var(--danger); border: 1px solid rgba(255, 82, 82, 0.3); }
+  button.danger:hover { background: var(--danger); color: #fff; }
   input[type=file] { display: none; }
 
   #boardWrap { position: fixed; inset: 0; overflow: hidden; touch-action: none;
-    background: linear-gradient(45deg, rgba(128,128,128,.08) 25%, transparent 25%) 0 0/20px 20px,
-                linear-gradient(-45deg, rgba(128,128,128,.08) 25%, transparent 25%) 0 0/20px 20px; }
+    background: radial-gradient(circle at center, #181a24 0%, #0d0e12 100%); }
   #board { position: absolute; top: 0; left: 0; transform-origin: 0 0; will-change: transform; width: 1px; height: 1px; }
   
   /* Camada do Grid Infinito em CSS/SVG */
@@ -71,11 +91,12 @@
   #tokensLayer { position: absolute; inset: 0; z-index: 10000; pointer-events: none; }
   #tokensLayer > * { pointer-events: auto; }
 
-  #placeholder { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
-    color: var(--text-dim); font-size: 14px; text-align: center; padding: 20px; z-index: 0; }
+  #placeholder { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    color: var(--text-dim); font-size: 14px; text-align: center; padding: 20px; z-index: 0; gap: 12px; }
+  #placeholder::before { content: "🌌"; font-size: 40px; opacity: 0.7; }
   
   .token { position: absolute; touch-action: none; cursor: grab; user-select: none; -webkit-user-drag: none; will-change: left, top; }
-  .token.dragging { opacity: .85; }
+  .token.dragging { opacity: .85; filter: drop-shadow(0 8px 16px rgba(0,0,0,0.6)); }
 
   .mapPiece { position: absolute; touch-action: none; user-select: none; -webkit-user-drag: none; pointer-events: none; will-change: left, top; }
   body.map-editor-active .mapPiece { pointer-events: auto; cursor: grab; }
@@ -83,61 +104,63 @@
 
   .pieceImg { position: absolute; inset: 0; background-size: contain; background-position: center; background-repeat: no-repeat; pointer-events: none; user-select: none; -webkit-user-drag: none; image-rendering: auto; }
   
-  .resizeHandle { position: absolute; right: -6px; bottom: -6px; width: 16px; height: 16px;
-    border-radius: 50%; background: var(--accent); border: 2px solid var(--bg); touch-action: none;
-    cursor: nwse-resize; display: none; }
+  .resizeHandle { position: absolute; right: -8px; bottom: -8px; width: 18px; height: 18px;
+    border-radius: 50%; background: var(--accent); border: 2px solid #fff; touch-action: none;
+    cursor: nwse-resize; display: none; box-shadow: 0 0 10px rgba(157, 78, 223, 0.8); }
   
-  .rotateHandle { position: absolute; left: 50%; top: -22px; transform: translateX(-50%);
-    width: 16px; height: 16px; border-radius: 50%; background: var(--ok); border: 2px solid var(--bg);
-    touch-action: none; cursor: grab; display: none; }
+  .rotateHandle { position: absolute; left: 50%; top: -24px; transform: translateX(-50%);
+    width: 18px; height: 18px; border-radius: 50%; background: var(--ok); border: 2px solid #fff;
+    touch-action: none; cursor: grab; display: none; box-shadow: 0 0 10px rgba(0, 230, 118, 0.8); }
 
   .selected .resizeHandle, .selected .rotateHandle { display: block; }
-  .selected .pieceImg { outline: 2px dashed var(--accent); outline-offset: 4px; }
+  .selected .pieceImg { outline: 2px dashed var(--accent); outline-offset: 4px; filter: drop-shadow(0 0 6px rgba(157, 78, 223, 0.5)); }
 
   #contextMenu { position: fixed; z-index: 60000; background: var(--panel); border: 1px solid var(--panel-border);
-    border-radius: 10px; padding: 6px; display: none; min-width: 200px; box-shadow: 0 6px 20px rgba(0,0,0,.4); }
+    border-radius: 12px; padding: 8px; display: none; min-width: 210px; box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+    backdrop-filter: blur(10px); }
   #contextMenu.open { display: block; }
-  #contextMenu button { width: 100%; justify-content: flex-start; background: transparent; border-radius: 6px; margin: 1px 0; }
-  #contextMenu button:hover { background: var(--panel-border); }
+  #contextMenu button { width: 100%; justify-content: flex-start; background: transparent; border-radius: 8px; margin: 2px 0; border: none; }
+  #contextMenu button:hover { background: var(--panel-border); color: #fff; }
   #contextMenu hr { border: none; border-top: 1px solid var(--panel-border); margin: 6px 0; }
   #contextMenu .statesRow { display: flex; flex-wrap: wrap; gap: 6px; padding: 4px 2px; }
-  #contextMenu .stateThumb { width: 36px; height: 36px; border-radius: 6px; background-size: contain;
-    background-position: center; background-repeat: no-repeat; border: 2px solid var(--panel-border); cursor: pointer; }
-  #contextMenu .stateThumb.active { border-color: var(--accent); }
+  #contextMenu .stateThumb { width: 38px; height: 38px; border-radius: 8px; background-size: contain;
+    background-position: center; background-repeat: no-repeat; border: 2px solid var(--panel-border); cursor: pointer; transition: transform .15s; }
+  #contextMenu .stateThumb:hover { transform: scale(1.08); }
+  #contextMenu .stateThumb.active { border-color: var(--accent); box-shadow: 0 0 8px rgba(157, 78, 223, 0.6); }
   
   footer { position: fixed; left: 0; right: 0; bottom: env(safe-area-inset-bottom, 0px); z-index: 20;
-    padding: 4px 14px; font-size: 10px; color: var(--text-dim); background: rgba(38,40,47,.85);
-    backdrop-filter: blur(4px); pointer-events: none; }
+    padding: 6px 14px; font-size: 11px; color: var(--text-dim); background: rgba(18, 19, 24, 0.8);
+    backdrop-filter: blur(6px); pointer-events: none; border-top: 1px solid rgba(255,255,255,0.03); display: flex; justify-content: space-between; }
 
   #setupOverlay, #loginOverlay, #cropOverlay, #playersOverlay, #scenesOverlay, #gridOverlay {
-    position: fixed; inset: 0; background: rgba(0,0,0,.75); display: flex;
+    position: fixed; inset: 0; background: rgba(10, 11, 15, 0.8); backdrop-filter: blur(8px); display: flex;
     align-items: center; justify-content: center; z-index: 100000; padding: 16px; }
-  .hidden { display: none !important; }
 
-  .card { background: var(--panel); border: 1px solid var(--panel-border); border-radius: 12px;
-    padding: 20px; max-width: 480px; width: 100%; max-height: 80vh; overflow-y: auto; }
-  .card h2 { margin-top: 0; font-size: 16px; }
+  .card { background: var(--panel); border: 1px solid var(--panel-border); border-radius: 16px;
+    padding: 24px; max-width: 480px; width: 100%; max-height: 85vh; overflow-y: auto; box-shadow: 0 12px 40px rgba(0,0,0,0.6); }
+  .card h2 { margin-top: 0; font-size: 18px; font-weight: 700; color: #fff; }
   .card p { font-size: 13px; color: var(--text-dim); line-height: 1.5; }
-  .card input[type="text"], .card input[type="password"], .card select { width: 100%; padding: 8px 10px; margin: 6px 0 12px; border-radius: 8px;
-    border: 1px solid var(--panel-border); background: var(--bg); color: var(--text); font-size: 13px; }
-  .card label { font-size: 12px; color: var(--text-dim); display: block; margin-top: 8px; }
-  .card input[type="range"], .card input[type="color"] { width: 100%; margin: 6px 0 12px; accent-color: var(--accent); }
+  .card input[type="text"], .card input[type="password"], .card select { width: 100%; padding: 10px 12px; margin: 6px 0 14px; border-radius: 10px;
+    border: 1px solid var(--panel-border); background: var(--bg); color: var(--text); font-size: 13px; transition: border-color .2s; }
+  .card input[type="text"]:focus, .card input[type="password"]:focus, .card select:focus { outline: none; border-color: var(--accent); }
+  .card label { font-size: 12px; font-weight: 600; color: var(--text-dim); display: block; margin-top: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .card input[type="range"], .card input[type="color"] { width: 100%; margin: 6px 0 14px; accent-color: var(--accent); }
   
-  .row { display: flex; gap: 8px; margin-top: 10px; }
+  .row { display: flex; gap: 10px; margin-top: 12px; }
   .row button { flex: 1; justify-content: center; }
-  #roleBadge { font-size: 12px; color: var(--text-dim); padding: 4px 8px; background: var(--panel-border); border-radius: 6px; }
+  #roleBadge { font-size: 12px; color: #e0aaff; padding: 4px 10px; background: rgba(157, 78, 223, 0.15); border: 1px solid rgba(157, 78, 223, 0.3); border-radius: 20px; font-weight: 600; }
   body.jogador .mestre-only { display: none !important; }
 
   #cropContainer { width: 100%; max-height: 350px; min-height: 200px; margin: 12px 0; background: #000;
-    display: flex; align-items: center; justify-content: center; overflow: hidden; border-radius: 8px; }
+    display: flex; align-items: center; justify-content: center; overflow: hidden; border-radius: 10px; border: 1px solid var(--panel-border); }
   #cropImg { max-width: 100%; max-height: 350px; display: block; }
 
-  .playerRow, .sceneRow { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--panel-border); }
-  .playerRow .name, .sceneRow .name { flex: 1; font-size: 13px; }
+  .playerRow, .sceneRow { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--panel-border); }
+  .playerRow .name, .sceneRow .name { flex: 1; font-size: 13px; font-weight: 500; }
   .playerRow .roleTag { font-size: 11px; color: var(--text-dim); }
-  .sceneRow .thumb { width: 48px; height: 36px; border-radius: 6px; background-size: cover; background-position: center;
-    background-color: var(--bg); flex-shrink: 0; }
-  .sceneRow .activeTag { font-size: 11px; color: var(--accent); }
+  .sceneRow .thumb { width: 52px; height: 38px; border-radius: 8px; background-size: cover; background-position: center;
+    background-color: var(--bg); flex-shrink: 0; border: 1px solid var(--panel-border); }
+  .sceneRow .activeTag { font-size: 11px; color: var(--accent); font-weight: 600; }
 </style>
 </head>
 <body>
@@ -159,8 +182,8 @@
   <!-- Login / Cadastro -->
   <div id="loginOverlay" class="hidden">
     <div class="card">
-      <h2>Entrar na mesa</h2>
-      <p>Escolha um usuário e uma senha.</p>
+      <h2>Entrar no Anomaly VTT</h2>
+      <p>Escolha seu nome de usuário e senha.</p>
       <label>Usuário</label>
       <input id="inpUsername" placeholder="seu-nome" autocomplete="username">
       <label>Senha</label>
@@ -177,7 +200,7 @@
   <div id="cropOverlay" class="hidden">
     <div class="card">
       <h2>Recortar Imagem</h2>
-      <p>Ajuste o retângulo de seleção para remover bordas vazias.</p>
+      <p>Ajuste a seleção para remover bordas indesejadas.</p>
       <div id="cropContainer">
         <img id="cropImg" src="">
       </div>
@@ -191,32 +214,32 @@
   <!-- Painel de Cenas -->
   <div id="scenesOverlay" class="hidden">
     <div class="card">
-      <h2>🎬 Cenas</h2>
-      <p>Gerencie as cenas da mesa.</p>
+      <h2>🎬 Gerenciador de Cenas</h2>
+      <p>Alterne ou adicione novas áreas de jogo.</p>
       <div id="scenesList"></div>
-      <div class="row" style="margin-top:10px;">
+      <div class="row" style="margin-top:12px;">
         <button class="primary" id="newSceneBtn">➕ Nova cena</button>
         <input type="file" id="newSceneInput" accept="image/png,image/jpeg,image/webp" class="hidden">
       </div>
-      <button id="closeScenesBtn" style="width:100%; margin-top:10px;">Fechar</button>
+      <button id="closeScenesBtn" style="width:100%; margin-top:12px;">Fechar</button>
     </div>
   </div>
 
   <!-- Painel de Jogadores -->
   <div id="playersOverlay" class="hidden">
     <div class="card">
-      <h2>👥 Jogadores da mesa</h2>
-      <p>Gerencie quem é mestre ou jogador.</p>
+      <h2>👥 Jogadores da Mesa</h2>
+      <p>Gerencie papéis e permissões.</p>
       <div id="playersList"></div>
-      <button id="closePlayersBtn" style="width:100%; margin-top:10px;">Fechar</button>
+      <button id="closePlayersBtn" style="width:100%; margin-top:12px;">Fechar</button>
     </div>
   </div>
 
   <!-- Painel de Configuração do Grid -->
   <div id="gridOverlay" class="hidden">
     <div class="card">
-      <h2>📐 Configuração do Grid</h2>
-      <p>Personalize o estilo e as dimensões do grid do tabuleiro.</p>
+      <h2>📐 Configurar Grid</h2>
+      <p>Personalize o estilo visual do grid do tabuleiro.</p>
       
       <label>Exibir Grid</label>
       <select id="gridEnabled">
@@ -235,7 +258,7 @@
       <span id="gridSizeVal" style="font-size:11px; color:var(--text-dim);">64px</span>
 
       <label>Cor das Linhas</label>
-      <input type="color" id="gridColor" value="#ffffff">
+      <input type="color" id="gridColor" value="#9d4edf">
 
       <label>Opacidade das Linhas (<span id="gridOpacityVal">0.4</span>)</label>
       <input type="range" id="gridOpacity" min="0.05" max="1" step="0.05" value="0.4">
@@ -252,12 +275,14 @@
 
   <!-- Barra Superior -->
   <header id="topBar">
-    <span id="connDot" title="status da conexão"></span>
-    <h1>Tabletop</h1>
+    <div class="brandTitle">
+      <span id="connDot" title="Status da conexão"></span>
+      <h1>Anomaly VTT</h1>
+    </div>
     <span id="roleBadge" class="hidden"></span>
 
     <!-- Interface Padrão -->
-    <div id="normalNav" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+    <div id="normalNav" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-left:auto;">
       <button class="mestre-only primary" id="openMapEditorBtn">🗺️ Editor de Mapa</button>
       
       <label class="btn mestre-only" title="Adicionar token">
@@ -277,8 +302,8 @@
     </div>
 
     <!-- Interface Alternada (Ativada no Modo Editor de Mapa) -->
-    <div id="editorNav" class="hidden" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-      <span style="color:var(--accent); font-weight:600; font-size:13px;">🛠️ [Editor de Mapa Ativo]</span>
+    <div id="editorNav" class="hidden" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-left:auto;">
+      <span style="color:var(--accent); font-weight:600; font-size:13px;">🛠️ Modo Editor</span>
       
       <label class="btn primary">
         🗺️ Trocar Mapa Base
@@ -304,7 +329,7 @@
 
   <!-- Tabuleiro -->
   <div id="boardWrap">
-    <div id="placeholder">Conectando...</div>
+    <div id="placeholder">Conectando ao Anomaly VTT...</div>
     <div id="board">
       <div id="mapPiecesLayer"></div>
       <div id="gridLayer"></div>
@@ -327,7 +352,10 @@
     <button id="menuDelete" class="mestre-only danger">🗑️ Apagar</button>
   </div>
 
-  <footer>Sincronizado via Supabase.</footer>
+  <footer>
+    <span>Anomaly VTT — Dark Fantasy Engine</span>
+    <span>Supabase Sync OK</span>
+  </footer>
 
 <script>
 (function () {
@@ -397,7 +425,7 @@
     enabled: false,
     type: 'isometric',
     size: 64,
-    color: '#ffffff',
+    color: '#9d4edf',
     opacity: 0.4,
     lineWidth: 1
   };
@@ -1513,7 +1541,7 @@
   async function connect(url, key) {
     setupError.textContent = '';
     connDot.classList.remove('ok');
-    placeholder.textContent = 'Conectando...';
+    placeholder.textContent = 'Conectando ao Anomaly VTT...';
     try {
       sb = supabase.createClient(url, key);
       localStorage.setItem('tabletop_sb_url', url);
@@ -1529,7 +1557,7 @@
       } else { loginOverlay.classList.remove('hidden'); }
     } catch (err) {
       setupError.textContent = err.message;
-      setupOverlay.classList.add('hidden');
+      setupOverlay.classList.remove('hidden');
     }
   }
 
