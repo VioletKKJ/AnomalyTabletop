@@ -31,6 +31,21 @@
     overscroll-behavior: none; touch-action: none; overflow: hidden; }
   body { position: relative; }
 
+  /* Menu Principal / Lobby */
+  #lobbyOverlay { position: fixed; inset: 0; z-index: 90000; background: radial-gradient(circle at center, #1e202d 0%, #0c0d12 100%);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
+  .lobbyCard { background: rgba(26, 28, 36, 0.9); border: 1px solid var(--panel-border); border-radius: 20px;
+    padding: 32px; max-width: 440px; width: 100%; text-align: center; box-shadow: 0 20px 50px rgba(0,0,0,0.7); backdrop-filter: blur(12px); }
+  .lobbyCard h1 { font-size: 28px; margin: 0 0 6px; font-weight: 800; letter-spacing: 1px;
+    background: linear-gradient(135deg, #e0aaff, #9d4edf); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .lobbyCard .subtitle { color: var(--text-dim); font-size: 13px; margin-bottom: 24px; }
+  .userStatusBox { background: var(--bg); border: 1px solid var(--panel-border); border-radius: 12px; padding: 12px 16px; margin-bottom: 20px;
+    display: flex; align-items: center; justify-content: space-between; text-align: left; }
+  .userStatusBox .userName { font-weight: 600; font-size: 14px; }
+  .userStatusBox .userRole { font-size: 12px; color: var(--accent); font-weight: 600; }
+  .lobbyActions { display: flex; flex-direction: column; gap: 10px; }
+  .lobbyActions button { width: 100%; padding: 12px; font-size: 14px; justify-content: center; }
+
   /* Barra Superior Flutuante Minimalista */
   #topBar { position: fixed; top: max(12px, env(safe-area-inset-top, 12px)); left: 50%; transform: translateX(-50%) translateY(0); z-index: 30;
     padding: 8px 14px; background: rgba(26, 28, 36, 0.85); border: 1px solid var(--panel-border);
@@ -82,7 +97,7 @@
     background: radial-gradient(circle at center, #181a24 0%, #0d0e12 100%); }
   #board { position: absolute; top: 0; left: 0; transform-origin: 0 0; will-change: transform; width: 1px; height: 1px; }
   
-  /* Camada do Grid Infinito em CSS/SVG */
+  /* Grid Infinito */
   #gridLayer { position: absolute; left: -20000px; top: -20000px; width: 40000px; height: 40000px; pointer-events: none; z-index: 50; display: none; }
   
   #mapPiecesLayer { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
@@ -179,7 +194,7 @@
   <div id="loginOverlay" class="hidden">
     <div class="card">
       <h2>Anomaly VTT</h2>
-      <p>Entre com sua conta para acessar a mesa.</p>
+      <p>Entre com sua conta para acessar o sistema.</p>
       <label>Usuário</label>
       <input id="inpUsername" placeholder="seu-nome" autocomplete="username">
       <label>Senha</label>
@@ -188,6 +203,28 @@
       <div class="row">
         <button class="primary" id="btnLogin">Entrar</button>
         <button id="btnSignup">Criar conta</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Menu Principal / Lobby -->
+  <div id="lobbyOverlay" class="hidden">
+    <div class="lobbyCard">
+      <h1>ANOMALY</h1>
+      <div class="subtitle">Virtual Tabletop Engine</div>
+      
+      <div class="userStatusBox">
+        <div>
+          <div class="userName" id="lobbyUserName">Carregando...</div>
+          <div style="font-size:11px; color:var(--text-dim);">Sessão Conectada</div>
+        </div>
+        <div class="userRole" id="lobbyUserRole">Jogador</div>
+      </div>
+
+      <div class="lobbyActions">
+        <button class="primary" id="btnEnterTable">▶ Entrar na Mesa</button>
+        <button id="btnLobbyClaimMestre" class="hidden">👑 Assumir Mestre da Mesa</button>
+        <button id="btnLobbyLogout" class="danger">Sair da Conta</button>
       </div>
     </div>
   </div>
@@ -291,10 +328,9 @@
       <button id="gridBtn" class="mestre-only" title="Configurar Grid">Grid</button>
       <button id="scenesBtn" class="mestre-only">Cenas</button>
       <button id="managePlayersBtn" class="mestre-only hidden">Jogadores</button>
-      <button id="claimMestreBtn" class="primary hidden">Virar Mestre</button>
+      <button id="btnReturnLobby" title="Menu Principal">🏠 Menu</button>
       <button id="settingsBtn" title="Configurações">⚙️</button>
       <button id="clearBtn" class="danger mestre-only" title="Limpar Tudo">Limpar</button>
-      <button id="logoutBtn" class="hidden">Sair</button>
     </div>
 
     <!-- Interface Alternada (Modo Editor de Mapa) -->
@@ -325,7 +361,7 @@
 
   <!-- Tabuleiro -->
   <div id="boardWrap">
-    <div id="placeholder">Conectando ao Anomaly VTT...</div>
+    <div id="placeholder">Acesse o menu para entrar na mesa.</div>
     <div id="board">
       <div id="mapPiecesLayer"></div>
       <div id="gridLayer"></div>
@@ -388,8 +424,15 @@
   const btnLogin = document.getElementById('btnLogin');
   const btnSignup = document.getElementById('btnSignup');
   
+  const lobbyOverlay = document.getElementById('lobbyOverlay');
+  const lobbyUserName = document.getElementById('lobbyUserName');
+  const lobbyUserRole = document.getElementById('lobbyUserRole');
+  const btnEnterTable = document.getElementById('btnEnterTable');
+  const btnLobbyClaimMestre = document.getElementById('btnLobbyClaimMestre');
+  const btnLobbyLogout = document.getElementById('btnLobbyLogout');
+  const btnReturnLobby = document.getElementById('btnReturnLobby');
+
   const roleBadge = document.getElementById('roleBadge');
-  const logoutBtn = document.getElementById('logoutBtn');
   
   const scenesBtn = document.getElementById('scenesBtn');
   const scenesOverlay = document.getElementById('scenesOverlay');
@@ -432,7 +475,6 @@
   const menuFlip = document.getElementById('menuFlip');
   const menuDelete = document.getElementById('menuDelete');
 
-  const claimMestreBtn = document.getElementById('claimMestreBtn');
   const managePlayersBtn = document.getElementById('managePlayersBtn');
   const playersOverlay = document.getElementById('playersOverlay');
   const playersList = document.getElementById('playersList');
@@ -470,7 +512,6 @@
   let aspectRatios = new Map();
   let baseMapId = null;
 
-  // --- RENDERIZAÇÃO DO GRID VIA SVG PATTERN INFINITO E TRANSPARENTE ---
   function drawGrid() {
     if (!gridConfig.enabled) {
       gridLayer.style.display = 'none';
@@ -504,7 +545,6 @@
     gridLayer.style.backgroundSize = gridConfig.type === 'square' ? `${size}px ${size}px` : `${size}px ${size/2}px`;
   }
 
-  // Controles do painel de Grid
   if (gridBtn) {
     gridBtn.addEventListener('click', () => {
       gridEnabledSel.value = String(gridConfig.enabled);
@@ -1514,8 +1554,12 @@
     roleBadge.classList.remove('hidden');
     if (managePlayersBtn) managePlayersBtn.classList.toggle('hidden', currentRole !== 'mestre');
 
+    // Atualiza elementos no Lobby
+    if (lobbyUserName) lobbyUserName.textContent = profile ? (profile.display_name || 'Usuário') : 'Usuário';
+    if (lobbyUserRole) lobbyUserRole.textContent = currentRole === 'mestre' ? '👑 Mestre' : '🧑 Jogador';
+
     const { count } = await sb.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'mestre');
-    if (claimMestreBtn) claimMestreBtn.classList.toggle('hidden', currentRole === 'mestre' || (count || 0) > 0);
+    if (btnLobbyClaimMestre) btnLobbyClaimMestre.classList.toggle('hidden', currentRole === 'mestre' || (count || 0) > 0);
   }
 
   async function loadProfileAndEnter(userRow) {
@@ -1523,11 +1567,32 @@
     localStorage.setItem('tabletop_user_id', userRow.id);
     localStorage.setItem('tabletop_username', userRow.username || '');
     await refreshRoleUI();
-    logoutBtn.classList.remove('hidden');
     loginOverlay.classList.add('hidden');
+    lobbyOverlay.classList.remove('hidden');
+  }
+
+  btnEnterTable.addEventListener('click', async () => {
+    lobbyOverlay.classList.add('hidden');
     placeholder.textContent = 'Carregando mesa...';
     try { await loadBoardAndTokens(); } catch (err) { placeholder.textContent = 'Erro ao carregar: ' + err.message; }
+  });
+
+  btnReturnLobby.addEventListener('click', () => {
+    lobbyOverlay.classList.remove('hidden');
+  });
+
+  if (btnLobbyClaimMestre) {
+    btnLobbyClaimMestre.addEventListener('click', async () => {
+      await sb.rpc('claim_mestre', { p_user_id: currentUserId });
+      await refreshRoleUI();
+    });
   }
+
+  btnLobbyLogout.addEventListener('click', () => {
+    localStorage.removeItem('tabletop_user_id');
+    localStorage.removeItem('tabletop_username');
+    location.reload();
+  });
 
   async function connect(url, key) {
     setupError.textContent = '';
@@ -1548,7 +1613,7 @@
       } else { loginOverlay.classList.remove('hidden'); }
     } catch (err) {
       setupError.textContent = err.message;
-      setupOverlay.classList.add('hidden');
+      setupOverlay.classList.remove('hidden');
     }
   }
 
@@ -1579,19 +1644,6 @@
       if (!data || !data.length) { loginError.textContent = 'Erro ao criar conta.'; return; }
       await loadProfileAndEnter({ id: data[0].out_id, username: data[0].out_username, role: data[0].out_role });
     } catch (err) { loginError.textContent = err.message; }
-  });
-
-  if (claimMestreBtn) {
-    claimMestreBtn.addEventListener('click', async () => {
-      await sb.rpc('claim_mestre', { p_user_id: currentUserId });
-      refreshRoleUI();
-    });
-  }
-
-  logoutBtn.addEventListener('click', () => {
-    localStorage.removeItem('tabletop_user_id');
-    localStorage.removeItem('tabletop_username');
-    location.reload();
   });
 
   settingsBtn.addEventListener('click', () => {
