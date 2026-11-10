@@ -1313,13 +1313,14 @@
   if (managePlayersBtn) managePlayersBtn.addEventListener('click', openPlayersPanel);
   if (closePlayersBtn) closePlayersBtn.addEventListener('click', () => playersOverlay.classList.add('hidden'));
 
-  // --- NAVEGAÇÃO / PAN & ZOOM ---
+  // --- NAVEGAÇÃO / PAN & ZOOM & PINCH-TO-ZOOM ---
   zoomInBtn.addEventListener('click', () => { scale = Math.min(scale * 1.2, 10); applyZoom(); });
   zoomOutBtn.addEventListener('click', () => { scale = Math.max(scale / 1.2, 0.05); applyZoom(); });
 
   let boardX = 0, boardY = 0;
   const activePointers = new Map();
   let panStartX, panStartY, panOrigX = 0, panOrigY = 0;
+  let lastPinchDist = null;
 
   function boardLocalStyle() { board.style.left = boardX + 'px'; board.style.top = boardY + 'px'; }
 
@@ -1330,23 +1331,58 @@
     deselectAll();
     boardWrap.setPointerCapture(e.pointerId);
     activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
     if (activePointers.size === 1) {
       panStartX = e.clientX; panStartY = e.clientY;
       panOrigX = boardX; panOrigY = boardY;
+      lastPinchDist = null;
+    } else if (activePointers.size === 2) {
+      const pts = Array.from(activePointers.values());
+      lastPinchDist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
     }
   });
 
   boardWrap.addEventListener('pointermove', (e) => {
     if (!activePointers.has(e.pointerId)) return;
     activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
     if (activePointers.size === 1) {
       boardX = panOrigX + (e.clientX - panStartX);
       boardY = panOrigY + (e.clientY - panStartY);
       boardLocalStyle();
+      lastPinchDist = null;
+    } else if (activePointers.size === 2) {
+      const pts = Array.from(activePointers.values());
+      const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+      if (lastPinchDist && lastPinchDist > 0) {
+        const rect = boardWrap.getBoundingClientRect();
+        const midX = (pts[0].x + pts[1].x) / 2 - rect.left;
+        const midY = (pts[0].y + pts[1].y) / 2 - rect.top;
+
+        const oldScale = scale;
+        const factor = dist / lastPinchDist;
+        scale = Math.min(10, Math.max(0.05, oldScale * factor));
+
+        boardX = midX - (scale / oldScale) * (midX - boardX);
+        boardY = midY - (scale / oldScale) * (midY - boardY);
+        applyZoom();
+        boardLocalStyle();
+      }
+      lastPinchDist = dist;
     }
   });
 
-  function releasePointer(e) { activePointers.delete(e.pointerId); }
+  function releasePointer(e) { 
+    activePointers.delete(e.pointerId);
+    if (activePointers.size < 2) {
+      lastPinchDist = null;
+    }
+    if (activePointers.size === 1) {
+      const remaining = Array.from(activePointers.values())[0];
+      panStartX = remaining.x; panStartY = remaining.y;
+      panOrigX = boardX; panOrigY = boardY;
+    }
+  }
   boardWrap.addEventListener('pointerup', releasePointer);
   boardWrap.addEventListener('pointercancel', releasePointer);
 
@@ -1493,7 +1529,7 @@
       } else { loginOverlay.classList.remove('hidden'); }
     } catch (err) {
       setupError.textContent = err.message;
-      setupOverlay.classList.remove('hidden');
+      setupOverlay.classList.add('hidden');
     }
   }
 
