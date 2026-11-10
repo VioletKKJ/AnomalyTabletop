@@ -1185,7 +1185,7 @@
       menuAddState.style.display = 'none';
       statesHr.style.display = 'none';
     }
-    menuDelete.style.display = (type === 'map' && id === baseMapId) ? 'none' : 'block';
+    menuDelete.style.display = 'block';
     contextMenu.classList.add('open');
     contextMenu.style.left = Math.max(8, Math.min(clientX, window.innerWidth - 220)) + 'px';
     contextMenu.style.top = Math.max(8, Math.min(clientY, window.innerHeight - 240)) + 'px';
@@ -1498,19 +1498,24 @@
 
     tokensChannel = sb.channel('tokens-' + sceneId)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'tokens' }, (p) => {
-        if (p.eventType === 'DELETE' || (p.old && p.old.id)) {
-          if (!p.new || p.new.scene_id !== sceneId) removeTokenEl(p.old ? p.old.id : p.new.id);
+        if (p.eventType === 'DELETE') {
+          if (p.old && tokenData.has(p.old.id)) removeTokenEl(p.old.id);
+        } else if (p.new && p.new.scene_id === sceneId) {
+          upsertTokenEl(p.new);
         }
-        if (p.new && p.new.scene_id === sceneId) upsertTokenEl(p.new);
       }).subscribe();
 
     mapElementsChannel = sb.channel('map-elements-' + sceneId)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'map_elements' }, (p) => {
-        if (p.eventType === 'DELETE' || (p.old && p.old.id)) {
-          if (!p.new || p.new.scene_id !== sceneId) removeMapPieceEl(p.old ? p.old.id : p.new.id);
+        if (p.eventType === 'DELETE') {
+          if (p.old && mapPieceData.has(p.old.id)) {
+            if (p.old.id === baseMapId) baseMapId = null;
+            removeMapPieceEl(p.old.id);
+          }
+        } else if (p.new && p.new.scene_id === sceneId) {
+          if (p.new.is_base) baseMapId = p.new.id;
+          upsertMapPieceEl(p.new);
         }
-        if (p.new && p.new.is_base && p.new.scene_id === sceneId) baseMapId = p.new.id;
-        if (p.new && p.new.scene_id === sceneId) upsertMapPieceEl(p.new);
       }).subscribe();
 
     fogElementsChannel = sb.channel('fog-elements-' + sceneId)
