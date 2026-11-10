@@ -31,20 +31,21 @@
     overscroll-behavior: none; touch-action: none; overflow: hidden; }
   body { position: relative; }
 
-  /* Menu Principal / Lobby */
+  /* Lobby / Seleção de Mesas */
   #lobbyOverlay { position: fixed; inset: 0; z-index: 90000; background: radial-gradient(circle at center, #1e202d 0%, #0c0d12 100%);
-    display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
-  .lobbyCard { background: rgba(26, 28, 36, 0.9); border: 1px solid var(--panel-border); border-radius: 20px;
-    padding: 32px; max-width: 440px; width: 100%; text-align: center; box-shadow: 0 20px 50px rgba(0,0,0,0.7); backdrop-filter: blur(12px); }
-  .lobbyCard h1 { font-size: 28px; margin: 0 0 6px; font-weight: 800; letter-spacing: 1px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; overflow-y: auto; }
+  .lobbyCard { background: rgba(26, 28, 36, 0.95); border: 1px solid var(--panel-border); border-radius: 20px;
+    padding: 28px; max-width: 500px; width: 100%; box-shadow: 0 20px 50px rgba(0,0,0,0.7); backdrop-filter: blur(12px); }
+  .lobbyCard h1 { font-size: 26px; margin: 0 0 4px; font-weight: 800; letter-spacing: 1px; text-align: center;
     background: linear-gradient(135deg, #e0aaff, #9d4edf); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-  .lobbyCard .subtitle { color: var(--text-dim); font-size: 13px; margin-bottom: 24px; }
-  .userStatusBox { background: var(--bg); border: 1px solid var(--panel-border); border-radius: 12px; padding: 12px 16px; margin-bottom: 20px;
-    display: flex; align-items: center; justify-content: space-between; text-align: left; }
-  .userStatusBox .userName { font-weight: 600; font-size: 14px; }
-  .userStatusBox .userRole { font-size: 12px; color: var(--accent); font-weight: 600; }
-  .lobbyActions { display: flex; flex-direction: column; gap: 10px; }
-  .lobbyActions button { width: 100%; padding: 12px; font-size: 14px; justify-content: center; }
+  .lobbyCard .subtitle { color: var(--text-dim); font-size: 12px; margin-bottom: 20px; text-align: center; }
+  
+  .roomList { max-height: 220px; overflow-y: auto; margin: 12px 0; display: flex; flex-direction: column; gap: 8px; }
+  .roomRow { background: var(--bg); border: 1px solid var(--panel-border); border-radius: 10px; padding: 10px 14px;
+    display: flex; align-items: center; justify-content: space-between; transition: border-color .2s; }
+  .roomRow:hover { border-color: var(--accent); }
+  .roomInfo .roomName { font-weight: 600; font-size: 13px; }
+  .roomInfo .roomMeta { font-size: 11px; color: var(--text-dim); }
 
   /* Barra Superior Flutuante Minimalista */
   #topBar { position: fixed; top: max(12px, env(safe-area-inset-top, 12px)); left: 50%; transform: translateX(-50%) translateY(0); z-index: 30;
@@ -97,7 +98,6 @@
     background: radial-gradient(circle at center, #181a24 0%, #0d0e12 100%); }
   #board { position: absolute; top: 0; left: 0; transform-origin: 0 0; will-change: transform; width: 1px; height: 1px; }
   
-  /* Grid Infinito */
   #gridLayer { position: absolute; left: -20000px; top: -20000px; width: 40000px; height: 40000px; pointer-events: none; z-index: 50; display: none; }
   
   #mapPiecesLayer { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
@@ -194,7 +194,7 @@
   <div id="loginOverlay" class="hidden">
     <div class="card">
       <h2>Anomaly VTT</h2>
-      <p>Entre com sua conta para acessar o sistema.</p>
+      <p>Entre com sua conta para acessar as mesas.</p>
       <label>Usuário</label>
       <input id="inpUsername" placeholder="seu-nome" autocomplete="username">
       <label>Senha</label>
@@ -207,24 +207,50 @@
     </div>
   </div>
 
-  <!-- Menu Principal / Lobby -->
+  <!-- Menu Principal / Seleção de Mesas (Lobby) -->
   <div id="lobbyOverlay" class="hidden">
     <div class="lobbyCard">
-      <h1>ANOMALY</h1>
-      <div class="subtitle">Virtual Tabletop Engine</div>
+      <h1>ANOMALY VTT</h1>
+      <div class="subtitle" id="lobbyUserWelcome">Suas Mesas de Jogo</div>
       
-      <div class="userStatusBox">
-        <div>
-          <div class="userName" id="lobbyUserName">Carregando...</div>
-          <div style="font-size:11px; color:var(--text-dim);">Sessão Conectada</div>
-        </div>
-        <div class="userRole" id="lobbyUserRole">Jogador</div>
+      <div style="font-size:12px; font-weight:600; color:var(--text-dim); text-transform:uppercase; margin-bottom:6px;">Mesas disponíveis:</div>
+      <div class="roomList" id="roomListContainer">
+        <div style="text-align:center; color:var(--text-dim); padding:20px;">Carregando mesas...</div>
       </div>
 
-      <div class="lobbyActions">
-        <button class="primary" id="btnEnterTable">▶ Entrar na Mesa</button>
-        <button id="btnLobbyClaimMestre" class="hidden">👑 Assumir Mestre da Mesa</button>
-        <button id="btnLobbyLogout" class="danger">Sair da Conta</button>
+      <div class="row" style="margin-top:16px;">
+        <button class="primary" id="btnOpenCreateRoom">➕ Criar Nova Mesa</button>
+        <button id="btnOpenJoinRoom">🔗 Entrar com Código</button>
+      </div>
+      <button id="btnLobbyLogout" class="danger" style="width:100%; margin-top:10px;">Sair da Conta</button>
+    </div>
+  </div>
+
+  <!-- Modal Criar Mesa -->
+  <div id="createRoomOverlay" class="hidden">
+    <div class="card">
+      <h2>Criar Nova Mesa</h2>
+      <p>Defina um nome para a sua campanha.</p>
+      <label>Nome da Mesa</label>
+      <input id="inpNewRoomName" placeholder="Ex: Campanha Ravenloft">
+      <div class="row">
+        <button id="btnCloseCreateRoom">Cancelar</button>
+        <button class="primary" id="btnConfirmCreateRoom">Criar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Entrar com Código -->
+  <div id="joinRoomOverlay" class="hidden">
+    <div class="card">
+      <h2>Entrar em Mesa</h2>
+      <p>Digite o código fornecido pelo Mestre.</p>
+      <label>Código da Mesa</label>
+      <input id="inpRoomCode" placeholder="Ex: ANM-829X">
+      <div id="joinRoomError" style="color:var(--danger); font-size:12px; margin-bottom:8px;"></div>
+      <div class="row">
+        <button id="btnCloseJoinRoom">Cancelar</button>
+        <button class="primary" id="btnConfirmJoinRoom">Entrar</button>
       </div>
     </div>
   </div>
@@ -310,7 +336,7 @@
   <header id="topBar">
     <div class="brandTitle">
       <span id="connDot" title="Status da conexão"></span>
-      <h1>Anomaly</h1>
+      <h1 id="currentRoomTitle">Anomaly</h1>
     </div>
     <span id="roleBadge" class="hidden"></span>
 
@@ -328,7 +354,7 @@
       <button id="gridBtn" class="mestre-only" title="Configurar Grid">Grid</button>
       <button id="scenesBtn" class="mestre-only">Cenas</button>
       <button id="managePlayersBtn" class="mestre-only hidden">Jogadores</button>
-      <button id="btnReturnLobby" title="Menu Principal">🏠 Menu</button>
+      <button id="btnReturnLobby" title="Trocar Mesa">Mesas</button>
       <button id="settingsBtn" title="Configurações">⚙️</button>
       <button id="clearBtn" class="danger mestre-only" title="Limpar Tudo">Limpar</button>
     </div>
@@ -361,7 +387,7 @@
 
   <!-- Tabuleiro -->
   <div id="boardWrap">
-    <div id="placeholder">Acesse o menu para entrar na mesa.</div>
+    <div id="placeholder">Selecione uma mesa no menu para começar.</div>
     <div id="board">
       <div id="mapPiecesLayer"></div>
       <div id="gridLayer"></div>
@@ -396,6 +422,7 @@
   const mapPiecesLayer = document.getElementById('mapPiecesLayer');
   const tokensLayer = document.getElementById('tokensLayer');
   const placeholder = document.getElementById('placeholder');
+  const currentRoomTitle = document.getElementById('currentRoomTitle');
   
   const normalNav = document.getElementById('normalNav');
   const editorNav = document.getElementById('editorNav');
@@ -425,12 +452,23 @@
   const btnSignup = document.getElementById('btnSignup');
   
   const lobbyOverlay = document.getElementById('lobbyOverlay');
-  const lobbyUserName = document.getElementById('lobbyUserName');
-  const lobbyUserRole = document.getElementById('lobbyUserRole');
-  const btnEnterTable = document.getElementById('btnEnterTable');
-  const btnLobbyClaimMestre = document.getElementById('btnLobbyClaimMestre');
+  const roomListContainer = document.getElementById('roomListContainer');
+  const lobbyUserWelcome = document.getElementById('lobbyUserWelcome');
+  const btnOpenCreateRoom = document.getElementById('btnOpenCreateRoom');
+  const btnOpenJoinRoom = document.getElementById('btnOpenJoinRoom');
   const btnLobbyLogout = document.getElementById('btnLobbyLogout');
   const btnReturnLobby = document.getElementById('btnReturnLobby');
+
+  const createRoomOverlay = document.getElementById('createRoomOverlay');
+  const inpNewRoomName = document.getElementById('inpNewRoomName');
+  const btnCloseCreateRoom = document.getElementById('btnCloseCreateRoom');
+  const btnConfirmCreateRoom = document.getElementById('btnConfirmCreateRoom');
+
+  const joinRoomOverlay = document.getElementById('joinRoomOverlay');
+  const inpRoomCode = document.getElementById('inpRoomCode');
+  const joinRoomError = document.getElementById('joinRoomError');
+  const btnCloseJoinRoom = document.getElementById('btnCloseJoinRoom');
+  const btnConfirmJoinRoom = document.getElementById('btnConfirmJoinRoom');
 
   const roleBadge = document.getElementById('roleBadge');
   
@@ -441,7 +479,6 @@
   const newSceneInput = document.getElementById('newSceneInput');
   const closeScenesBtn = document.getElementById('closeScenesBtn');
 
-  // Elementos do Grid
   const gridBtn = document.getElementById('gridBtn');
   const gridOverlay = document.getElementById('gridOverlay');
   const closeGridBtn = document.getElementById('closeGridBtn');
@@ -455,14 +492,7 @@
   const gridLineWidthRange = document.getElementById('gridLineWidth');
   const gridLineWidthVal = document.getElementById('gridLineWidthVal');
   
-  let gridConfig = {
-    enabled: false,
-    type: 'isometric',
-    size: 64,
-    color: '#9d4edf',
-    opacity: 0.4,
-    lineWidth: 1
-  };
+  let gridConfig = { enabled: false, type: 'isometric', size: 64, color: '#9d4edf', opacity: 0.4, lineWidth: 1 };
   
   const contextMenu = document.getElementById('contextMenu');
   const tokenStatesRow = document.getElementById('tokenStatesRow');
@@ -500,9 +530,11 @@
   let sb = null;
   let currentRole = null;
   let currentUserId = null;
+  let currentRoomId = null;
   let currentSceneId = null;
   let tokensChannel = null;
   let mapElementsChannel = null;
+  let roomSyncChannel = null;
   let scale = 1;
 
   let tokenEls = new Map();
@@ -513,33 +545,21 @@
   let baseMapId = null;
 
   function drawGrid() {
-    if (!gridConfig.enabled) {
-      gridLayer.style.display = 'none';
-      return;
-    }
+    if (!gridConfig.enabled) { gridLayer.style.display = 'none'; return; }
     gridLayer.style.display = 'block';
     gridLayer.style.opacity = gridConfig.opacity;
-
     const size = parseInt(gridConfig.size) || 64;
     const stroke = gridConfig.color;
     const lw = gridConfig.lineWidth;
-
     let svgDataUrl = '';
-
     if (gridConfig.type === 'square') {
-      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}">
-        <path d="M ${size} 0 L 0 0 0 ${size}" fill="none" stroke="${stroke}" stroke-width="${lw}"/>
-      </svg>`;
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}"><path d="M ${size} 0 L 0 0 0 ${size}" fill="none" stroke="${stroke}" stroke-width="${lw}"/></svg>`;
       svgDataUrl = `url('data:image/svg+xml;utf8,${encodeURIComponent(svg)}')`;
     } else if (gridConfig.type === 'isometric') {
-      const w = size;
-      const h = size / 2;
-      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}">
-        <path d="M 0 ${h/2} L ${w/2} 0 L ${w} ${h/2} L ${w/2} ${h} Z" fill="none" stroke="${stroke}" stroke-width="${lw}"/>
-      </svg>`;
+      const w = size, h = size / 2;
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}"><path d="M 0 ${h/2} L ${w/2} 0 L ${w} ${h/2} L ${w/2} ${h} Z" fill="none" stroke="${stroke}" stroke-width="${lw}"/></svg>`;
       svgDataUrl = `url('data:image/svg+xml;utf8,${encodeURIComponent(svg)}')`;
     }
-
     gridLayer.style.backgroundImage = svgDataUrl;
     gridLayer.style.backgroundRepeat = 'repeat';
     gridLayer.style.backgroundSize = gridConfig.type === 'square' ? `${size}px ${size}px` : `${size}px ${size/2}px`;
@@ -559,9 +579,7 @@
       gridOverlay.classList.remove('hidden');
     });
   }
-  if (closeGridBtn) {
-    closeGridBtn.addEventListener('click', () => gridOverlay.classList.add('hidden'));
-  }
+  if (closeGridBtn) closeGridBtn.addEventListener('click', () => gridOverlay.classList.add('hidden'));
 
   [gridEnabledSel, gridTypeSel, gridSizeRange, gridColorInp, gridOpacityRange, gridLineWidthRange].forEach(inp => {
     inp.addEventListener('input', () => {
@@ -627,28 +645,15 @@
     onCropCallback = callback;
     cropImg.src = dataURL;
     cropOverlay.classList.remove('hidden');
-
-    if (cropperInstance) {
-      cropperInstance.destroy();
-      cropperInstance = null;
-    }
-
+    if (cropperInstance) { cropperInstance.destroy(); cropperInstance = null; }
     setTimeout(() => {
-      cropperInstance = new Cropper(cropImg, {
-        viewMode: 1,
-        autoCropArea: 0.9,
-        background: false,
-        responsive: true
-      });
+      cropperInstance = new Cropper(cropImg, { viewMode: 1, autoCropArea: 0.9, background: false, responsive: true });
     }, 50);
   }
 
   function closeCropModal() {
     cropOverlay.classList.add('hidden');
-    if (cropperInstance) {
-      cropperInstance.destroy();
-      cropperInstance = null;
-    }
+    if (cropperInstance) { cropperInstance.destroy(); cropperInstance = null; }
     onCropCallback = null;
   }
 
@@ -680,8 +685,7 @@
 
   function applyElementSize(el, size, ar) {
     let w, h;
-    if (ar >= 1) { w = size; h = size / ar; }
-    else { h = size; w = size * ar; }
+    if (ar >= 1) { w = size; h = size / ar; } else { h = size; w = size * ar; }
     el.style.width = w + 'px';
     el.style.height = h + 'px';
   }
@@ -712,7 +716,6 @@
     selectedEl = null;
   }
 
-  // --- TOKENS ---
   function imageForToken(tok) {
     if (tok.active_state && tok.states && tok.states[tok.active_state - 1]) {
       return tok.states[tok.active_state - 1];
@@ -770,7 +773,6 @@
     if (el) { el.remove(); tokenEls.delete(id); tokenData.delete(id); }
   }
 
-  // --- PEÇAS DE MAPA ---
   function upsertMapPieceEl(piece) {
     mapPieceData.set(piece.id, piece);
     let el = mapPieceEls.get(piece.id);
@@ -820,7 +822,6 @@
     if (el) { el.remove(); mapPieceEls.delete(id); mapPieceData.delete(id); }
   }
 
-  // --- DRAG, RESIZE, ROTATE ---
   function attachDrag(el, itemId, handle, type) {
     let dragging = false, startX, startY, origX, origY, lastSent = 0, moved = false, longPressTimer = null;
 
@@ -851,9 +852,7 @@
       if (!dragging) return;
       const dx = (e.clientX - startX) / scale;
       const dy = (e.clientY - startY) / scale;
-      if (Math.abs(e.clientX - startX) > 6 || Math.abs(e.clientY - startY) > 6) {
-        moved = true; clearTimeout(longPressTimer);
-      }
+      if (Math.abs(e.clientX - startX) > 6 || Math.abs(e.clientY - startY) > 6) { moved = true; clearTimeout(longPressTimer); }
       const x = origX + dx, y = origY + dy;
       el.style.left = x + 'px'; el.style.top = y + 'px';
       
@@ -874,8 +873,7 @@
       clearTimeout(longPressTimer);
       if (!dragging) return;
       dragging = false; el.dragging = false; el.classList.remove('dragging');
-      const x = parseFloat(el.style.left) || 0;
-      const y = parseFloat(el.style.top) || 0;
+      const x = parseFloat(el.style.left) || 0, y = parseFloat(el.style.top) || 0;
       if (type === 'token') {
         sb.rpc('move_token', { p_user_id: currentUserId, p_token_id: itemId, p_x: x, p_y: y }).then(({ error }) => { if (error) console.error(error); });
       } else if (itemId === baseMapId) {
@@ -890,7 +888,6 @@
 
   function attachResize(el, handle, itemId, type) {
     let resizing = false, startX, startY, origSize, lastSent = 0;
-
     handle.addEventListener('pointerdown', (e) => {
       if (type === 'map' && (!document.body.classList.contains('map-editor-active') || currentRole !== 'mestre')) return;
       e.stopPropagation();
@@ -907,7 +904,6 @@
       e.stopPropagation();
       const d = ((e.clientX - startX) + (e.clientY - startY)) / 2 / scale;
       const newSize = Math.max(24, Math.min(8000, origSize + d));
-
       const dataMap = type === 'token' ? tokenData : mapPieceData;
       const item = dataMap.get(itemId);
       const url = type === 'token' ? imageForToken(item) : item.src_url;
@@ -935,9 +931,7 @@
       const item = dataMap.get(itemId);
       const url = type === 'token' ? imageForToken(item) : item.src_url;
       const ar = aspectRatios.get(url) || 1;
-      const finalW = parseFloat(el.style.width) || 64;
-      const finalH = parseFloat(el.style.height) || 64;
-      const finalSize = ar >= 1 ? finalW : finalH;
+      const finalSize = ar >= 1 ? (parseFloat(el.style.width) || 64) : (parseFloat(el.style.height) || 64);
 
       if (type === 'token') {
         sb.rpc('resize_token', { p_user_id: currentUserId, p_token_id: itemId, p_size: finalSize }).then(({ error }) => { if (error) console.error(error); });
@@ -964,17 +958,13 @@
       if (!rotating) return;
       e.stopPropagation();
       const rect = el.getBoundingClientRect();
-      const centerX = rect.left + rect.width / 2;
-      const centerY = rect.top + rect.height / 2;
-      const rad = Math.atan2(e.clientY - centerY, e.clientX - centerX);
+      const rad = Math.atan2(e.clientY - (rect.top + rect.height / 2), e.clientX - (rect.left + rect.width / 2));
       let deg = Math.round((rad * (180 / Math.PI)) + 90);
       if (deg < 0) deg += 360; deg = deg % 360;
 
       const img = el.querySelector('.pieceImg');
-      const dataMap = type === 'token' ? tokenData : mapPieceData;
-      const item = dataMap.get(itemId);
-      const flip = item ? item.flip_x : false;
-      img.style.transform = `rotate(${deg}deg) scaleX(${flip ? -1 : 1})`;
+      const item = (type === 'token' ? tokenData : mapPieceData).get(itemId);
+      img.style.transform = `rotate(${deg}deg) scaleX(${item ? (item.flip_x ? -1 : 1) : 1})`;
 
       const now = Date.now();
       if (now - lastSent > 100) {
@@ -994,9 +984,7 @@
       e.stopPropagation();
       rotating = false;
       const rect = el.getBoundingClientRect();
-      const centerX = rect.left + rect.width / 2;
-      const centerY = rect.top + rect.height / 2;
-      const rad = Math.atan2(e.clientY - centerY, e.clientX - centerX);
+      const rad = Math.atan2(e.clientY - (rect.top + rect.height / 2), e.clientX - (rect.left + rect.width / 2));
       let deg = Math.round((rad * (180 / Math.PI)) + 90);
       if (deg < 0) deg += 360; deg = deg % 360;
 
@@ -1012,9 +1000,7 @@
     handle.addEventListener('pointercancel', end);
   }
 
-  // --- MENU DE CONTEXTO ---
   let contextTarget = null;
-
   function openContextMenu(type, id, clientX, clientY) {
     contextTarget = { type, id };
     if (type === 'token') {
@@ -1024,12 +1010,10 @@
       statesHr.style.display = 'block';
       tokenStatesRow.innerHTML = '';
       if (tok) {
-        const allImages = [tok.src_url, ...(tok.states || [])];
-        allImages.forEach((url, idx) => {
+        [tok.src_url, ...(tok.states || [])].forEach((url, idx) => {
           const thumb = document.createElement('div');
           thumb.className = 'stateThumb' + (((tok.active_state || 0) === idx) ? ' active' : '');
-          let safeThumbUrl = url ? url.replace(/^http:\/\//, 'https://') : '';
-          thumb.style.backgroundImage = `url("${safeThumbUrl}")`;
+          thumb.style.backgroundImage = `url("${url ? url.replace(/^http:\/\//, 'https://') : ''}")`;
           thumb.addEventListener('click', async () => {
             await sb.rpc('set_active_state', { p_user_id: currentUserId, p_token_id: id, p_state: idx });
             closeContextMenu();
@@ -1042,216 +1026,120 @@
       menuAddState.style.display = 'none';
       statesHr.style.display = 'none';
     }
-
-    if (type === 'map' && id === baseMapId) {
-      menuDelete.style.display = 'none';
-    } else {
-      menuDelete.style.display = 'block';
-    }
-
+    menuDelete.style.display = (type === 'map' && id === baseMapId) ? 'none' : 'block';
     contextMenu.classList.add('open');
-    const menuW = 210, menuH = contextMenu.offsetHeight || 240;
-    const x = Math.min(clientX, window.innerWidth - menuW - 8);
-    const y = Math.min(clientY, window.innerHeight - menuH - 8);
-    contextMenu.style.left = Math.max(8, x) + 'px';
-    contextMenu.style.top = Math.max(8, y) + 'px';
+    contextMenu.style.left = Math.max(8, Math.min(clientX, window.innerWidth - 220)) + 'px';
+    contextMenu.style.top = Math.max(8, Math.min(clientY, window.innerHeight - 240)) + 'px';
   }
 
-  function closeContextMenu() {
-    contextMenu.classList.remove('open');
-    contextTarget = null;
-  }
-
-  document.addEventListener('pointerdown', (e) => {
-    if (contextMenu.classList.contains('open') && !contextMenu.contains(e.target)) closeContextMenu();
-  });
+  function closeContextMenu() { contextMenu.classList.remove('open'); contextTarget = null; }
+  document.addEventListener('pointerdown', (e) => { if (contextMenu.classList.contains('open') && !contextMenu.contains(e.target)) closeContextMenu(); });
 
   menuFront.addEventListener('click', async () => {
     if (!contextTarget) return;
     const { type, id } = contextTarget;
     const rpcName = type === 'token' ? 'set_token_z' : (id === baseMapId ? 'set_base_map_element_z' : 'set_map_element_z');
-    const paramName = type === 'token' ? 'p_token_id' : 'p_element_id';
-    await sb.rpc(rpcName, { p_user_id: currentUserId, [paramName]: id, p_z: Date.now() });
+    await sb.rpc(rpcName, { p_user_id: currentUserId, [type === 'token' ? 'p_token_id' : 'p_element_id']: id, p_z: Date.now() });
     closeContextMenu();
   });
 
   menuBack.addEventListener('click', async () => {
     if (!contextTarget) return;
     const { type, id } = contextTarget;
-    const dataMap = type === 'token' ? tokenData : mapPieceData;
     let minZ = 1;
-    dataMap.forEach(item => { if ((item.z || 0) < minZ) minZ = item.z || 0; });
+    (type === 'token' ? tokenData : mapPieceData).forEach(i => { if ((i.z || 0) < minZ) minZ = i.z || 0; });
     const rpcName = type === 'token' ? 'set_token_z' : (id === baseMapId ? 'set_base_map_element_z' : 'set_map_element_z');
-    const paramName = type === 'token' ? 'p_token_id' : 'p_element_id';
-    await sb.rpc(rpcName, { p_user_id: currentUserId, [paramName]: id, p_z: Math.max(1, minZ - 1) });
+    await sb.rpc(rpcName, { p_user_id: currentUserId, [type === 'token' ? 'p_token_id' : 'p_element_id']: id, p_z: Math.max(1, minZ - 1) });
     closeContextMenu();
   });
 
   menuRotate.addEventListener('click', async () => {
     if (!contextTarget) return;
     const { type, id } = contextTarget;
-    const dataMap = type === 'token' ? tokenData : mapPieceData;
-    const item = dataMap.get(id);
+    const item = (type === 'token' ? tokenData : mapPieceData).get(id);
     const newRot = ((item.rotation || 0) + 90) % 360;
     const rpcName = type === 'token' ? 'rotate_token' : (id === baseMapId ? 'rotate_base_map_element' : 'rotate_map_element');
-    const paramName = type === 'token' ? 'p_token_id' : 'p_element_id';
-    await sb.rpc(rpcName, { p_user_id: currentUserId, [paramName]: id, p_rotation: newRot });
+    await sb.rpc(rpcName, { p_user_id: currentUserId, [type === 'token' ? 'p_token_id' : 'p_element_id']: id, p_rotation: newRot });
     closeContextMenu();
   });
 
   menuFlip.addEventListener('click', async () => {
     if (!contextTarget) return;
     const { type, id } = contextTarget;
-    const dataMap = type === 'token' ? tokenData : mapPieceData;
-    const item = dataMap.get(id);
+    const item = (type === 'token' ? tokenData : mapPieceData).get(id);
     const rpcName = type === 'token' ? 'flip_token' : (id === baseMapId ? 'flip_base_map_element' : 'flip_map_element');
-    const paramName = type === 'token' ? 'p_token_id' : 'p_element_id';
-    await sb.rpc(rpcName, { p_user_id: currentUserId, [paramName]: id, p_flip: !item.flip_x });
+    await sb.rpc(rpcName, { p_user_id: currentUserId, [type === 'token' ? 'p_token_id' : 'p_element_id']: id, p_flip: !item.flip_x });
     closeContextMenu();
   });
 
   menuDelete.addEventListener('click', async () => {
     if (!contextTarget) return;
     const { type, id } = contextTarget;
-    if (id === baseMapId) return;
-    if (!confirm('Apagar este elemento?')) return;
-    const rpcName = type === 'token' ? 'delete_token' : 'delete_map_element';
-    const paramName = type === 'token' ? 'p_token_id' : 'p_element_id';
-    
-    if (type === 'token') removeTokenEl(id);
-    else removeMapPieceEl(id);
-    
-    await sb.rpc(rpcName, { p_user_id: currentUserId, [paramName]: id });
+    if (id === baseMapId || !confirm('Apagar este elemento?')) return;
+    if (type === 'token') removeTokenEl(id); else removeMapPieceEl(id);
+    await sb.rpc(type === 'token' ? 'delete_token' : 'delete_map_element', { p_user_id: currentUserId, [type === 'token' ? 'p_token_id' : 'p_element_id']: id });
     closeContextMenu();
   });
 
   menuAddState.addEventListener('click', () => stateInput.click());
-
   stateInput.addEventListener('change', async (e) => {
-    const file = e.target.files[0];
-    const tokenId = contextTarget?.id;
-    stateInput.value = '';
-    closeContextMenu();
+    const file = e.target.files[0], tokenId = contextTarget?.id;
+    stateInput.value = ''; closeContextMenu();
     if (!file || !tokenId) return;
     try {
       const raw = await fileToDataURL(file);
       openCropModal(raw, async (croppedDataURL) => {
-        try {
-          const small = await resizeDataURL(croppedDataURL, 1024, 'image/png', 0.95);
-          const url = await uploadImage(small, 'tokens');
-          await sb.rpc('add_token_state', { p_user_id: currentUserId, p_token_id: tokenId, p_url: url });
-        } catch (err) { alert(err.message); }
+        const small = await resizeDataURL(croppedDataURL, 1024, 'image/png', 0.95);
+        const url = await uploadImage(small, 'tokens');
+        await sb.rpc('add_token_state', { p_user_id: currentUserId, p_token_id: tokenId, p_url: url });
       });
     } catch (err) { alert(err.message); }
   });
 
-  // --- UPLOADS & CROP HANDLERS COM RENDERIZAÇÃO OTIMISTA INSTANTÂNEA ---
   mapPieceInput.addEventListener('change', async (e) => {
-    const file = e.target.files[0];
-    mapPieceInput.value = '';
+    const file = e.target.files[0]; mapPieceInput.value = '';
     if (!file) return;
     try {
       const raw = await fileToDataURL(file);
       openCropModal(raw, async (croppedDataURL) => {
-        try {
-          const small = await resizeDataURL(croppedDataURL, 2048, 'image/png', 0.95);
-          const url = await uploadImage(small, 'map_pieces');
-          
-          const tempId = 'temp-' + Date.now();
-          const optimisticPiece = {
-            id: tempId,
-            scene_id: currentSceneId,
-            src_url: url,
-            x: 40,
-            y: 40,
-            size: 256,
-            z: Date.now(),
-            rotation: 0,
-            flip_x: false
-          };
-          upsertMapPieceEl(optimisticPiece);
-
-          const { data, error } = await sb.rpc('add_map_element', { 
-            p_user_id: currentUserId, 
-            p_src_url: url, 
-            p_x: 40, 
-            p_y: 40, 
-            p_size: 256, 
-            p_z: Date.now() 
-          });
-          if (error) throw error;
-
-          removeMapPieceEl(tempId);
-          if (data && data.length) {
-            upsertMapPieceEl(data[0]);
-          }
-        } catch (err) { alert('Erro ao adicionar peça de mapa: ' + err.message); }
+        const small = await resizeDataURL(croppedDataURL, 2048, 'image/png', 0.95);
+        const url = await uploadImage(small, 'map_pieces');
+        const tempId = 'temp-' + Date.now();
+        upsertMapPieceEl({ id: tempId, scene_id: currentSceneId, src_url: url, x: 40, y: 40, size: 256, z: Date.now(), rotation: 0, flip_x: false });
+        const { data } = await sb.rpc('add_map_element', { p_user_id: currentUserId, p_src_url: url, p_x: 40, p_y: 40, p_size: 256, p_z: Date.now() });
+        removeMapPieceEl(tempId);
+        if (data && data.length) upsertMapPieceEl(data[0]);
       });
-    } catch (err) { alert('Erro ao carregar imagem: ' + err.message); }
+    } catch (err) { alert(err.message); }
   });
 
   tokenInput.addEventListener('change', async (e) => {
-    const file = e.target.files[0];
-    tokenInput.value = '';
+    const file = e.target.files[0]; tokenInput.value = '';
     if (!file) return;
     try {
       const raw = await fileToDataURL(file);
       openCropModal(raw, async (croppedDataURL) => {
-        try {
-          const small = await resizeDataURL(croppedDataURL, 1024, 'image/png', 0.95);
-          const url = await uploadImage(small, 'tokens');
-          
-          const tempId = 'temp-' + Date.now();
-          const optimisticToken = {
-            id: tempId,
-            scene_id: currentSceneId,
-            src_url: url,
-            x: 40,
-            y: 40,
-            size: 96,
-            z: Date.now(),
-            rotation: 0,
-            flip_x: false,
-            active_state: 0,
-            states: []
-          };
-          upsertTokenEl(optimisticToken);
-
-          const { data, error } = await sb.rpc('add_token', { 
-            p_user_id: currentUserId, 
-            p_src_url: url, 
-            p_x: 40, 
-            p_y: 40, 
-            p_size: 96, 
-            p_z: Date.now() 
-          });
-          if (error) throw error;
-
-          removeTokenEl(tempId);
-          if (data && data.length) {
-            upsertTokenEl(data[0]);
-          }
-        } catch (err) { alert('Erro ao adicionar token: ' + err.message); }
+        const small = await resizeDataURL(croppedDataURL, 1024, 'image/png', 0.95);
+        const url = await uploadImage(small, 'tokens');
+        const tempId = 'temp-' + Date.now();
+        upsertTokenEl({ id: tempId, scene_id: currentSceneId, src_url: url, x: 40, y: 40, size: 96, z: Date.now(), rotation: 0, flip_x: false, active_state: 0, states: [] });
+        const { data } = await sb.rpc('add_token', { p_user_id: currentUserId, p_src_url: url, p_x: 40, p_y: 40, p_size: 96, p_z: Date.now() });
+        removeTokenEl(tempId);
+        if (data && data.length) upsertTokenEl(data[0]);
       });
-    } catch (err) { alert('Erro ao carregar imagem: ' + err.message); }
+    } catch (err) { alert(err.message); }
   });
 
   mapInput.addEventListener('change', async (e) => {
-    const file = e.target.files[0];
-    mapInput.value = '';
+    const file = e.target.files[0]; mapInput.value = '';
     if (!file) return;
-    placeholder.style.display = 'flex';
-    placeholder.textContent = 'Enviando mapa base...';
+    placeholder.style.display = 'flex'; placeholder.textContent = 'Enviando mapa base...';
     try {
       const raw = await fileToDataURL(file);
       const resized = await resizeDataURL(raw, 4096, 'image/png', 0.95);
       const url = await uploadImage(resized, 'maps');
-      const { data, error } = await sb.rpc('set_map', { p_user_id: currentUserId, p_map_url: url });
-      if (error) throw error;
-      if (data && data.length) {
-        baseMapId = data[0].id;
-        upsertMapPieceEl(data[0]);
-      }
+      const { data } = await sb.rpc('set_map', { p_user_id: currentUserId, p_map_url: url });
+      if (data && data.length) { baseMapId = data[0].id; upsertMapPieceEl(data[0]); }
       placeholder.style.display = 'none';
     } catch (err) { alert(err.message); placeholder.style.display = 'none'; }
   });
@@ -1261,18 +1149,15 @@
     tokenEls.forEach(el => el.remove()); tokenEls.clear(); tokenData.clear();
     mapPieceEls.forEach(el => el.remove()); mapPieceEls.clear(); mapPieceData.clear();
     baseMapId = null;
-    placeholder.style.display = 'flex';
-    placeholder.textContent = 'Importe um mapa base ou adicione peças para começar.';
-    const { error } = await sb.rpc('clear_board', { p_user_id: currentUserId });
-    if (error) alert(error.message);
+    placeholder.style.display = 'flex'; placeholder.textContent = 'Importe um mapa base ou adicione peças para começar.';
+    await sb.rpc('clear_board', { p_user_id: currentUserId });
   });
 
-  // --- PAINEL DE CENAS ---
+  // --- CENAS ---
   async function openScenesPanel() {
     scenesList.innerHTML = 'Carregando...';
     scenesOverlay.classList.remove('hidden');
-    const { data: scenes, error } = await sb.from('scenes').select('*').order('created_at');
-    if (error) { scenesList.textContent = error.message; return; }
+    const { data: scenes } = await sb.from('scenes').select('*').eq('room_id', currentRoomId).order('created_at');
     scenesList.innerHTML = '';
     (scenes || []).forEach((s) => {
       const row = document.createElement('div');
@@ -1280,38 +1165,18 @@
       const isActive = s.id === currentSceneId;
       const thumb = document.createElement('div');
       thumb.className = 'thumb';
-      if (s.map_url) {
-        let safeThumbUrl = s.map_url.replace(/^http:\/\//, 'https://');
-        thumb.style.backgroundImage = `url("${safeThumbUrl}")`;
-      }
+      if (s.map_url) thumb.style.backgroundImage = `url("${s.map_url.replace(/^http:\/\//, 'https://')}")`;
       row.appendChild(thumb);
-      const name = document.createElement('span');
-      name.className = 'name';
-      name.textContent = s.name;
-      row.appendChild(name);
+      const name = document.createElement('span'); name.className = 'name'; name.textContent = s.name; row.appendChild(name);
       if (isActive) {
-        const tag = document.createElement('span');
-        tag.className = 'activeTag';
-        tag.textContent = '● atual';
-        row.appendChild(tag);
+        const tag = document.createElement('span'); tag.className = 'activeTag'; tag.textContent = '● atual'; row.appendChild(tag);
       } else {
-        const useBtn = document.createElement('button');
-        useBtn.textContent = 'Usar';
+        const useBtn = document.createElement('button'); useBtn.textContent = 'Usar';
         useBtn.addEventListener('click', async () => {
-          await sb.rpc('set_scene', { p_user_id: currentUserId, p_scene_id: s.id });
+          await sb.from('rooms').update({ active_scene_id: s.id }).eq('id', currentRoomId);
           scenesOverlay.classList.add('hidden');
         });
         row.appendChild(useBtn);
-
-        const delBtn = document.createElement('button');
-        delBtn.className = 'danger';
-        delBtn.textContent = '🗑️';
-        delBtn.addEventListener('click', async () => {
-          if (!confirm('Apagar cena?')) return;
-          await sb.rpc('delete_scene', { p_user_id: currentUserId, p_scene_id: s.id });
-          openScenesPanel();
-        });
-        row.appendChild(delBtn);
       }
       scenesList.appendChild(row);
     });
@@ -1322,80 +1187,68 @@
   if (newSceneBtn) {
     newSceneBtn.addEventListener('click', () => {
       const name = prompt('Nome da nova cena:');
-      if (name === null) return;
-      newSceneInput.dataset.sceneName = name;
-      newSceneInput.click();
+      if (name) { newSceneInput.dataset.sceneName = name; newSceneInput.click(); }
     });
   }
 
   if (newSceneInput) {
     newSceneInput.addEventListener('change', async (e) => {
-      const file = e.target.files[0];
-      const name = newSceneInput.dataset.sceneName || 'Nova cena';
+      const file = e.target.files[0], name = newSceneInput.dataset.sceneName || 'Nova cena';
       newSceneInput.value = '';
       if (!file) return;
       try {
         const raw = await fileToDataURL(file);
         const resized = await resizeDataURL(raw, 4096, 'image/png', 0.92);
         const url = await uploadImage(resized, 'maps');
-        await sb.rpc('create_scene', { p_user_id: currentUserId, p_name: name, p_map_url: url });
+        await sb.from('scenes').insert({ room_id: currentRoomId, name: name, map_url: url });
         scenesOverlay.classList.add('hidden');
       } catch (err) { alert(err.message); }
     });
   }
 
-  // --- PAINEL DE JOGADORES ---
+  // --- JOGADORES ---
   async function openPlayersPanel() {
     playersList.innerHTML = 'Carregando...';
     playersOverlay.classList.remove('hidden');
-    const { data: players, error } = await sb.from('profiles').select('*').order('display_name');
-    if (error) { playersList.textContent = error.message; return; }
+    const { data: members } = await sb.from('room_members').select('user_id, role, profiles(display_name)').eq('room_id', currentRoomId);
     playersList.innerHTML = '';
-    (players || []).forEach((p) => {
-      const row = document.createElement('div');
-      row.className = 'playerRow';
-      const isMe = p.id === currentUserId;
-      row.innerHTML = `<span class="name">${p.display_name || 'Usuário'}${isMe ? ' (você)' : ''}</span>
-        <span class="roleTag">${p.role === 'mestre' ? '👑 mestre' : '🧑 jogador'}</span>`;
-      const btn = document.createElement('button');
-      btn.textContent = p.role === 'mestre' ? 'Tornar jogador' : 'Tornar mestre';
-      btn.addEventListener('click', async () => {
-        const newRole = p.role === 'mestre' ? 'jogador' : 'mestre';
-        await sb.rpc('set_role', { p_acting_user_id: currentUserId, p_target_user_id: p.id, p_new_role: newRole });
-        refreshRoleUI();
-        openPlayersPanel();
-      });
-      row.appendChild(btn);
+    (members || []).forEach((m) => {
+      const row = document.createElement('div'); row.className = 'playerRow';
+      const isMe = m.user_id === currentUserId;
+      row.innerHTML = `<span class="name">${m.profiles?.display_name || 'Usuário'}${isMe ? ' (você)' : ''}</span><span class="roleTag">${m.role === 'mestre' ? '👑 mestre' : '🧑 jogador'}</span>`;
+      if (currentRole === 'mestre' && !isMe) {
+        const btn = document.createElement('button');
+        btn.textContent = m.role === 'mestre' ? 'Tornar jogador' : 'Tornar mestre';
+        btn.addEventListener('click', async () => {
+          await sb.from('room_members').update({ role: m.role === 'mestre' ? 'jogador' : 'mestre' }).eq('room_id', currentRoomId).eq('user_id', m.user_id);
+          openPlayersPanel();
+        });
+        row.appendChild(btn);
+      }
       playersList.appendChild(row);
     });
   }
   if (managePlayersBtn) managePlayersBtn.addEventListener('click', openPlayersPanel);
   if (closePlayersBtn) closePlayersBtn.addEventListener('click', () => playersOverlay.classList.add('hidden'));
 
-  // --- NAVEGAÇÃO / PAN & ZOOM & PINCH-TO-ZOOM ---
+  // --- PAN & ZOOM ---
   zoomInBtn.addEventListener('click', () => { scale = Math.min(scale * 1.2, 10); applyZoom(); });
   zoomOutBtn.addEventListener('click', () => { scale = Math.max(scale / 1.2, 0.05); applyZoom(); });
 
   let boardX = 0, boardY = 0;
   const activePointers = new Map();
-  let panStartX, panStartY, panOrigX = 0, panOrigY = 0;
-  let lastPinchDist = null;
+  let panStartX, panStartY, panOrigX = 0, panOrigY = 0, lastPinchDist = null;
 
   function boardLocalStyle() { board.style.left = boardX + 'px'; board.style.top = boardY + 'px'; }
 
   boardWrap.addEventListener('dragstart', (e) => e.preventDefault());
   boardWrap.addEventListener('pointerdown', (e) => {
-    if (currentTool === 'select' && e.target.closest('.token')) return;
-    if (currentTool === 'select' && e.target.closest('.mapPiece') && document.body.classList.contains('map-editor-active')) return;
+    if (currentTool === 'select' && (e.target.closest('.token') || (e.target.closest('.mapPiece') && document.body.classList.contains('map-editor-active')))) return;
     deselectAll();
     boardWrap.setPointerCapture(e.pointerId);
     activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-
-    if (activePointers.size === 1) {
-      panStartX = e.clientX; panStartY = e.clientY;
-      panOrigX = boardX; panOrigY = boardY;
-      lastPinchDist = null;
-    } else if (activePointers.size === 2) {
+    if (activePointers.size === 1) { panStartX = e.clientX; panStartY = e.clientY; panOrigX = boardX; panOrigY = boardY; lastPinchDist = null; }
+    else if (activePointers.size === 2) {
       const pts = Array.from(activePointers.values());
       lastPinchDist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
     }
@@ -1404,43 +1257,29 @@
   boardWrap.addEventListener('pointermove', (e) => {
     if (!activePointers.has(e.pointerId)) return;
     activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-
     if (activePointers.size === 1) {
-      boardX = panOrigX + (e.clientX - panStartX);
-      boardY = panOrigY + (e.clientY - panStartY);
-      boardLocalStyle();
-      lastPinchDist = null;
+      boardX = panOrigX + (e.clientX - panStartX); boardY = panOrigY + (e.clientY - panStartY);
+      boardLocalStyle(); lastPinchDist = null;
     } else if (activePointers.size === 2) {
       const pts = Array.from(activePointers.values());
       const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
       if (lastPinchDist && lastPinchDist > 0) {
         const rect = boardWrap.getBoundingClientRect();
-        const midX = (pts[0].x + pts[1].x) / 2 - rect.left;
-        const midY = (pts[0].y + pts[1].y) / 2 - rect.top;
-
+        const midX = (pts[0].x + pts[1].x) / 2 - rect.left, midY = (pts[0].y + pts[1].y) / 2 - rect.top;
         const oldScale = scale;
-        const factor = dist / lastPinchDist;
-        scale = Math.min(10, Math.max(0.05, oldScale * factor));
-
+        scale = Math.min(10, Math.max(0.05, oldScale * (dist / lastPinchDist)));
         boardX = midX - (scale / oldScale) * (midX - boardX);
         boardY = midY - (scale / oldScale) * (midY - boardY);
-        applyZoom();
-        boardLocalStyle();
+        applyZoom(); boardLocalStyle();
       }
       lastPinchDist = dist;
     }
   });
 
-  function releasePointer(e) { 
+  function releasePointer(e) {
     activePointers.delete(e.pointerId);
-    if (activePointers.size < 2) {
-      lastPinchDist = null;
-    }
-    if (activePointers.size === 1) {
-      const remaining = Array.from(activePointers.values())[0];
-      panStartX = remaining.x; panStartY = remaining.y;
-      panOrigX = boardX; panOrigY = boardY;
-    }
+    if (activePointers.size < 2) lastPinchDist = null;
+    if (activePointers.size === 1) { const r = Array.from(activePointers.values())[0]; panStartX = r.x; panStartY = r.y; panOrigX = boardX; panOrigY = boardY; }
   }
   boardWrap.addEventListener('pointerup', releasePointer);
   boardWrap.addEventListener('pointercancel', releasePointer);
@@ -1448,60 +1287,41 @@
   boardWrap.addEventListener('wheel', (e) => {
     e.preventDefault();
     const rect = boardWrap.getBoundingClientRect();
-    const cx = e.clientX - rect.left, cy = e.clientY - rect.top;
-    const oldScale = scale;
+    const cx = e.clientX - rect.left, cy = e.clientY - rect.top, oldScale = scale;
     scale = Math.min(10, Math.max(0.05, scale * (e.deltaY < 0 ? 1.1 : 0.9)));
-    boardX = cx - (scale / oldScale) * (cx - boardX);
-    boardY = cy - (scale / oldScale) * (cy - boardY);
+    boardX = cx - (scale / oldScale) * (cx - boardX); boardY = cy - (scale / oldScale) * (cy - boardY);
     applyZoom(); boardLocalStyle();
   }, { passive: false });
 
-  // --- CONTROLE DE EXIBIÇÃO DA BARRA SUPERIOR ---
   function applyBarState() {
     const topHidden = localStorage.getItem('tabletop_topbar_hidden') === '1';
     const sideHidden = localStorage.getItem('tabletop_sidebar_hidden') === '1';
-    topBar.classList.toggle('collapsed', topHidden);
-    topBarToggle.textContent = topHidden ? '▼' : '▲';
-    sideToolbar.classList.toggle('collapsed', sideHidden);
-    sideToolbarToggle.textContent = sideHidden ? '◀' : '▶';
+    topBar.classList.toggle('collapsed', topHidden); topBarToggle.textContent = topHidden ? '▼' : '▲';
+    sideToolbar.classList.toggle('collapsed', sideHidden); sideToolbarToggle.textContent = sideHidden ? '◀' : '▶';
   }
   topBarToggle.addEventListener('click', () => {
-    const hidden = topBar.classList.toggle('collapsed');
-    localStorage.setItem('tabletop_topbar_hidden', hidden ? '1' : '0');
-    topBarToggle.textContent = hidden ? '▼' : '▲';
+    const h = topBar.classList.toggle('collapsed'); localStorage.setItem('tabletop_topbar_hidden', h ? '1' : '0'); topBarToggle.textContent = h ? '▼' : '▲';
   });
   sideToolbarToggle.addEventListener('click', () => {
-    const hidden = sideToolbar.classList.toggle('collapsed');
-    localStorage.setItem('tabletop_sidebar_hidden', hidden ? '1' : '0');
-    sideToolbarToggle.textContent = hidden ? '◀' : '▶';
+    const h = sideToolbar.classList.toggle('collapsed'); localStorage.setItem('tabletop_sidebar_hidden', h ? '1' : '0'); sideToolbarToggle.textContent = h ? '◀' : '▶';
   });
   applyBarState();
 
-  // --- CARREGAMENTO E SINCRONIZAÇÃO ---
-  async function loadSceneContent(sceneId) {  
-    tokenEls.forEach((el) => el.remove()); 
-    tokenEls.clear(); 
-    tokenData.clear();  
-    mapPieceEls.forEach((el) => el.remove()); 
-    mapPieceEls.clear(); 
-    mapPieceData.clear();  
-    baseMapId = null;  
-    if (!sceneId) return;  
-    
-    const { data: toks } = await sb.from('tokens').select('*').eq('scene_id', sceneId);  
-    (toks || []).forEach(upsertTokenEl);  
-    
-    const { data: pieces } = await sb.from('map_elements').select('*').eq('scene_id', sceneId).order('z');  
-    (pieces || []).forEach((p) => {    
-      if (p.is_base) baseMapId = p.id;    
-      upsertMapPieceEl(p);  
-    });  
-    
-    if (baseMapId) placeholder.style.display = 'none';  
-    else {    
-      placeholder.style.display = 'flex';    
-      placeholder.textContent = 'Importe um mapa base ou adicione peças para começar.';  
-    }
+  // --- CARREGAMENTO DE MESA E CENA ---
+  async function loadSceneContent(sceneId) {
+    tokenEls.forEach(el => el.remove()); tokenEls.clear(); tokenData.clear();
+    mapPieceEls.forEach(el => el.remove()); mapPieceEls.clear(); mapPieceData.clear();
+    baseMapId = null;
+    if (!sceneId) return;
+
+    const { data: toks } = await sb.from('tokens').select('*').eq('scene_id', sceneId);
+    (toks || []).forEach(upsertTokenEl);
+
+    const { data: pieces } = await sb.from('map_elements').select('*').eq('scene_id', sceneId).order('z');
+    (pieces || []).forEach(p => { if (p.is_base) baseMapId = p.id; upsertMapPieceEl(p); });
+
+    if (baseMapId) placeholder.style.display = 'none';
+    else { placeholder.style.display = 'flex'; placeholder.textContent = 'Importe um mapa base ou adicione peças para começar.'; }
   }
 
   function subscribeRealtimeChannels(sceneId) {
@@ -1527,17 +1347,29 @@
       }).subscribe();
   }
 
-  async function loadBoardAndTokens() {
-    const { data: boardRow } = await sb.from('board').select('*').eq('id', 1).maybeSingle();
-    currentSceneId = boardRow ? boardRow.active_scene_id : null;
+  async function enterRoom(roomId) {
+    currentRoomId = roomId;
+    lobbyOverlay.classList.add('hidden');
+    placeholder.textContent = 'Carregando mesa...';
 
+    const { data: roomData } = await sb.from('rooms').select('*').eq('id', roomId).single();
+    if (roomData) currentRoomTitle.textContent = roomData.name;
+
+    const { data: memberData } = await sb.from('room_members').select('role').eq('room_id', roomId).eq('user_id', currentUserId).maybeSingle();
+    currentRole = memberData ? memberData.role : 'jogador';
+    document.body.classList.toggle('jogador', currentRole !== 'mestre');
+    roleBadge.textContent = currentRole === 'mestre' ? 'Mestre' : 'Jogador';
+    roleBadge.classList.remove('hidden');
+    if (managePlayersBtn) managePlayersBtn.classList.toggle('hidden', currentRole !== 'mestre');
+
+    currentSceneId = roomData ? roomData.active_scene_id : null;
     await loadSceneContent(currentSceneId);
     subscribeRealtimeChannels(currentSceneId);
 
-    sb.channel('board-sync')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'board' }, async (payload) => {
-        if (!payload.new) return;
-        if (payload.new.active_scene_id !== currentSceneId || payload.new.map_url) {
+    if (roomSyncChannel) sb.removeChannel(roomSyncChannel);
+    roomSyncChannel = sb.channel('room-sync-' + roomId)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'rooms', filter: `id=eq.${roomId}` }, async (payload) => {
+        if (payload.new && payload.new.active_scene_id !== currentSceneId) {
           currentSceneId = payload.new.active_scene_id;
           await loadSceneContent(currentSceneId);
           subscribeRealtimeChannels(currentSceneId);
@@ -1546,46 +1378,80 @@
       .subscribe((status) => { if (status === 'SUBSCRIBED') connDot.classList.add('ok'); });
   }
 
-  async function refreshRoleUI() {
-    const { data: profile } = await sb.from('profiles').select('*').eq('id', currentUserId).maybeSingle();
-    currentRole = (profile && profile.role === 'mestre') ? 'mestre' : 'jogador';
-    document.body.classList.toggle('jogador', currentRole !== 'mestre');
-    roleBadge.textContent = currentRole === 'mestre' ? ('Mestre: ' + (profile.display_name || '')) : ('Jogador: ' + (profile.display_name || ''));
-    roleBadge.classList.remove('hidden');
-    if (managePlayersBtn) managePlayersBtn.classList.toggle('hidden', currentRole !== 'mestre');
+  // --- LOBBY DE MESAS ---
+  async function loadLobbyRooms() {
+    roomListContainer.innerHTML = '<div style="text-align:center; color:var(--text-dim); padding:10px;">Carregando...</div>';
+    const { data: rooms, error } = await sb.rpc('get_user_rooms', { p_user_id: currentUserId });
+    if (error) { roomListContainer.innerHTML = `<div style="color:var(--danger); font-size:12px;">${error.message}</div>`; return; }
+    
+    roomListContainer.innerHTML = '';
+    if (!rooms || rooms.length === 0) {
+      roomListContainer.innerHTML = '<div style="text-align:center; color:var(--text-dim); font-size:12px; padding:15px;">Você ainda não participa de nenhuma mesa. Crie uma ou entre com um código!</div>';
+      return;
+    }
 
-    // Atualiza elementos no Lobby
-    if (lobbyUserName) lobbyUserName.textContent = profile ? (profile.display_name || 'Usuário') : 'Usuário';
-    if (lobbyUserRole) lobbyUserRole.textContent = currentRole === 'mestre' ? '👑 Mestre' : '🧑 Jogador';
-
-    const { count } = await sb.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'mestre');
-    if (btnLobbyClaimMestre) btnLobbyClaimMestre.classList.toggle('hidden', currentRole === 'mestre' || (count || 0) > 0);
+    rooms.forEach(r => {
+      const row = document.createElement('div');
+      row.className = 'roomRow';
+      row.innerHTML = `
+        <div class="roomInfo">
+          <div class="roomName">${r.room_name}</div>
+          <div class="roomMeta">Código: <code>${r.room_code}</code> • Papel: <strong>${r.user_role}</strong></div>
+        </div>
+      `;
+      const playBtn = document.createElement('button');
+      playBtn.className = 'primary';
+      playBtn.textContent = 'Jogar';
+      playBtn.addEventListener('click', () => enterRoom(r.room_id));
+      row.appendChild(playBtn);
+      roomListContainer.appendChild(row);
+    });
   }
+
+  btnReturnLobby.addEventListener('click', () => {
+    if (roomSyncChannel) sb.removeChannel(roomSyncChannel);
+    if (tokensChannel) sb.removeChannel(tokensChannel);
+    if (mapElementsChannel) sb.removeChannel(mapElementsChannel);
+    lobbyOverlay.classList.remove('hidden');
+    loadLobbyRooms();
+  });
+
+  btnOpenCreateRoom.addEventListener('click', () => { inpNewRoomName.value = ''; createRoomOverlay.classList.remove('hidden'); });
+  btnCloseCreateRoom.addEventListener('click', () => createRoomOverlay.classList.add('hidden'));
+
+  btnConfirmCreateRoom.addEventListener('click', async () => {
+    const name = inpNewRoomName.value.trim();
+    if (!name) return;
+    const code = 'ANM-' + Math.random().toString(36).substring(2, 7).toUpperCase();
+    const { data, error } = await sb.rpc('create_room', { p_user_id: currentUserId, p_name: name, p_code: code });
+    if (error) { alert(error.message); return; }
+    createRoomOverlay.classList.add('hidden');
+    loadLobbyRooms();
+    if (data && data.length) enterRoom(data[0].id);
+  });
+
+  btnOpenJoinRoom.addEventListener('click', () => { inpRoomCode.value = ''; joinRoomError.textContent = ''; joinRoomOverlay.classList.remove('hidden'); });
+  btnCloseJoinRoom.addEventListener('click', () => joinRoomOverlay.classList.add('hidden'));
+
+  btnConfirmJoinRoom.addEventListener('click', async () => {
+    const code = inpRoomCode.value.trim().toUpperCase();
+    joinRoomError.textContent = '';
+    if (!code) return;
+    const { data, error } = await sb.rpc('join_room', { p_user_id: currentUserId, p_code: code });
+    if (error) { joinRoomError.textContent = error.message; return; }
+    joinRoomOverlay.classList.add('hidden');
+    loadLobbyRooms();
+    if (data && data.length) enterRoom(data[0].id);
+  });
 
   async function loadProfileAndEnter(userRow) {
     currentUserId = userRow.id;
     localStorage.setItem('tabletop_user_id', userRow.id);
     localStorage.setItem('tabletop_username', userRow.username || '');
-    await refreshRoleUI();
     loginOverlay.classList.add('hidden');
+    lobbyUserWelcome.textContent = `Olá, ${userRow.username || 'Aventureiro'}`;
     lobbyOverlay.classList.remove('hidden');
-  }
-
-  btnEnterTable.addEventListener('click', async () => {
-    lobbyOverlay.classList.add('hidden');
-    placeholder.textContent = 'Carregando mesa...';
-    try { await loadBoardAndTokens(); } catch (err) { placeholder.textContent = 'Erro ao carregar: ' + err.message; }
-  });
-
-  btnReturnLobby.addEventListener('click', () => {
-    lobbyOverlay.classList.remove('hidden');
-  });
-
-  if (btnLobbyClaimMestre) {
-    btnLobbyClaimMestre.addEventListener('click', async () => {
-      await sb.rpc('claim_mestre', { p_user_id: currentUserId });
-      await refreshRoleUI();
-    });
+    loadLobbyRooms();
   }
 
   btnLobbyLogout.addEventListener('click', () => {
@@ -1597,7 +1463,6 @@
   async function connect(url, key) {
     setupError.textContent = '';
     connDot.classList.remove('ok');
-    placeholder.textContent = 'Conectando ao Anomaly VTT...';
     try {
       sb = supabase.createClient(url, key);
       localStorage.setItem('tabletop_sb_url', url);
@@ -1607,7 +1472,7 @@
       const savedUserId = localStorage.getItem('tabletop_user_id');
       const savedUsername = localStorage.getItem('tabletop_username');
       if (savedUserId) {
-        const { data: profile } = await sb.from('profiles').select('id, display_name, role').eq('id', savedUserId).maybeSingle();
+        const { data: profile } = await sb.from('profiles').select('id, display_name').eq('id', savedUserId).maybeSingle();
         if (profile) await loadProfileAndEnter({ id: profile.id, username: profile.display_name || savedUsername });
         else { localStorage.removeItem('tabletop_user_id'); loginOverlay.classList.remove('hidden'); }
       } else { loginOverlay.classList.remove('hidden'); }
@@ -1630,7 +1495,7 @@
       const { data, error } = await sb.rpc('login_user', { p_username: username, p_password: password });
       if (error) throw error;
       if (!data || !data.length) { loginError.textContent = 'Usuário ou senha incorretos.'; return; }
-      await loadProfileAndEnter({ id: data[0].out_id, username: data[0].out_username, role: data[0].out_role });
+      await loadProfileAndEnter({ id: data[0].out_id, username: data[0].out_username });
     } catch (err) { loginError.textContent = err.message; }
   });
 
@@ -1642,7 +1507,7 @@
       const { data, error } = await sb.rpc('signup_user', { p_username: username, p_password: password });
       if (error) throw error;
       if (!data || !data.length) { loginError.textContent = 'Erro ao criar conta.'; return; }
-      await loadProfileAndEnter({ id: data[0].out_id, username: data[0].out_username, role: data[0].out_role });
+      await loadProfileAndEnter({ id: data[0].out_id, username: data[0].out_username });
     } catch (err) { loginError.textContent = err.message; }
   });
 
@@ -1652,13 +1517,10 @@
     setupOverlay.classList.remove('hidden');
   });
 
-  applyZoom();
-  drawGrid();
-
-  const savedUrl = localStorage.getItem('tabletop_sb_url');
-  const savedKey = localStorage.getItem('tabletop_sb_key');
+  applyZoom(); drawGrid();
+  const savedUrl = localStorage.getItem('tabletop_sb_url'), savedKey = localStorage.getItem('tabletop_sb_key');
   if (savedUrl && savedKey) connect(savedUrl, savedKey);
-  else setupOverlay.classList.remove('hidden');
+  else setupOverlay.classList.add('hidden'); // já abre no setup
 })();
 </script>
 </body>
