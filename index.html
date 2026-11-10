@@ -103,12 +103,16 @@
   #mapPiecesLayer { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
   body.map-editor-active #mapPiecesLayer { pointer-events: auto; }
 
-  /* Camada do Fog of War */
-  #fogLayer { position: absolute; left: -20000px; top: -20000px; width: 40000px; height: 40000px; pointer-events: none; z-index: 5000; }
-  body.fog-editor-active #fogLayer { pointer-events: auto; cursor: crosshair; }
-  
   #tokensLayer { position: absolute; inset: 0; z-index: 10000; pointer-events: none; }
   #tokensLayer > * { pointer-events: auto; }
+
+  /* Camada do Fog of War (Agora posicionada ACIMA de tudo, com z-index 20000) */
+  #fogLayer { position: absolute; left: -20000px; top: -20000px; width: 40000px; height: 40000px; pointer-events: none; z-index: 20000; }
+  body.fog-editor-active #fogLayer { pointer-events: auto; cursor: crosshair; }
+  
+  /* No modo editor de névoa, a névoa fica semi-transparente para o Mestre enxergar onde edita */
+  body.fog-editor-active #fogLayer polygon { fill: rgba(12, 13, 18, 0.5) !important; cursor: pointer; }
+  body.fog-editor-active #fogLayer polygon:hover { stroke: #ff5252 !important; stroke-width: 3px; }
 
   #placeholder { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
     color: var(--text-dim); font-size: 13px; text-align: center; padding: 20px; z-index: 0; gap: 10px; }
@@ -380,7 +384,7 @@
 
     <!-- Interface Alternada (Modo Editor de Névoa) -->
     <div id="fogEditorNav" class="hidden" style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
-      <span style="color:var(--accent); font-weight:600; font-size:12px;">Modo Névoa (Clique para criar polígono, duplo clique fecha)</span>
+      <span style="color:var(--accent); font-weight:600; font-size:12px;">Modo Névoa (Clique para marcar pontos, Duplo-clique fecha. Clique em uma área para apagar)</span>
       <button class="danger" id="clearFogBtn">Limpar Toda Névoa</button>
       <button class="danger" id="closeFogEditorBtn">Sair</button>
     </div>
@@ -400,8 +404,8 @@
     <div id="board">
       <div id="mapPiecesLayer"></div>
       <div id="gridLayer"></div>
-      <svg id="fogLayer"></svg>
       <div id="tokensLayer"></div>
+      <svg id="fogLayer"></svg>
     </div>
   </div>
 
@@ -563,6 +567,7 @@
   // Estado do desenho de Polígono de Névoa
   let currentFogPoints = [];
   let fogPolygonDraft = null;
+  let fogPointsDraftGroup = null;
 
   function drawGrid() {
     if (!gridConfig.enabled) { gridLayer.style.display = 'none'; return; }
@@ -715,6 +720,7 @@
     normalNav.classList.remove('hidden');
     currentFogPoints = [];
     if (fogPolygonDraft) { fogPolygonDraft.remove(); fogPolygonDraft = null; }
+    if (fogPointsDraftGroup) { fogPointsDraftGroup.remove(); fogPointsDraftGroup = null; }
     loadFogElements();
   });
 
@@ -867,7 +873,13 @@
 
   // --- CARREGAMENTO E DESENHO DO FOG OF WAR ---
   async function loadFogElements() {
+    // Mantém o grupo de rascunho se estiver desenhando, limpa o resto
+    const draftHtml = fogPointsDraftGroup ? fogPointsDraftGroup.outerHTML : '';
+    const draftPolyHtml = fogPolygonDraft ? fogPolygonDraft.outerHTML : '';
     fogLayer.innerHTML = '';
+    if (draftHtml) fogLayer.insertAdjacentHTML('beforeend', draftHtml);
+    if (draftPolyHtml) fogLayer.insertAdjacentHTML('beforeend', draftPolyHtml);
+
     if (!currentSceneId) return;
     const { data: fogs } = await sb.from('fog_elements').select('*').eq('scene_id', currentSceneId);
     (fogs || []).forEach(f => renderFogPolygon(f));
@@ -876,17 +888,17 @@
   function renderFogPolygon(fogData) {
     const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
     polygon.setAttribute('points', fogData.points);
-    polygon.setAttribute('fill', 'rgba(12, 13, 18, 0.92)');
+    // Opacidade total escura para os jogadores, semi-transparente para o mestre via CSS
+    polygon.setAttribute('fill', 'rgba(12, 13, 18, 0.98)');
     polygon.setAttribute('stroke', '#9d4edf');
-    polygon.setAttribute('stroke-width', '2');
-    polygon.style.transition = 'opacity 0.2s';
+    polygon.setAttribute('stroke-width', '1.5');
     polygon.dataset.id = fogData.id;
 
-    // Se estiver no editor de névoa, permite apagar a forma com clique direito ou duplo clique
-    polygon.addEventListener('contextmenu', async (e) => {
-      e.preventDefault();
+    // Clique direto em cima de um polígono salvo no modo névoa apaga ele individualmente
+    polygon.addEventListener('click', async (e) => {
       if (!document.body.classList.contains('fog-editor-active') || currentRole !== 'mestre') return;
-      if (confirm('Apagar esta área de névoa?')) {
+      e.stopPropagation(); // Evita adicionar ponto novo
+      if (confirm('Deseja apagar esta área específica de névoa?')) {
         await sb.from('fog_elements').delete().eq('id', fogData.id);
         loadFogElements();
       }
@@ -895,11 +907,10 @@
     fogLayer.appendChild(polygon);
   }
 
-  // Interação no Editor de Névoa (Desenhar Polígono por Cliques)
+  // Interação no Editor de Névoa (Desenhar Polígono por Cliques com Guia Visual)
   fogLayer.addEventListener('click', async (e) => {
     if (!document.body.classList.contains('fog-editor-active') || currentRole !== 'mestre') return;
     const rect = board.getBoundingClientRect();
-    // Coordenadas relativas ao tabuleiro interno (considerando o deslocamento de -20000px do fogLayer)
     const x = (e.clientX - rect.left) / scale + 20000;
     const y = (e.clientY - rect.top) / scale + 20000;
 
@@ -907,11 +918,18 @@
 
     if (!fogPolygonDraft) {
       fogPolygonDraft = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
-      fogPolygonDraft.setAttribute('fill', 'rgba(157, 78, 223, 0.3)');
-      fogPolygonDraft.setAttribute('stroke', '#9d4edf');
-      fogPolygonDraft.setAttribute('stroke-dasharray', '4');
+      fogPolygonDraft.setAttribute('fill', 'rgba(157, 78, 223, 0.25)');
+      fogPolygonDraft.setAttribute('stroke', '#e0aaff');
+      fogPolygonDraft.setAttribute('stroke-width', '2');
+      fogPolygonDraft.setAttribute('stroke-dasharray', '5,5');
       fogLayer.appendChild(fogPolygonDraft);
     }
+
+    if (!fogPointsDraftGroup) {
+      fogPointsDraftGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      fogLayer.appendChild(fogPointsDraftGroup);
+    }
+
     updateDraftPolygon();
   });
 
@@ -919,16 +937,20 @@
   fogLayer.addEventListener('dblclick', async (e) => {
     if (!document.body.classList.contains('fog-editor-active') || currentRole !== 'mestre') return;
     e.preventDefault();
+    e.stopPropagation();
+    
     if (currentFogPoints.length < 3) {
       alert('Um polígono precisa de pelo menos 3 pontos.');
       currentFogPoints = [];
       if (fogPolygonDraft) { fogPolygonDraft.remove(); fogPolygonDraft = null; }
+      if (fogPointsDraftGroup) { fogPointsDraftGroup.remove(); fogPointsDraftGroup = null; }
       return;
     }
 
     const pointsStr = currentFogPoints.map(p => `${p.x},${p.y}`).join(' ');
     currentFogPoints = [];
     if (fogPolygonDraft) { fogPolygonDraft.remove(); fogPolygonDraft = null; }
+    if (fogPointsDraftGroup) { fogPointsDraftGroup.remove(); fogPointsDraftGroup = null; }
 
     // Salvar no Supabase
     await sb.from('fog_elements').insert({
@@ -940,9 +962,22 @@
   });
 
   function updateDraftPolygon() {
-    if (!fogPolygonDraft) return;
+    if (!fogPolygonDraft || !fogPointsDraftGroup) return;
     const pointsStr = currentFogPoints.map(p => `${p.x},${p.y}`).join(' ');
     fogPolygonDraft.setAttribute('points', pointsStr);
+
+    // Desenha os pontos de marcação visual e linhas guia
+    fogPointsDraftGroup.innerHTML = '';
+    currentFogPoints.forEach((p, idx) => {
+      const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      circle.setAttribute('cx', p.x);
+      circle.setAttribute('cy', p.y);
+      circle.setAttribute('r', '5');
+      circle.setAttribute('fill', idx === 0 ? '#00e676' : '#ff5252');
+      circle.setAttribute('stroke', '#fff');
+      circle.setAttribute('stroke-width', '1.5');
+      fogPointsDraftGroup.appendChild(circle);
+    });
   }
 
   // --- DRAG, RESIZE, ROTATE ---
@@ -1370,7 +1405,7 @@
 
   boardWrap.addEventListener('dragstart', (e) => e.preventDefault());
   boardWrap.addEventListener('pointerdown', (e) => {
-    if (document.body.classList.contains('fog-editor-active')) return; // Permite desenhar fog
+    if (document.body.classList.contains('fog-editor-active')) return; 
     if (currentTool === 'select' && (e.target.closest('.token') || (e.target.closest('.mapPiece') && document.body.classList.contains('map-editor-active')))) return;
     deselectAll();
     boardWrap.setPointerCapture(e.pointerId);
@@ -1641,7 +1676,7 @@
   btnSignup.addEventListener('click', async () => {
     loginError.textContent = '';
     const username = inpUsername.value.trim(), password = inpPassword.value;
-    if (-!username || !password) return;
+    if (!username || !password) return;
     try {
       const { data, error } = await sb.rpc('signup_user', { p_username: username, p_password: password });
       if (error) throw error;
