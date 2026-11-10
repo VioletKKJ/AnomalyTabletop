@@ -102,6 +102,10 @@
   
   #mapPiecesLayer { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
   body.map-editor-active #mapPiecesLayer { pointer-events: auto; }
+
+  /* Camada do Fog of War */
+  #fogLayer { position: absolute; left: -20000px; top: -20000px; width: 40000px; height: 40000px; pointer-events: none; z-index: 5000; }
+  body.fog-editor-active #fogLayer { pointer-events: auto; cursor: crosshair; }
   
   #tokensLayer { position: absolute; inset: 0; z-index: 10000; pointer-events: none; }
   #tokensLayer > * { pointer-events: auto; }
@@ -343,6 +347,7 @@
     <!-- Interface Padrão -->
     <div id="normalNav" style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
       <button class="mestre-only primary" id="openMapEditorBtn" title="Editor de Mapa">Editor</button>
+      <button class="mestre-only primary" id="openFogEditorBtn" title="Editor de Névoa">Névoa</button>
       
       <label class="btn mestre-only primary" title="Adicionar Token">
         + Token
@@ -361,19 +366,23 @@
 
     <!-- Interface Alternada (Modo Editor de Mapa) -->
     <div id="editorNav" class="hidden" style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
-      <span style="color:var(--accent); font-weight:600; font-size:12px;">Modo Editor</span>
-      
+      <span style="color:var(--accent); font-weight:600; font-size:12px;">Modo Editor de Mapa</span>
       <label class="btn primary">
         Trocar Mapa
         <input type="file" id="mapInput" accept="image/png,image/jpeg,image/webp">
       </label>
-
       <label class="btn primary">
         + Peça
         <input type="file" id="mapPieceInput" accept="image/png,image/jpeg,image/webp">
       </label>
-
       <button class="danger" id="closeMapEditorBtn">Sair</button>
+    </div>
+
+    <!-- Interface Alternada (Modo Editor de Névoa) -->
+    <div id="fogEditorNav" class="hidden" style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+      <span style="color:var(--accent); font-weight:600; font-size:12px;">Modo Névoa (Clique para criar polígono, duplo clique fecha)</span>
+      <button class="danger" id="clearFogBtn">Limpar Toda Névoa</button>
+      <button class="danger" id="closeFogEditorBtn">Sair</button>
     </div>
   </header>
   <button id="topBarToggle" title="Esconder/mostrar barra">▲</button>
@@ -391,6 +400,7 @@
     <div id="board">
       <div id="mapPiecesLayer"></div>
       <div id="gridLayer"></div>
+      <svg id="fogLayer"></svg>
       <div id="tokensLayer"></div>
     </div>
   </div>
@@ -419,6 +429,7 @@
   const boardWrap = document.getElementById('boardWrap');
   const board = document.getElementById('board');
   const gridLayer = document.getElementById('gridLayer');
+  const fogLayer = document.getElementById('fogLayer');
   const mapPiecesLayer = document.getElementById('mapPiecesLayer');
   const tokensLayer = document.getElementById('tokensLayer');
   const placeholder = document.getElementById('placeholder');
@@ -426,8 +437,12 @@
   
   const normalNav = document.getElementById('normalNav');
   const editorNav = document.getElementById('editorNav');
+  const fogEditorNav = document.getElementById('fogEditorNav');
   const openMapEditorBtn = document.getElementById('openMapEditorBtn');
   const closeMapEditorBtn = document.getElementById('closeMapEditorBtn');
+  const openFogEditorBtn = document.getElementById('openFogEditorBtn');
+  const closeFogEditorBtn = document.getElementById('closeFogEditorBtn');
+  const clearFogBtn = document.getElementById('clearFogBtn');
   
   const mapInput = document.getElementById('mapInput');
   const mapPieceInput = document.getElementById('mapPieceInput');
@@ -534,6 +549,7 @@
   let currentSceneId = null;
   let tokensChannel = null;
   let mapElementsChannel = null;
+  let fogElementsChannel = null;
   let roomSyncChannel = null;
   let scale = 1;
 
@@ -543,6 +559,10 @@
   let mapPieceData = new Map();
   let aspectRatios = new Map();
   let baseMapId = null;
+
+  // Estado do desenho de Polígono de Névoa
+  let currentFogPoints = [];
+  let fogPolygonDraft = null;
 
   function drawGrid() {
     if (!gridConfig.enabled) { gridLayer.style.display = 'none'; return; }
@@ -668,6 +688,7 @@
     callback(croppedDataURL);
   });
 
+  // Gerenciamento de Editores (Mapa vs Névoa)
   openMapEditorBtn.addEventListener('click', () => {
     document.body.classList.add('map-editor-active');
     normalNav.classList.add('hidden');
@@ -679,6 +700,28 @@
     editorNav.classList.add('hidden');
     normalNav.classList.remove('hidden');
     deselectAll();
+  });
+
+  openFogEditorBtn.addEventListener('click', () => {
+    document.body.classList.add('fog-editor-active');
+    normalNav.classList.add('hidden');
+    fogEditorNav.classList.remove('hidden');
+    currentFogPoints = [];
+  });
+
+  closeFogEditorBtn.addEventListener('click', () => {
+    document.body.classList.remove('fog-editor-active');
+    fogEditorNav.classList.add('hidden');
+    normalNav.classList.remove('hidden');
+    currentFogPoints = [];
+    if (fogPolygonDraft) { fogPolygonDraft.remove(); fogPolygonDraft = null; }
+    loadFogElements();
+  });
+
+  clearFogBtn.addEventListener('click', async () => {
+    if (!confirm('Deseja apagar toda a névoa desta cena?')) return;
+    await sb.from('fog_elements').delete().eq('scene_id', currentSceneId);
+    loadFogElements();
   });
 
   function applyZoom() { board.style.transform = `scale(${scale})`; }
@@ -822,6 +865,87 @@
     if (el) { el.remove(); mapPieceEls.delete(id); mapPieceData.delete(id); }
   }
 
+  // --- CARREGAMENTO E DESENHO DO FOG OF WAR ---
+  async function loadFogElements() {
+    fogLayer.innerHTML = '';
+    if (!currentSceneId) return;
+    const { data: fogs } = await sb.from('fog_elements').select('*').eq('scene_id', currentSceneId);
+    (fogs || []).forEach(f => renderFogPolygon(f));
+  }
+
+  function renderFogPolygon(fogData) {
+    const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+    polygon.setAttribute('points', fogData.points);
+    polygon.setAttribute('fill', 'rgba(12, 13, 18, 0.92)');
+    polygon.setAttribute('stroke', '#9d4edf');
+    polygon.setAttribute('stroke-width', '2');
+    polygon.style.transition = 'opacity 0.2s';
+    polygon.dataset.id = fogData.id;
+
+    // Se estiver no editor de névoa, permite apagar a forma com clique direito ou duplo clique
+    polygon.addEventListener('contextmenu', async (e) => {
+      e.preventDefault();
+      if (!document.body.classList.contains('fog-editor-active') || currentRole !== 'mestre') return;
+      if (confirm('Apagar esta área de névoa?')) {
+        await sb.from('fog_elements').delete().eq('id', fogData.id);
+        loadFogElements();
+      }
+    });
+
+    fogLayer.appendChild(polygon);
+  }
+
+  // Interação no Editor de Névoa (Desenhar Polígono por Cliques)
+  fogLayer.addEventListener('click', async (e) => {
+    if (!document.body.classList.contains('fog-editor-active') || currentRole !== 'mestre') return;
+    const rect = board.getBoundingClientRect();
+    // Coordenadas relativas ao tabuleiro interno (considerando o deslocamento de -20000px do fogLayer)
+    const x = (e.clientX - rect.left) / scale + 20000;
+    const y = (e.clientY - rect.top) / scale + 20000;
+
+    currentFogPoints.push({ x, y });
+
+    if (!fogPolygonDraft) {
+      fogPolygonDraft = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+      fogPolygonDraft.setAttribute('fill', 'rgba(157, 78, 223, 0.3)');
+      fogPolygonDraft.setAttribute('stroke', '#9d4edf');
+      fogPolygonDraft.setAttribute('stroke-dasharray', '4');
+      fogLayer.appendChild(fogPolygonDraft);
+    }
+    updateDraftPolygon();
+  });
+
+  // Fechar polígono com Duplo Clique
+  fogLayer.addEventListener('dblclick', async (e) => {
+    if (!document.body.classList.contains('fog-editor-active') || currentRole !== 'mestre') return;
+    e.preventDefault();
+    if (currentFogPoints.length < 3) {
+      alert('Um polígono precisa de pelo menos 3 pontos.');
+      currentFogPoints = [];
+      if (fogPolygonDraft) { fogPolygonDraft.remove(); fogPolygonDraft = null; }
+      return;
+    }
+
+    const pointsStr = currentFogPoints.map(p => `${p.x},${p.y}`).join(' ');
+    currentFogPoints = [];
+    if (fogPolygonDraft) { fogPolygonDraft.remove(); fogPolygonDraft = null; }
+
+    // Salvar no Supabase
+    await sb.from('fog_elements').insert({
+      scene_id: currentSceneId,
+      points: pointsStr,
+      z: Date.now()
+    });
+    loadFogElements();
+  });
+
+  function updateDraftPolygon() {
+    if (!fogPolygonDraft) return;
+    const pointsStr = currentFogPoints.map(p => `${p.x},${p.y}`).join(' ');
+    fogPolygonDraft.setAttribute('points', pointsStr);
+  }
+
+  // --- DRAG, RESIZE, ROTATE ---
   function attachDrag(el, itemId, handle, type) {
     let dragging = false, startX, startY, origX, origY, lastSent = 0, moved = false, longPressTimer = null;
 
@@ -1096,132 +1220,53 @@
     } catch (err) { alert(err.message); }
   });
 
-mapPieceInput.addEventListener('change', async (e) => {
-    const file = e.target.files[0];
-    mapPieceInput.value = '';
+  mapPieceInput.addEventListener('change', async (e) => {
+    const file = e.target.files[0]; mapPieceInput.value = '';
     if (!file) return;
     try {
       const raw = await fileToDataURL(file);
       openCropModal(raw, async (croppedDataURL) => {
-        try {
-          const small = await resizeDataURL(croppedDataURL, 2048, 'image/png', 0.95);
-          const url = await uploadImage(small, 'map_pieces');
-          
-          const tempId = 'temp-' + Date.now();
-          const optimisticPiece = {
-            id: tempId,
-            scene_id: currentSceneId,
-            src_url: url,
-            x: 40,
-            y: 40,
-            size: 256,
-            z: Date.now(),
-            rotation: 0,
-            flip_x: false,
-            is_base: false
-          };
-          upsertMapPieceEl(optimisticPiece);
-
-          const { data, error } = await sb.from('map_elements').insert({
-            scene_id: currentSceneId,
-            src_url: url,
-            x: 40,
-            y: 40,
-            size: 256,
-            z: Date.now(),
-            rotation: 0,
-            flip_x: false,
-            is_base: false
-          }).select();
-          if (error) throw error;
-
-          removeMapPieceEl(tempId);
-          if (data && data.length) {
-            upsertMapPieceEl(data[0]);
-          }
-        } catch (err) { alert('Erro ao adicionar peça de mapa: ' + err.message); }
+        const small = await resizeDataURL(croppedDataURL, 2048, 'image/png', 0.95);
+        const url = await uploadImage(small, 'map_pieces');
+        const tempId = 'temp-' + Date.now();
+        upsertMapPieceEl({ id: tempId, scene_id: currentSceneId, src_url: url, x: 40, y: 40, size: 256, z: Date.now(), rotation: 0, flip_x: false });
+        const { data } = await sb.rpc('add_map_element', { p_user_id: currentUserId, p_src_url: url, p_x: 40, p_y: 40, p_size: 256, p_z: Date.now() });
+        removeMapPieceEl(tempId);
+        if (data && data.length) upsertMapPieceEl(data[0]);
       });
-    } catch (err) { alert('Erro ao carregar imagem: ' + err.message); }
+    } catch (err) { alert(err.message); }
   });
 
-tokenInput.addEventListener('change', async (e) => {
-    const file = e.target.files[0];
-    tokenInput.value = '';
+  tokenInput.addEventListener('change', async (e) => {
+    const file = e.target.files[0]; tokenInput.value = '';
     if (!file) return;
     try {
       const raw = await fileToDataURL(file);
       openCropModal(raw, async (croppedDataURL) => {
-        try {
-          const small = await resizeDataURL(croppedDataURL, 1024, 'image/png', 0.95);
-          const url = await uploadImage(small, 'tokens');
-          
-          const tempId = 'temp-' + Date.now();
-          const optimisticToken = {
-            id: tempId,
-            scene_id: currentSceneId,
-            src_url: url,
-            x: 40,
-            y: 40,
-            size: 96,
-            z: Date.now(),
-            rotation: 0,
-            flip_x: false,
-            active_state: 0,
-            states: []
-          };
-          upsertTokenEl(optimisticToken);
-
-          const { data, error } = await sb.from('tokens').insert({
-            scene_id: currentSceneId,
-            src_url: url,
-            x: 40,
-            y: 40,
-            size: 96,
-            z: Date.now(),
-            rotation: 0,
-            flip_x: false,
-            active_state: 0,
-            states: []
-          }).select();
-          if (error) throw error;
-
-          removeTokenEl(tempId);
-          if (data && data.length) {
-            upsertTokenEl(data[0]);
-          }
-        } catch (err) { alert('Erro ao adicionar token: ' + err.message); }
+        const small = await resizeDataURL(croppedDataURL, 1024, 'image/png', 0.95);
+        const url = await uploadImage(small, 'tokens');
+        const tempId = 'temp-' + Date.now();
+        upsertTokenEl({ id: tempId, scene_id: currentSceneId, src_url: url, x: 40, y: 40, size: 96, z: Date.now(), rotation: 0, flip_x: false, active_state: 0, states: [] });
+        const { data } = await sb.rpc('add_token', { p_user_id: currentUserId, p_src_url: url, p_x: 40, p_y: 40, p_size: 96, p_z: Date.now() });
+        removeTokenEl(tempId);
+        if (data && data.length) upsertTokenEl(data[0]);
       });
-    } catch (err) { alert('Erro ao carregar imagem: ' + err.message); }
+    } catch (err) { alert(err.message); }
   });
 
-mapInput.addEventListener('change', async (e) => {
-    const file = e.target.files[0];
-    mapInput.value = '';
+  mapInput.addEventListener('change', async (e) => {
+    const file = e.target.files[0]; mapInput.value = '';
     if (!file) return;
-    placeholder.style.display = 'flex';
-    placeholder.textContent = 'Enviando mapa base...';
+    placeholder.style.display = 'flex'; placeholder.textContent = 'Enviando mapa base...';
     try {
       const raw = await fileToDataURL(file);
       const resized = await resizeDataURL(raw, 4096, 'image/png', 0.95);
       const url = await uploadImage(resized, 'maps');
-      
       await sb.from('scenes').update({ map_url: url }).eq('id', currentSceneId);
-      const { data, error } = await sb.from('map_elements').insert({
-        scene_id: currentSceneId,
-        src_url: url,
-        x: 0,
-        y: 0,
-        size: 2048,
-        z: 0,
-        rotation: 0,
-        flip_x: false,
-        is_base: true
+      const { data } = await sb.from('map_elements').insert({
+        scene_id: currentSceneId, src_url: url, x: 0, y: 0, size: 2048, z: 0, rotation: 0, flip_x: false, is_base: true
       }).select();
-      if (error) throw error;
-      if (data && data.length) {
-        baseMapId = data[0].id;
-        upsertMapPieceEl(data[0]);
-      }
+      if (data && data.length) { baseMapId = data[0].id; upsertMapPieceEl(data[0]); }
       placeholder.style.display = 'none';
     } catch (err) { alert(err.message); placeholder.style.display = 'none'; }
   });
@@ -1325,6 +1370,7 @@ mapInput.addEventListener('change', async (e) => {
 
   boardWrap.addEventListener('dragstart', (e) => e.preventDefault());
   boardWrap.addEventListener('pointerdown', (e) => {
+    if (document.body.classList.contains('fog-editor-active')) return; // Permite desenhar fog
     if (currentTool === 'select' && (e.target.closest('.token') || (e.target.closest('.mapPiece') && document.body.classList.contains('map-editor-active')))) return;
     deselectAll();
     boardWrap.setPointerCapture(e.pointerId);
@@ -1337,6 +1383,7 @@ mapInput.addEventListener('change', async (e) => {
   });
 
   boardWrap.addEventListener('pointermove', (e) => {
+    if (document.body.classList.contains('fog-editor-active')) return;
     if (!activePointers.has(e.pointerId)) return;
     activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (activePointers.size === 1) {
@@ -1402,6 +1449,8 @@ mapInput.addEventListener('change', async (e) => {
     const { data: pieces } = await sb.from('map_elements').select('*').eq('scene_id', sceneId).order('z');
     (pieces || []).forEach(p => { if (p.is_base) baseMapId = p.id; upsertMapPieceEl(p); });
 
+    await loadFogElements();
+
     if (baseMapId) placeholder.style.display = 'none';
     else { placeholder.style.display = 'flex'; placeholder.textContent = 'Importe um mapa base ou adicione peças para começar.'; }
   }
@@ -1409,6 +1458,7 @@ mapInput.addEventListener('change', async (e) => {
   function subscribeRealtimeChannels(sceneId) {
     if (tokensChannel) sb.removeChannel(tokensChannel);
     if (mapElementsChannel) sb.removeChannel(mapElementsChannel);
+    if (fogElementsChannel) sb.removeChannel(fogElementsChannel);
     if (!sceneId) return;
 
     tokensChannel = sb.channel('tokens-' + sceneId)
@@ -1427,6 +1477,11 @@ mapInput.addEventListener('change', async (e) => {
         if (p.new && p.new.is_base && p.new.scene_id === sceneId) baseMapId = p.new.id;
         if (p.new && p.new.scene_id === sceneId) upsertMapPieceEl(p.new);
       }).subscribe();
+
+    fogElementsChannel = sb.channel('fog-elements-' + sceneId)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'fog_elements' }, () => {
+        loadFogElements();
+      }).subscribe();
   }
 
   async function enterRoom(roomId) {
@@ -1443,6 +1498,7 @@ mapInput.addEventListener('change', async (e) => {
     roleBadge.textContent = currentRole === 'mestre' ? 'Mestre' : 'Jogador';
     roleBadge.classList.remove('hidden');
     if (managePlayersBtn) managePlayersBtn.classList.toggle('hidden', currentRole !== 'mestre');
+    if (openFogEditorBtn) openFogEditorBtn.classList.toggle('hidden', currentRole !== 'mestre');
 
     currentSceneId = roomData ? roomData.active_scene_id : null;
     await loadSceneContent(currentSceneId);
@@ -1494,6 +1550,7 @@ mapInput.addEventListener('change', async (e) => {
     if (roomSyncChannel) sb.removeChannel(roomSyncChannel);
     if (tokensChannel) sb.removeChannel(tokensChannel);
     if (mapElementsChannel) sb.removeChannel(mapElementsChannel);
+    if (fogElementsChannel) sb.removeChannel(fogElementsChannel);
     lobbyOverlay.classList.remove('hidden');
     loadLobbyRooms();
   });
@@ -1584,7 +1641,7 @@ mapInput.addEventListener('change', async (e) => {
   btnSignup.addEventListener('click', async () => {
     loginError.textContent = '';
     const username = inpUsername.value.trim(), password = inpPassword.value;
-    if (!username || !password) return;
+    if (-!username || !password) return;
     try {
       const { data, error } = await sb.rpc('signup_user', { p_username: username, p_password: password });
       if (error) throw error;
