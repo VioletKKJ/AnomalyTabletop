@@ -28,52 +28,52 @@
   * { box-sizing: border-box; user-select: none; -webkit-user-select: none; }
   .hidden { display: none !important; }
   html, body { height: 100%; margin: 0; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text);
-    overscroll-behavior: none; touch-action: none; }
+    overscroll-behavior: none; touch-action: none; overflow: hidden; }
   body { position: relative; }
 
-  /* Barra Superior */
-  #topBar { position: fixed; top: env(safe-area-inset-top, 0px); left: 0; right: 0; z-index: 30;
-    padding: 8px 16px; background: rgba(26, 28, 36, 0.9); border-bottom: 1px solid var(--panel-border);
-    backdrop-filter: blur(8px); display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
-    transition: transform .25s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
-  #topBar.collapsed { transform: translateY(-100%); }
+  /* Barra Superior Flutuante Minimalista */
+  #topBar { position: fixed; top: max(12px, env(safe-area-inset-top, 12px)); left: 50%; transform: translateX(-50%) translateY(0); z-index: 30;
+    padding: 8px 14px; background: rgba(26, 28, 36, 0.85); border: 1px solid var(--panel-border);
+    backdrop-filter: blur(12px); display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: center;
+    border-radius: 14px; transition: transform .25s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 8px 32px rgba(0,0,0,0.6); max-width: 95vw; }
+  #topBar.collapsed { transform: translateX(-50%) translateY(calc(-100% - 20px)); }
   
-  .brandTitle { display: flex; align-items: center; gap: 8px; margin-right: 8px; }
-  .brandTitle h1 { font-size: 16px; margin: 0; font-weight: 700; letter-spacing: 0.5px;
+  .brandTitle { display: flex; align-items: center; gap: 6px; margin-right: 4px; padding-right: 8px; border-right: 1px solid var(--panel-border); }
+  .brandTitle h1 { font-size: 14px; margin: 0; font-weight: 700; letter-spacing: 0.5px;
     background: linear-gradient(135deg, #e0aaff, #9d4edf); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
 
-  #topBarToggle { position: fixed; top: env(safe-area-inset-top, 0px); left: 50%; transform: translateX(-50%);
+  #topBarToggle { position: fixed; top: max(4px, env(safe-area-inset-top, 4px)); left: 50%; transform: translateX(-50%);
     z-index: 31; background: var(--panel); border: 1px solid var(--panel-border); border-top: none;
-    border-radius: 0 0 10px 10px; padding: 4px 16px; color: var(--accent); cursor: pointer; font-size: 11px;
+    border-radius: 0 0 10px 10px; padding: 2px 16px; color: var(--accent); cursor: pointer; font-size: 10px;
     box-shadow: 0 4px 10px rgba(0,0,0,0.3); transition: background .2s, color .2s; }
   #topBarToggle:hover { background: var(--panel-border); color: #fff; }
   #topBar.collapsed ~ #topBarToggle { top: 0; }
 
   /* Barra Lateral de Ferramentas */
   #sideToolbar { position: fixed; right: 12px; top: 50%; transform: translateY(-50%); z-index: 30;
-    background: rgba(26, 28, 36, 0.9); border: 1px solid var(--panel-border);
-    backdrop-filter: blur(8px); border-radius: 12px; padding: 8px 6px; display: flex; flex-direction: column; gap: 8px;
+    background: rgba(26, 28, 36, 0.85); border: 1px solid var(--panel-border);
+    backdrop-filter: blur(12px); border-radius: 12px; padding: 6px; display: flex; flex-direction: column; gap: 6px;
     align-items: center; transition: transform .25s ease; max-height: 80vh; overflow-y: auto;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.4); }
+    box-shadow: 0 8px 30px rgba(0,0,0,0.5); }
   #sideToolbar.collapsed { transform: translateY(-50%) translateX(calc(100% + 20px)); }
-  #sideToolbar button, #sideToolbar label.btn { width: 44px; height: 44px; padding: 0; justify-content: center; font-size: 18px; border-radius: 10px; }
+  #sideToolbar button, #sideToolbar label.btn { width: 40px; height: 40px; padding: 0; justify-content: center; font-size: 16px; border-radius: 8px; }
   #sideToolbar hr { width: 100%; border: none; border-top: 1px solid var(--panel-border); margin: 2px 0; }
   #sideToolbar .toolBtn.active { background: var(--accent-gradient); color: var(--accent-text); box-shadow: 0 0 12px rgba(157, 78, 223, 0.5); }
 
-  #sideToolbarToggle { position: fixed; right: 0; top: calc(50% - 90px); z-index: 31;
+  #sideToolbarToggle { position: fixed; right: 0; top: calc(50% - 80px); z-index: 31;
     background: var(--panel); border: 1px solid var(--panel-border); border-right: none;
-    border-radius: 10px 0 0 10px; padding: 12px 4px; color: var(--accent); cursor: pointer; font-size: 11px; }
+    border-radius: 10px 0 0 10px; padding: 10px 4px; color: var(--accent); cursor: pointer; font-size: 10px; }
   #sideToolbar.collapsed ~ #sideToolbarToggle { right: 0; }
 
-  #connDot { width: 8px; height: 8px; border-radius: 50%; background: var(--danger); box-shadow: 0 0 8px var(--danger); transition: background .3s; }
-  #connDot.ok { background: var(--ok); box-shadow: 0 0 8px var(--ok); }
+  #connDot { width: 7px; height: 7px; border-radius: 50%; background: var(--danger); box-shadow: 0 0 6px var(--danger); transition: background .3s; flex-shrink: 0; }
+  #connDot.ok { background: var(--ok); box-shadow: 0 0 6px var(--ok); }
 
   button, label.btn { background: var(--panel-border); color: var(--text); border: 1px solid transparent; border-radius: 8px;
-    padding: 7px 14px; font-size: 13px; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
+    padding: 6px 10px; font-size: 12px; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; white-space: nowrap;
     transition: all .2s ease; }
   button:hover, label.btn:hover { background: #3a3e54; border-color: rgba(157, 78, 223, 0.3); }
-  button.primary, label.btn.primary { background: var(--accent-gradient); color: var(--accent-text); border: none; box-shadow: 0 2px 10px rgba(123, 44, 191, 0.4); }
-  button.primary:hover, label.btn.primary:hover { opacity: 0.95; transform: translateY(-1px); box-shadow: 0 4px 14px rgba(157, 78, 223, 0.6); }
+  button.primary, label.btn.primary { background: var(--accent-gradient); color: var(--accent-text); border: none; box-shadow: 0 2px 8px rgba(123, 44, 191, 0.4); }
+  button.primary:hover, label.btn.primary:hover { opacity: 0.95; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(157, 78, 223, 0.6); }
   button.danger { background: rgba(255, 82, 82, 0.15); color: var(--danger); border: 1px solid rgba(255, 82, 82, 0.3); }
   button.danger:hover { background: var(--danger); color: #fff; }
   input[type=file] { display: none; }
@@ -92,8 +92,8 @@
   #tokensLayer > * { pointer-events: auto; }
 
   #placeholder { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
-    color: var(--text-dim); font-size: 14px; text-align: center; padding: 20px; z-index: 0; gap: 12px; }
-  #placeholder::before { content: "🌌"; font-size: 40px; opacity: 0.7; }
+    color: var(--text-dim); font-size: 13px; text-align: center; padding: 20px; z-index: 0; gap: 10px; }
+  #placeholder::before { content: "🌌"; font-size: 36px; opacity: 0.7; }
   
   .token { position: absolute; touch-action: none; cursor: grab; user-select: none; -webkit-user-drag: none; will-change: left, top; }
   .token.dragging { opacity: .85; filter: drop-shadow(0 8px 16px rgba(0,0,0,0.6)); }
@@ -127,10 +127,6 @@
     background-position: center; background-repeat: no-repeat; border: 2px solid var(--panel-border); cursor: pointer; transition: transform .15s; }
   #contextMenu .stateThumb:hover { transform: scale(1.08); }
   #contextMenu .stateThumb.active { border-color: var(--accent); box-shadow: 0 0 8px rgba(157, 78, 223, 0.6); }
-  
-  footer { position: fixed; left: 0; right: 0; bottom: env(safe-area-inset-bottom, 0px); z-index: 20;
-    padding: 6px 14px; font-size: 11px; color: var(--text-dim); background: rgba(18, 19, 24, 0.8);
-    backdrop-filter: blur(6px); pointer-events: none; border-top: 1px solid rgba(255,255,255,0.03); display: flex; justify-content: space-between; }
 
   #setupOverlay, #loginOverlay, #cropOverlay, #playersOverlay, #scenesOverlay, #gridOverlay {
     position: fixed; inset: 0; background: rgba(10, 11, 15, 0.8); backdrop-filter: blur(8px); display: flex;
@@ -148,7 +144,7 @@
   
   .row { display: flex; gap: 10px; margin-top: 12px; }
   .row button { flex: 1; justify-content: center; }
-  #roleBadge { font-size: 12px; color: #e0aaff; padding: 4px 10px; background: rgba(157, 78, 223, 0.15); border: 1px solid rgba(157, 78, 223, 0.3); border-radius: 20px; font-weight: 600; }
+  #roleBadge { font-size: 11px; color: #e0aaff; padding: 3px 8px; background: rgba(157, 78, 223, 0.15); border: 1px solid rgba(157, 78, 223, 0.3); border-radius: 20px; font-weight: 600; }
   body.jogador .mestre-only { display: none !important; }
 
   #cropContainer { width: 100%; max-height: 350px; min-height: 200px; margin: 12px 0; background: #000;
@@ -182,8 +178,8 @@
   <!-- Login / Cadastro -->
   <div id="loginOverlay" class="hidden">
     <div class="card">
-      <h2>Entrar no Anomaly VTT</h2>
-      <p>Escolha seu nome de usuário e senha.</p>
+      <h2>Anomaly VTT</h2>
+      <p>Entre com sua conta para acessar a mesa.</p>
       <label>Usuário</label>
       <input id="inpUsername" placeholder="seu-nome" autocomplete="username">
       <label>Senha</label>
@@ -206,7 +202,7 @@
       </div>
       <div class="row">
         <button id="btnCropCancel">Cancelar</button>
-        <button class="primary" id="btnCropConfirm">✂️ Confirmar Recorte</button>
+        <button class="primary" id="btnCropConfirm">Confirmar</button>
       </div>
     </div>
   </div>
@@ -214,11 +210,11 @@
   <!-- Painel de Cenas -->
   <div id="scenesOverlay" class="hidden">
     <div class="card">
-      <h2>🎬 Gerenciador de Cenas</h2>
+      <h2>Cenas</h2>
       <p>Alterne ou adicione novas áreas de jogo.</p>
       <div id="scenesList"></div>
       <div class="row" style="margin-top:12px;">
-        <button class="primary" id="newSceneBtn">➕ Nova cena</button>
+        <button class="primary" id="newSceneBtn">Nova cena</button>
         <input type="file" id="newSceneInput" accept="image/png,image/jpeg,image/webp" class="hidden">
       </div>
       <button id="closeScenesBtn" style="width:100%; margin-top:12px;">Fechar</button>
@@ -228,8 +224,8 @@
   <!-- Painel de Jogadores -->
   <div id="playersOverlay" class="hidden">
     <div class="card">
-      <h2>👥 Jogadores da Mesa</h2>
-      <p>Gerencie papéis e permissões.</p>
+      <h2>Jogadores</h2>
+      <p>Gerencie papéis e permissões da mesa.</p>
       <div id="playersList"></div>
       <button id="closePlayersBtn" style="width:100%; margin-top:12px;">Fechar</button>
     </div>
@@ -238,8 +234,8 @@
   <!-- Painel de Configuração do Grid -->
   <div id="gridOverlay" class="hidden">
     <div class="card">
-      <h2>📐 Configurar Grid</h2>
-      <p>Personalize o estilo visual do grid do tabuleiro.</p>
+      <h2>Configurar Grid</h2>
+      <p>Personalize as propriedades do grid do tabuleiro.</p>
       
       <label>Exibir Grid</label>
       <select id="gridEnabled">
@@ -260,10 +256,10 @@
       <label>Cor das Linhas</label>
       <input type="color" id="gridColor" value="#9d4edf">
 
-      <label>Opacidade das Linhas (<span id="gridOpacityVal">0.4</span>)</label>
+      <label>Opacidade (<span id="gridOpacityVal">0.4</span>)</label>
       <input type="range" id="gridOpacity" min="0.05" max="1" step="0.05" value="0.4">
 
-      <label>Espessura da Linha (px)</label>
+      <label>Espessura (px)</label>
       <input type="range" id="gridLineWidth" min="1" max="5" value="1">
       <span id="gridLineWidthVal" style="font-size:11px; color:var(--text-dim);">1px</span>
 
@@ -273,49 +269,49 @@
     </div>
   </div>
 
-  <!-- Barra Superior -->
+  <!-- Barra Superior Flutuante Minimalista -->
   <header id="topBar">
     <div class="brandTitle">
       <span id="connDot" title="Status da conexão"></span>
-      <h1>Anomaly VTT</h1>
+      <h1>Anomaly</h1>
     </div>
     <span id="roleBadge" class="hidden"></span>
 
     <!-- Interface Padrão -->
-    <div id="normalNav" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-left:auto;">
-      <button class="mestre-only primary" id="openMapEditorBtn">🗺️ Editor de Mapa</button>
+    <div id="normalNav" style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+      <button class="mestre-only primary" id="openMapEditorBtn" title="Editor de Mapa">Editor</button>
       
-      <label class="btn mestre-only" title="Adicionar token">
-        🧙 Token
+      <label class="btn mestre-only primary" title="Adicionar Token">
+        + Token
         <input type="file" id="tokenInput" accept="image/png,image/jpeg,image/webp">
       </label>
 
-      <button id="zoomOut" title="Menos zoom">−</button>
-      <button id="zoomIn" title="Mais zoom">+</button>
-      <button id="gridBtn" class="mestre-only" title="Configurar Grid">📐 Grid</button>
-      <button id="scenesBtn" class="mestre-only">🎬 Cenas</button>
-      <button id="managePlayersBtn" class="mestre-only hidden">👥 Jogadores</button>
-      <button id="claimMestreBtn" class="primary hidden">👑 Virar mestre</button>
-      <button id="settingsBtn">⚙️</button>
-      <button id="clearBtn" class="danger mestre-only" title="Limpar tokens/peças">🗑️ Limpar</button>
+      <button id="zoomOut" title="Menos Zoom">−</button>
+      <button id="zoomIn" title="Mais Zoom">+</button>
+      <button id="gridBtn" class="mestre-only" title="Configurar Grid">Grid</button>
+      <button id="scenesBtn" class="mestre-only">Cenas</button>
+      <button id="managePlayersBtn" class="mestre-only hidden">Jogadores</button>
+      <button id="claimMestreBtn" class="primary hidden">Virar Mestre</button>
+      <button id="settingsBtn" title="Configurações">⚙️</button>
+      <button id="clearBtn" class="danger mestre-only" title="Limpar Tudo">Limpar</button>
       <button id="logoutBtn" class="hidden">Sair</button>
     </div>
 
-    <!-- Interface Alternada (Ativada no Modo Editor de Mapa) -->
-    <div id="editorNav" class="hidden" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-left:auto;">
-      <span style="color:var(--accent); font-weight:600; font-size:13px;">🛠️ Modo Editor</span>
+    <!-- Interface Alternada (Modo Editor de Mapa) -->
+    <div id="editorNav" class="hidden" style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+      <span style="color:var(--accent); font-weight:600; font-size:12px;">Modo Editor</span>
       
       <label class="btn primary">
-        🗺️ Trocar Mapa Base
+        Trocar Mapa
         <input type="file" id="mapInput" accept="image/png,image/jpeg,image/webp">
       </label>
 
       <label class="btn primary">
-        🧩 Adicionar Peça de Mapa
+        + Peça
         <input type="file" id="mapPieceInput" accept="image/png,image/jpeg,image/webp">
       </label>
 
-      <button class="danger" id="closeMapEditorBtn">❌ Sair do Editor</button>
+      <button class="danger" id="closeMapEditorBtn">Sair</button>
     </div>
   </header>
   <button id="topBarToggle" title="Esconder/mostrar barra">▲</button>
@@ -340,22 +336,17 @@
   <!-- Menu de Contexto (Botão Direito) -->
   <div id="contextMenu">
     <div id="tokenStatesRow" class="statesRow"></div>
-    <button id="menuAddState" class="mestre-only">➕ Adicionar estado</button>
+    <button id="menuAddState" class="mestre-only">Adicionar estado</button>
     <input type="file" id="stateInput" accept="image/png,image/jpeg,image/webp" class="hidden">
     <hr id="statesHr">
-    <button id="menuFront">⬆️ Trazer para frente</button>
-    <button id="menuBack">⬇️ Mandar para trás</button>
+    <button id="menuFront">Trazer para frente</button>
+    <button id="menuBack">Mandar para trás</button>
     <hr>
-    <button id="menuRotate">🔄 Girar 90°</button>
-    <button id="menuFlip">↔️ Espelhar</button>
+    <button id="menuRotate">Girar 90°</button>
+    <button id="menuFlip">Espelhar</button>
     <hr>
-    <button id="menuDelete" class="mestre-only danger">🗑️ Apagar</button>
+    <button id="menuDelete" class="mestre-only danger">Apagar</button>
   </div>
-
-  <footer>
-    <span>Anomaly VTT — Dark Fantasy Engine</span>
-    <span>Supabase Sync OK</span>
-  </footer>
 
 <script>
 (function () {
@@ -1019,7 +1010,7 @@
     }
 
     contextMenu.classList.add('open');
-    const menuW = 220, menuH = contextMenu.offsetHeight || 260;
+    const menuW = 210, menuH = contextMenu.offsetHeight || 240;
     const x = Math.min(clientX, window.innerWidth - menuW - 8);
     const y = Math.min(clientY, window.innerHeight - menuH - 8);
     contextMenu.style.left = Math.max(8, x) + 'px';
@@ -1519,7 +1510,7 @@
     const { data: profile } = await sb.from('profiles').select('*').eq('id', currentUserId).maybeSingle();
     currentRole = (profile && profile.role === 'mestre') ? 'mestre' : 'jogador';
     document.body.classList.toggle('jogador', currentRole !== 'mestre');
-    roleBadge.textContent = currentRole === 'mestre' ? ('👑 Mestre (' + (profile.display_name || '') + ')') : ('🧑 Jogador (' + (profile.display_name || '') + ')');
+    roleBadge.textContent = currentRole === 'mestre' ? ('Mestre: ' + (profile.display_name || '')) : ('Jogador: ' + (profile.display_name || ''));
     roleBadge.classList.remove('hidden');
     if (managePlayersBtn) managePlayersBtn.classList.toggle('hidden', currentRole !== 'mestre');
 
@@ -1557,7 +1548,7 @@
       } else { loginOverlay.classList.remove('hidden'); }
     } catch (err) {
       setupError.textContent = err.message;
-      setupOverlay.classList.remove('hidden');
+      setupOverlay.classList.add('hidden');
     }
   }
 
