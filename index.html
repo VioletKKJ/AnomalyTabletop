@@ -1096,50 +1096,132 @@
     } catch (err) { alert(err.message); }
   });
 
-  mapPieceInput.addEventListener('change', async (e) => {
-    const file = e.target.files[0]; mapPieceInput.value = '';
+mapPieceInput.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    mapPieceInput.value = '';
     if (!file) return;
     try {
       const raw = await fileToDataURL(file);
       openCropModal(raw, async (croppedDataURL) => {
-        const small = await resizeDataURL(croppedDataURL, 2048, 'image/png', 0.95);
-        const url = await uploadImage(small, 'map_pieces');
-        const tempId = 'temp-' + Date.now();
-        upsertMapPieceEl({ id: tempId, scene_id: currentSceneId, src_url: url, x: 40, y: 40, size: 256, z: Date.now(), rotation: 0, flip_x: false });
-        const { data } = await sb.rpc('add_map_element', { p_user_id: currentUserId, p_src_url: url, p_x: 40, p_y: 40, p_size: 256, p_z: Date.now() });
-        removeMapPieceEl(tempId);
-        if (data && data.length) upsertMapPieceEl(data[0]);
+        try {
+          const small = await resizeDataURL(croppedDataURL, 2048, 'image/png', 0.95);
+          const url = await uploadImage(small, 'map_pieces');
+          
+          const tempId = 'temp-' + Date.now();
+          const optimisticPiece = {
+            id: tempId,
+            scene_id: currentSceneId,
+            src_url: url,
+            x: 40,
+            y: 40,
+            size: 256,
+            z: Date.now(),
+            rotation: 0,
+            flip_x: false,
+            is_base: false
+          };
+          upsertMapPieceEl(optimisticPiece);
+
+          const { data, error } = await sb.from('map_elements').insert({
+            scene_id: currentSceneId,
+            src_url: url,
+            x: 40,
+            y: 40,
+            size: 256,
+            z: Date.now(),
+            rotation: 0,
+            flip_x: false,
+            is_base: false
+          }).select();
+          if (error) throw error;
+
+          removeMapPieceEl(tempId);
+          if (data && data.length) {
+            upsertMapPieceEl(data[0]);
+          }
+        } catch (err) { alert('Erro ao adicionar peça de mapa: ' + err.message); }
       });
-    } catch (err) { alert(err.message); }
+    } catch (err) { alert('Erro ao carregar imagem: ' + err.message); }
   });
 
-  tokenInput.addEventListener('change', async (e) => {
-    const file = e.target.files[0]; tokenInput.value = '';
+tokenInput.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    tokenInput.value = '';
     if (!file) return;
     try {
       const raw = await fileToDataURL(file);
       openCropModal(raw, async (croppedDataURL) => {
-        const small = await resizeDataURL(croppedDataURL, 1024, 'image/png', 0.95);
-        const url = await uploadImage(small, 'tokens');
-        const tempId = 'temp-' + Date.now();
-        upsertTokenEl({ id: tempId, scene_id: currentSceneId, src_url: url, x: 40, y: 40, size: 96, z: Date.now(), rotation: 0, flip_x: false, active_state: 0, states: [] });
-        const { data } = await sb.rpc('add_token', { p_user_id: currentUserId, p_src_url: url, p_x: 40, p_y: 40, p_size: 96, p_z: Date.now() });
-        removeTokenEl(tempId);
-        if (data && data.length) upsertTokenEl(data[0]);
+        try {
+          const small = await resizeDataURL(croppedDataURL, 1024, 'image/png', 0.95);
+          const url = await uploadImage(small, 'tokens');
+          
+          const tempId = 'temp-' + Date.now();
+          const optimisticToken = {
+            id: tempId,
+            scene_id: currentSceneId,
+            src_url: url,
+            x: 40,
+            y: 40,
+            size: 96,
+            z: Date.now(),
+            rotation: 0,
+            flip_x: false,
+            active_state: 0,
+            states: []
+          };
+          upsertTokenEl(optimisticToken);
+
+          const { data, error } = await sb.from('tokens').insert({
+            scene_id: currentSceneId,
+            src_url: url,
+            x: 40,
+            y: 40,
+            size: 96,
+            z: Date.now(),
+            rotation: 0,
+            flip_x: false,
+            active_state: 0,
+            states: []
+          }).select();
+          if (error) throw error;
+
+          removeTokenEl(tempId);
+          if (data && data.length) {
+            upsertTokenEl(data[0]);
+          }
+        } catch (err) { alert('Erro ao adicionar token: ' + err.message); }
       });
-    } catch (err) { alert(err.message); }
+    } catch (err) { alert('Erro ao carregar imagem: ' + err.message); }
   });
 
-  mapInput.addEventListener('change', async (e) => {
-    const file = e.target.files[0]; mapInput.value = '';
+mapInput.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    mapInput.value = '';
     if (!file) return;
-    placeholder.style.display = 'flex'; placeholder.textContent = 'Enviando mapa base...';
+    placeholder.style.display = 'flex';
+    placeholder.textContent = 'Enviando mapa base...';
     try {
       const raw = await fileToDataURL(file);
       const resized = await resizeDataURL(raw, 4096, 'image/png', 0.95);
       const url = await uploadImage(resized, 'maps');
-      const { data } = await sb.rpc('set_map', { p_user_id: currentUserId, p_map_url: url });
-      if (data && data.length) { baseMapId = data[0].id; upsertMapPieceEl(data[0]); }
+      
+      await sb.from('scenes').update({ map_url: url }).eq('id', currentSceneId);
+      const { data, error } = await sb.from('map_elements').insert({
+        scene_id: currentSceneId,
+        src_url: url,
+        x: 0,
+        y: 0,
+        size: 2048,
+        z: 0,
+        rotation: 0,
+        flip_x: false,
+        is_base: true
+      }).select();
+      if (error) throw error;
+      if (data && data.length) {
+        baseMapId = data[0].id;
+        upsertMapPieceEl(data[0]);
+      }
       placeholder.style.display = 'none';
     } catch (err) { alert(err.message); placeholder.style.display = 'none'; }
   });
