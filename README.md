@@ -77,11 +77,11 @@ Toda escrita de verdade acontece por **funções RPC** (`login_user`, `signup_us
 
 ## Roadmap / próximas ideias
 
-- [ ] Editor para recortar a imagem do token (hitbox, hoje é a imagem inteira)
+- [x] Editor para recortar a imagem do token (hitbox, hoje é a imagem inteira)
 - [ ] Grid e fog of war (névoa de guerra)
 - [ ] Mais ferramentas na barra lateral (régua/medição, desenho)
 - [ ] Opção de escala do mapa / múltiplos mapas lado a lado
-- [ ] Tema visual (cinza + roxo)
+- [x] Tema visual (cinza + roxo)
 - [ ] Dados (rolagem)
 
 ## Aviso
