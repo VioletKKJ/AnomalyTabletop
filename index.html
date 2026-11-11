@@ -110,8 +110,10 @@
   #fogLayer { position: absolute; left: -20000px; top: -20000px; width: 40000px; height: 40000px; pointer-events: none; z-index: 20000; }
   body.fog-editor-active #fogLayer { pointer-events: auto; cursor: crosshair; }
   
-  body.fog-editor-active #fogLayer polygon { fill: rgba(12, 13, 18, 0.5) !important; cursor: pointer; }
-  body.fog-editor-active #fogLayer polygon:hover { stroke: #ff5252 !important; stroke-width: 3px; }
+  /* Opacidade da névoa dependendo se é Jogador ou Mestre */
+  body.jogador #fogLayer polygon { fill: rgba(12, 13, 18, 1) !important; }
+  body:not(.jogador) #fogLayer polygon { fill: rgba(12, 13, 18, 0.45) !important; cursor: pointer; }
+  body:not(.jogador) #fogLayer polygon:hover { stroke: #ff5252 !important; stroke-width: 2.5px; }
 
   #placeholder { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
     color: var(--text-dim); font-size: 13px; text-align: center; padding: 20px; z-index: 0; gap: 10px; }
@@ -150,7 +152,7 @@
   #contextMenu .stateThumb:hover { transform: scale(1.08); }
   #contextMenu .stateThumb.active { border-color: var(--accent); box-shadow: 0 0 8px rgba(157, 78, 223, 0.6); }
 
-  #setupOverlay, #loginOverlay, #createRoomOverlay, #joinRoomOverlay, #cropOverlay, #playersOverlay, #scenesOverlay, #gridOverlay {
+  #setupOverlay, #loginOverlay, #createRoomOverlay, #joinRoomOverlay, #cropOverlay, #playersOverlay, #scenesOverlay, #gridOverlay, #fogEditModal {
     position: fixed; inset: 0; background: rgba(10, 11, 15, 0.8); backdrop-filter: blur(8px); display: flex;
     align-items: center; justify-content: center; z-index: 100000; padding: 16px; }
 
@@ -339,6 +341,18 @@
     </div>
   </div>
 
+  <!-- Modal de Edição de Vértices da Névoa -->
+  <div id="fogEditModal" class="hidden">
+    <div class="card" style="max-width: 400px; text-align: center;">
+      <h2>Editar Névoa</h2>
+      <p>Arraste os pontos vermelhos no mapa para reposicioná-los ou escolha uma ação abaixo.</p>
+      <div class="row" style="margin-top:20px;">
+        <button class="danger" id="btnDeleteFogPoly">Apagar Polígono</button>
+        <button class="primary" id="btnCloseFogEdit">Salvar e Sair</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Barra Superior Flutuante Minimalista -->
   <header id="topBar">
     <div class="brandTitle">
@@ -379,9 +393,10 @@
 
     <!-- Interface Alternada (Modo Editor de Névoa) -->
     <div id="fogEditorNav" class="hidden" style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
-      <span style="color:var(--accent); font-weight:600; font-size:12px;">Modo Névoa (Clique para marcar pontos, Duplo-clique fecha. Clique em uma área para apagar)</span>
-      <button class="danger" id="clearFogBtn">Limpar Toda Névoa</button>
-      <button class="danger" id="closeFogEditorBtn">Sair</button>
+      <span style="color:var(--accent); font-weight:600; font-size:12px;" id="fogStatusText">Modo Névoa: Clique para marcar pontos</span>
+      <button class="primary" id="btnFinishFog">✅ Concluir Polígono</button>
+      <button class="danger" id="btnClearFogScene">Limpar Tudo</button>
+      <button id="closeFogEditorBtn">Sair</button>
     </div>
   </header>
   <button id="topBarToggle" title="Esconder/mostrar barra">▲</button>
@@ -441,8 +456,16 @@
   const closeMapEditorBtn = document.getElementById('closeMapEditorBtn');
   const openFogEditorBtn = document.getElementById('openFogEditorBtn');
   const closeFogEditorBtn = document.getElementById('closeFogEditorBtn');
-  const clearFogBtn = document.getElementById('clearFogBtn');
-  
+  const clearFogBtn = document.getElementById('btnClearFogScene');
+  const btnFinishFog = document.getElementById('btnFinishFog');
+  const fogStatusText = document.getElementById('fogStatusText');
+
+  const fogEditModal = document.getElementById('fogEditModal');
+  const btnDeleteFogPoly = document.getElementById('btnDeleteFogPoly');
+  const btnCloseFogEdit = document.getElementById('btnCloseFogEdit');
+  let editingFogId = null;
+  let editingFogPoints = [];
+
   const mapPieceInput = document.getElementById('mapPieceInput');
   const tokenInput = document.getElementById('tokenInput');
   const clearBtn = document.getElementById('clearBtn');
@@ -703,6 +726,7 @@
     normalNav.classList.add('hidden');
     fogEditorNav.classList.remove('hidden');
     currentFogPoints = [];
+    updateDraftPolygon();
   });
 
   closeFogEditorBtn.addEventListener('click', () => {
@@ -719,6 +743,26 @@
     if (!confirm('Deseja apagar toda a névoa desta cena?')) return;
     await sb.from('fog_elements').delete().eq('scene_id', currentSceneId);
     loadFogElements();
+  });
+
+  // Botão para concluir polígono de névoa via interface
+  btnFinishFog.addEventListener('click', async () => {
+    if (currentFogPoints.length < 3) {
+      alert('Um polígono precisa de pelo menos 3 pontos.');
+      return;
+    }
+    const pointsStr = currentFogPoints.map(p => `${p.x},${p.y}`).join(' ');
+    currentFogPoints = [];
+    if (fogPolygonDraft) { fogPolygonDraft.remove(); fogPolygonDraft = null; }
+    if (fogPointsDraftGroup) { fogPointsDraftGroup.remove(); fogPointsDraftGroup = null; }
+
+    await sb.from('fog_elements').insert({
+      scene_id: currentSceneId,
+      points: pointsStr,
+      z: Date.now()
+    });
+    loadFogElements();
+    updateDraftPolygon();
   });
 
   function applyZoom() { board.style.transform = `scale(${scale})`; }
@@ -862,6 +906,7 @@
     if (el) { el.remove(); mapPieceEls.delete(id); mapPieceData.delete(id); }
   }
 
+  // --- CARREGAMENTO E EDIÇÃO DO FOG OF WAR ---
   async function loadFogElements() {
     const draftHtml = fogPointsDraftGroup ? fogPointsDraftGroup.outerHTML : '';
     const draftPolyHtml = fogPolygonDraft ? fogPolygonDraft.outerHTML : '';
@@ -877,25 +922,109 @@
   function renderFogPolygon(fogData) {
     const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
     polygon.setAttribute('points', fogData.points);
-    polygon.setAttribute('fill', 'rgba(12, 13, 18, 0.98)');
     polygon.setAttribute('stroke', '#9d4edf');
     polygon.setAttribute('stroke-width', '1.5');
     polygon.dataset.id = fogData.id;
 
-    polygon.addEventListener('click', async (e) => {
+    // Clicar em um polígono existente no modo névoa abre o modal de edição de vértices
+    polygon.addEventListener('click', (e) => {
       if (!document.body.classList.contains('fog-editor-active') || currentRole !== 'mestre') return;
       e.stopPropagation();
-      if (confirm('Deseja apagar esta área específica de névoa?')) {
-        await sb.from('fog_elements').delete().eq('id', fogData.id);
-        loadFogElements();
-      }
+      openFogEditModal(fogData);
     });
 
     fogLayer.appendChild(polygon);
   }
 
+  function openFogEditModal(fogData) {
+    editingFogId = fogData.id;
+    editingFogPoints = fogData.points.split(' ').map(pair => {
+      const [x, y] = pair.split(',').map(Number);
+      return { x, y };
+    });
+    renderFogEditorHandles();
+    fogEditModal.classList.remove('hidden');
+  }
+
+  function renderFogEditorHandles() {
+    // Desenha manipuladores arrastáveis para cada vértice do polígono em edição
+    const existingGroup = fogLayer.querySelector('#editingHandlesGroup');
+    if (existingGroup) existingGroup.remove();
+
+    const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    group.id = 'editingHandlesGroup';
+
+    editingFogPoints.forEach((p, idx) => {
+      const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      circle.setAttribute('cx', p.x);
+      circle.setAttribute('cy', p.y);
+      circle.setAttribute('r', '7');
+      circle.setAttribute('fill', '#00e676');
+      circle.setAttribute('stroke', '#fff');
+      circle.setAttribute('stroke-width', '2');
+      circle.style.cursor = 'pointer';
+
+      let isDraggingVertex = false;
+      circle.addEventListener('pointerdown', (e) => {
+        isDraggingVertex = true;
+        circle.setPointerCapture(e.pointerId);
+        e.stopPropagation();
+      });
+
+      circle.addEventListener('pointermove', (e) => {
+        if (!isDraggingVertex) return;
+        const rect = board.getBoundingClientRect();
+        const x = (e.clientX - rect.left) / scale + 20000;
+        const y = (e.clientY - rect.top) / scale + 20000;
+        editingFogPoints[idx] = { x, y };
+        circle.setAttribute('cx', x);
+        circle.setAttribute('cy', y);
+
+        // Atualiza visualmente o polígono correspondente no SVG
+        const polyEl = fogLayer.querySelector(`polygon[data-id="${editingFogId}"]`);
+        if (polyEl) {
+          polyEl.setAttribute('points', editingFogPoints.map(pt => `${pt.x},${pt.y}`).join(' '));
+        }
+      });
+
+      const endDrag = (e) => {
+        if (isDraggingVertex) {
+          isDraggingVertex = false;
+          circle.releasePointerCapture(e.pointerId);
+        }
+      };
+      circle.addEventListener('pointerup', endDrag);
+      circle.addEventListener('pointercancel', endDrag);
+
+      group.appendChild(circle);
+    });
+
+    fogLayer.appendChild(group);
+  }
+
+  btnCloseFogEdit.addEventListener('click', async () => {
+    if (!editingFogId) return;
+    const pointsStr = editingFogPoints.map(p => `${p.x},${p.y}`).join(' ');
+    await sb.from('fog_elements').update({ points: pointsStr }).eq('id', editingFogId);
+    editingFogId = null;
+    editingFogPoints = [];
+    fogEditModal.classList.add('hidden');
+    loadFogElements();
+  });
+
+  btnDeleteFogPoly.addEventListener('click', async () => {
+    if (!editingFogId) return;
+    if (!confirm('Deseja realmente apagar este polígono de névoa?')) return;
+    await sb.from('fog_elements').delete().eq('id', editingFogId);
+    editingFogId = null;
+    editingFogPoints = [];
+    fogEditModal.classList.add('hidden');
+    loadFogElements();
+  });
+
   fogLayer.addEventListener('click', async (e) => {
     if (!document.body.classList.contains('fog-editor-active') || currentRole !== 'mestre') return;
+    if (editingFogId) return; // Se estiver editando um vértice, ignora clique no canvas
     const rect = board.getBoundingClientRect();
     const x = (e.clientX - rect.left) / scale + 20000;
     const y = (e.clientY - rect.top) / scale + 20000;
@@ -919,36 +1048,12 @@
     updateDraftPolygon();
   });
 
-  fogLayer.addEventListener('dblclick', async (e) => {
-    if (!document.body.classList.contains('fog-editor-active') || currentRole !== 'mestre') return;
-    e.preventDefault();
-    e.stopPropagation();
-    
-    if (currentFogPoints.length < 3) {
-      alert('Um polígono precisa de pelo menos 3 pontos.');
-      currentFogPoints = [];
-      if (fogPolygonDraft) { fogPolygonDraft.remove(); fogPolygonDraft = null; }
-      if (fogPointsDraftGroup) { fogPointsDraftGroup.remove(); fogPointsDraftGroup = null; }
-      return;
-    }
-
-    const pointsStr = currentFogPoints.map(p => `${p.x},${p.y}`).join(' ');
-    currentFogPoints = [];
-    if (fogPolygonDraft) { fogPolygonDraft.remove(); fogPolygonDraft = null; }
-    if (fogPointsDraftGroup) { fogPointsDraftGroup.remove(); fogPointsDraftGroup = null; }
-
-    await sb.from('fog_elements').insert({
-      scene_id: currentSceneId,
-      points: pointsStr,
-      z: Date.now()
-    });
-    loadFogElements();
-  });
-
   function updateDraftPolygon() {
     if (!fogPolygonDraft || !fogPointsDraftGroup) return;
     const pointsStr = currentFogPoints.map(p => `${p.x},${p.y}`).join(' ');
     fogPolygonDraft.setAttribute('points', pointsStr);
+
+    fogStatusText.textContent = `Modo Névoa: ${currentFogPoints.length} pontos marcados. Clique no botão "Concluir" para salvar.`;
 
     fogPointsDraftGroup.innerHTML = '';
     currentFogPoints.forEach((p, idx) => {
@@ -1225,7 +1330,6 @@
     } catch (err) { alert(err.message); }
   });
 
-  // --- UPLOAD DE PEÇAS DE MAPA ---
   mapPieceInput.addEventListener('change', async (e) => {
     const file = e.target.files[0]; mapPieceInput.value = '';
     if (!file) return;
@@ -1270,7 +1374,6 @@
     } catch (err) { alert(err.message); }
   });
 
-  // --- UPLOAD DE TOKENS ---
   tokenInput.addEventListener('change', async (e) => {
     const file = e.target.files[0]; tokenInput.value = '';
     if (!file) return;
@@ -1327,7 +1430,6 @@
     await sb.rpc('clear_board', { p_user_id: currentUserId });
   });
 
-  // --- CENAS ---
   async function openScenesPanel() {
     scenesList.innerHTML = 'Carregando...';
     scenesOverlay.classList.remove('hidden');
@@ -1347,7 +1449,6 @@
       } else {
         const useBtn = document.createElement('button'); useBtn.textContent = 'Usar';
         useBtn.addEventListener('click', async () => {
-          // Atualiza localmente e no banco de forma imediata
           currentSceneId = s.id;
           await sb.from('rooms').update({ active_scene_id: s.id }).eq('id', currentRoomId);
           await loadSceneContent(currentSceneId);
@@ -1391,7 +1492,6 @@
     });
   }
 
-  // --- JOGADORES ---
   async function openPlayersPanel() {
     playersList.innerHTML = 'Carregando...';
     playersOverlay.classList.remove('hidden');
@@ -1416,7 +1516,6 @@
   if (managePlayersBtn) managePlayersBtn.addEventListener('click', openPlayersPanel);
   if (closePlayersBtn) closePlayersBtn.addEventListener('click', () => playersOverlay.classList.add('hidden'));
 
-  // --- PAN & ZOOM ---
   zoomInBtn.addEventListener('click', () => { scale = Math.min(scale * 1.2, 10); applyZoom(); });
   zoomOutBtn.addEventListener('click', () => { scale = Math.max(scale / 1.2, 0.05); applyZoom(); });
 
@@ -1494,7 +1593,6 @@
   });
   applyBarState();
 
-  // --- CARREGAMENTO DE MESA E CENA ---
   async function loadSceneContent(sceneId) {
     tokenEls.forEach(el => el.remove()); tokenEls.clear(); tokenData.clear();
     mapPieceEls.forEach(el => el.remove()); mapPieceEls.clear(); mapPieceData.clear();
@@ -1566,7 +1664,6 @@
 
     currentSceneId = roomData ? roomData.active_scene_id : null;
 
-    // Se a mesa não tiver nenhuma cena ativa configurada, busca ou cria uma automaticamente
     if (!currentSceneId) {
       const { data: scenes } = await sb.from('scenes').select('id').eq('room_id', roomId).order('created_at').limit(1);
       if (scenes && scenes.length > 0) {
