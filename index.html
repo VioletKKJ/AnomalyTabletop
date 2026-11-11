@@ -106,11 +106,10 @@
   #tokensLayer { position: absolute; inset: 0; z-index: 10000; pointer-events: none; }
   #tokensLayer > * { pointer-events: auto; }
 
-  /* Camada do Fog of War (Agora posicionada ACIMA de tudo, com z-index 20000) */
+  /* Camada do Fog of War */
   #fogLayer { position: absolute; left: -20000px; top: -20000px; width: 40000px; height: 40000px; pointer-events: none; z-index: 20000; }
   body.fog-editor-active #fogLayer { pointer-events: auto; cursor: crosshair; }
   
-  /* No modo editor de névoa, a névoa fica semi-transparente para o Mestre enxergar onde edita */
   body.fog-editor-active #fogLayer polygon { fill: rgba(12, 13, 18, 0.5) !important; cursor: pointer; }
   body.fog-editor-active #fogLayer polygon:hover { stroke: #ff5252 !important; stroke-width: 3px; }
 
@@ -372,11 +371,7 @@
     <div id="editorNav" class="hidden" style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
       <span style="color:var(--accent); font-weight:600; font-size:12px;">Modo Editor de Mapa</span>
       <label class="btn primary">
-        Trocar Mapa
-        <input type="file" id="mapInput" accept="image/png,image/jpeg,image/webp">
-      </label>
-      <label class="btn primary">
-        + Peça
+        + Peça de Mapa
         <input type="file" id="mapPieceInput" accept="image/png,image/jpeg,image/webp">
       </label>
       <button class="danger" id="closeMapEditorBtn">Sair</button>
@@ -448,7 +443,6 @@
   const closeFogEditorBtn = document.getElementById('closeFogEditorBtn');
   const clearFogBtn = document.getElementById('clearFogBtn');
   
-  const mapInput = document.getElementById('mapInput');
   const mapPieceInput = document.getElementById('mapPieceInput');
   const tokenInput = document.getElementById('tokenInput');
   const clearBtn = document.getElementById('clearBtn');
@@ -562,9 +556,7 @@
   let mapPieceEls = new Map();
   let mapPieceData = new Map();
   let aspectRatios = new Map();
-  let baseMapId = null;
 
-  // Estado do desenho de Polígono de Névoa
   let currentFogPoints = [];
   let fogPolygonDraft = null;
   let fogPointsDraftGroup = null;
@@ -693,7 +685,6 @@
     callback(croppedDataURL);
   });
 
-  // Gerenciamento de Editores (Mapa vs Névoa)
   openMapEditorBtn.addEventListener('click', () => {
     document.body.classList.add('map-editor-active');
     normalNav.classList.add('hidden');
@@ -871,9 +862,7 @@
     if (el) { el.remove(); mapPieceEls.delete(id); mapPieceData.delete(id); }
   }
 
-  // --- CARREGAMENTO E DESENHO DO FOG OF WAR ---
   async function loadFogElements() {
-    // Mantém o grupo de rascunho se estiver desenhando, limpa o resto
     const draftHtml = fogPointsDraftGroup ? fogPointsDraftGroup.outerHTML : '';
     const draftPolyHtml = fogPolygonDraft ? fogPolygonDraft.outerHTML : '';
     fogLayer.innerHTML = '';
@@ -888,16 +877,14 @@
   function renderFogPolygon(fogData) {
     const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
     polygon.setAttribute('points', fogData.points);
-    // Opacidade total escura para os jogadores, semi-transparente para o mestre via CSS
     polygon.setAttribute('fill', 'rgba(12, 13, 18, 0.98)');
     polygon.setAttribute('stroke', '#9d4edf');
     polygon.setAttribute('stroke-width', '1.5');
     polygon.dataset.id = fogData.id;
 
-    // Clique direto em cima de um polígono salvo no modo névoa apaga ele individualmente
     polygon.addEventListener('click', async (e) => {
       if (!document.body.classList.contains('fog-editor-active') || currentRole !== 'mestre') return;
-      e.stopPropagation(); // Evita adicionar ponto novo
+      e.stopPropagation();
       if (confirm('Deseja apagar esta área específica de névoa?')) {
         await sb.from('fog_elements').delete().eq('id', fogData.id);
         loadFogElements();
@@ -907,7 +894,6 @@
     fogLayer.appendChild(polygon);
   }
 
-  // Interação no Editor de Névoa (Desenhar Polígono por Cliques com Guia Visual)
   fogLayer.addEventListener('click', async (e) => {
     if (!document.body.classList.contains('fog-editor-active') || currentRole !== 'mestre') return;
     const rect = board.getBoundingClientRect();
@@ -933,7 +919,6 @@
     updateDraftPolygon();
   });
 
-  // Fechar polígono com Duplo Clique
   fogLayer.addEventListener('dblclick', async (e) => {
     if (!document.body.classList.contains('fog-editor-active') || currentRole !== 'mestre') return;
     e.preventDefault();
@@ -952,7 +937,6 @@
     if (fogPolygonDraft) { fogPolygonDraft.remove(); fogPolygonDraft = null; }
     if (fogPointsDraftGroup) { fogPointsDraftGroup.remove(); fogPointsDraftGroup = null; }
 
-    // Salvar no Supabase
     await sb.from('fog_elements').insert({
       scene_id: currentSceneId,
       points: pointsStr,
@@ -966,7 +950,6 @@
     const pointsStr = currentFogPoints.map(p => `${p.x},${p.y}`).join(' ');
     fogPolygonDraft.setAttribute('points', pointsStr);
 
-    // Desenha os pontos de marcação visual e linhas guia
     fogPointsDraftGroup.innerHTML = '';
     currentFogPoints.forEach((p, idx) => {
       const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
@@ -980,7 +963,6 @@
     });
   }
 
-  // --- DRAG, RESIZE, ROTATE ---
   function attachDrag(el, itemId, handle, type) {
     let dragging = false, startX, startY, origX, origY, lastSent = 0, moved = false, longPressTimer = null;
 
@@ -1020,8 +1002,6 @@
         lastSent = now;
         if (type === 'token') {
           sb.rpc('move_token', { p_user_id: currentUserId, p_token_id: itemId, p_x: x, p_y: y }).then(({ error }) => { if (error) console.error(error); });
-        } else if (itemId === baseMapId) {
-          sb.rpc('move_base_map_element', { p_user_id: currentUserId, p_element_id: itemId, p_x: x, p_y: y }).then(({ error }) => { if (error) console.error(error); });
         } else {
           sb.rpc('move_map_element', { p_user_id: currentUserId, p_element_id: itemId, p_x: x, p_y: y }).then(({ error }) => { if (error) console.error(error); });
         }
@@ -1035,8 +1015,6 @@
       const x = parseFloat(el.style.left) || 0, y = parseFloat(el.style.top) || 0;
       if (type === 'token') {
         sb.rpc('move_token', { p_user_id: currentUserId, p_token_id: itemId, p_x: x, p_y: y }).then(({ error }) => { if (error) console.error(error); });
-      } else if (itemId === baseMapId) {
-        sb.rpc('move_base_map_element', { p_user_id: currentUserId, p_element_id: itemId, p_x: x, p_y: y }).then(({ error }) => { if (error) console.error(error); });
       } else {
         sb.rpc('move_map_element', { p_user_id: currentUserId, p_element_id: itemId, p_x: x, p_y: y }).then(({ error }) => { if (error) console.error(error); });
       }
@@ -1074,8 +1052,6 @@
         lastSent = now;
         if (type === 'token') {
           sb.rpc('resize_token', { p_user_id: currentUserId, p_token_id: itemId, p_size: newSize }).then(({ error }) => { if (error) console.error(error); });
-        } else if (itemId === baseMapId) {
-          sb.rpc('resize_base_map_element', { p_user_id: currentUserId, p_element_id: itemId, p_size: newSize }).then(({ error }) => { if (error) console.error(error); });
         } else {
           sb.rpc('resize_map_element', { p_user_id: currentUserId, p_element_id: itemId, p_size: newSize }).then(({ error }) => { if (error) console.error(error); });
         }
@@ -1094,8 +1070,6 @@
 
       if (type === 'token') {
         sb.rpc('resize_token', { p_user_id: currentUserId, p_token_id: itemId, p_size: finalSize }).then(({ error }) => { if (error) console.error(error); });
-      } else if (itemId === baseMapId) {
-        sb.rpc('resize_base_map_element', { p_user_id: currentUserId, p_element_id: itemId, p_size: finalSize }).then(({ error }) => { if (error) console.error(error); });
       } else {
         sb.rpc('resize_map_element', { p_user_id: currentUserId, p_element_id: itemId, p_size: finalSize }).then(({ error }) => { if (error) console.error(error); });
       }
@@ -1130,8 +1104,6 @@
         lastSent = now;
         if (type === 'token') {
           sb.rpc('rotate_token', { p_user_id: currentUserId, p_token_id: itemId, p_rotation: deg }).then(({ error }) => { if (error) console.error(error); });
-        } else if (itemId === baseMapId) {
-          sb.rpc('rotate_base_map_element', { p_user_id: currentUserId, p_element_id: itemId, p_rotation: deg }).then(({ error }) => { if (error) console.error(error); });
         } else {
           sb.rpc('rotate_map_element', { p_user_id: currentUserId, p_element_id: itemId, p_rotation: deg }).then(({ error }) => { if (error) console.error(error); });
         }
@@ -1149,8 +1121,6 @@
 
       if (type === 'token') {
         sb.rpc('rotate_token', { p_user_id: currentUserId, p_token_id: itemId, p_rotation: deg }).then(({ error }) => { if (error) console.error(error); });
-      } else if (itemId === baseMapId) {
-        sb.rpc('rotate_base_map_element', { p_user_id: currentUserId, p_element_id: itemId, p_rotation: deg }).then(({ error }) => { if (error) console.error(error); });
       } else {
         sb.rpc('rotate_map_element', { p_user_id: currentUserId, p_element_id: itemId, p_rotation: deg }).then(({ error }) => { if (error) console.error(error); });
       }
@@ -1185,7 +1155,7 @@
       menuAddState.style.display = 'none';
       statesHr.style.display = 'none';
     }
-    menuDelete.style.display = (type === 'map' && id === baseMapId) ? 'none' : 'block';
+    menuDelete.style.display = 'block';
     contextMenu.classList.add('open');
     contextMenu.style.left = Math.max(8, Math.min(clientX, window.innerWidth - 220)) + 'px';
     contextMenu.style.top = Math.max(8, Math.min(clientY, window.innerHeight - 240)) + 'px';
@@ -1197,7 +1167,7 @@
   menuFront.addEventListener('click', async () => {
     if (!contextTarget) return;
     const { type, id } = contextTarget;
-    const rpcName = type === 'token' ? 'set_token_z' : (id === baseMapId ? 'set_base_map_element_z' : 'set_map_element_z');
+    const rpcName = type === 'token' ? 'set_token_z' : 'set_map_element_z';
     await sb.rpc(rpcName, { p_user_id: currentUserId, [type === 'token' ? 'p_token_id' : 'p_element_id']: id, p_z: Date.now() });
     closeContextMenu();
   });
@@ -1207,7 +1177,7 @@
     const { type, id } = contextTarget;
     let minZ = 1;
     (type === 'token' ? tokenData : mapPieceData).forEach(i => { if ((i.z || 0) < minZ) minZ = i.z || 0; });
-    const rpcName = type === 'token' ? 'set_token_z' : (id === baseMapId ? 'set_base_map_element_z' : 'set_map_element_z');
+    const rpcName = type === 'token' ? 'set_token_z' : 'set_map_element_z';
     await sb.rpc(rpcName, { p_user_id: currentUserId, [type === 'token' ? 'p_token_id' : 'p_element_id']: id, p_z: Math.max(1, minZ - 1) });
     closeContextMenu();
   });
@@ -1217,7 +1187,7 @@
     const { type, id } = contextTarget;
     const item = (type === 'token' ? tokenData : mapPieceData).get(id);
     const newRot = ((item.rotation || 0) + 90) % 360;
-    const rpcName = type === 'token' ? 'rotate_token' : (id === baseMapId ? 'rotate_base_map_element' : 'rotate_map_element');
+    const rpcName = type === 'token' ? 'rotate_token' : 'rotate_map_element';
     await sb.rpc(rpcName, { p_user_id: currentUserId, [type === 'token' ? 'p_token_id' : 'p_element_id']: id, p_rotation: newRot });
     closeContextMenu();
   });
@@ -1226,7 +1196,7 @@
     if (!contextTarget) return;
     const { type, id } = contextTarget;
     const item = (type === 'token' ? tokenData : mapPieceData).get(id);
-    const rpcName = type === 'token' ? 'flip_token' : (id === baseMapId ? 'flip_base_map_element' : 'flip_map_element');
+    const rpcName = type === 'token' ? 'flip_token' : 'flip_map_element';
     await sb.rpc(rpcName, { p_user_id: currentUserId, [type === 'token' ? 'p_token_id' : 'p_element_id']: id, p_flip: !item.flip_x });
     closeContextMenu();
   });
@@ -1234,7 +1204,7 @@
   menuDelete.addEventListener('click', async () => {
     if (!contextTarget) return;
     const { type, id } = contextTarget;
-    if (id === baseMapId || !confirm('Apagar este elemento?')) return;
+    if (!confirm('Apagar este elemento?')) return;
     if (type === 'token') removeTokenEl(id); else removeMapPieceEl(id);
     await sb.rpc(type === 'token' ? 'delete_token' : 'delete_map_element', { p_user_id: currentUserId, [type === 'token' ? 'p_token_id' : 'p_element_id']: id });
     closeContextMenu();
@@ -1255,63 +1225,105 @@
     } catch (err) { alert(err.message); }
   });
 
+  // --- UPLOAD DE PEÇAS DE MAPA ---
   mapPieceInput.addEventListener('change', async (e) => {
     const file = e.target.files[0]; mapPieceInput.value = '';
     if (!file) return;
+    if (!currentSceneId) { alert('Nenhuma cena ativa selecionada.'); return; }
     try {
       const raw = await fileToDataURL(file);
       openCropModal(raw, async (croppedDataURL) => {
-        const small = await resizeDataURL(croppedDataURL, 2048, 'image/png', 0.95);
-        const url = await uploadImage(small, 'map_pieces');
-        const tempId = 'temp-' + Date.now();
-        upsertMapPieceEl({ id: tempId, scene_id: currentSceneId, src_url: url, x: 40, y: 40, size: 256, z: Date.now(), rotation: 0, flip_x: false });
-        const { data } = await sb.rpc('add_map_element', { p_user_id: currentUserId, p_src_url: url, p_x: 40, p_y: 40, p_size: 256, p_z: Date.now() });
-        removeMapPieceEl(tempId);
-        if (data && data.length) upsertMapPieceEl(data[0]);
+        try {
+          const small = await resizeDataURL(croppedDataURL, 2048, 'image/png', 0.95);
+          const url = await uploadImage(small, 'map_pieces');
+          
+          const tempId = 'temp-' + Date.now();
+          const optimisticPiece = {
+            id: tempId,
+            scene_id: currentSceneId,
+            src_url: url,
+            x: 40,
+            y: 40,
+            size: 256,
+            z: Date.now(),
+            rotation: 0,
+            flip_x: false
+          };
+          upsertMapPieceEl(optimisticPiece);
+
+          const { data, error } = await sb.from('map_elements').insert({
+            scene_id: currentSceneId,
+            src_url: url,
+            x: 40,
+            y: 40,
+            size: 256,
+            z: Date.now(),
+            rotation: 0,
+            flip_x: false
+          }).select();
+          if (error) throw error;
+
+          removeMapPieceEl(tempId);
+          if (data && data.length) upsertMapPieceEl(data[0]);
+        } catch (err) { alert('Erro ao adicionar peça de mapa: ' + err.message); }
       });
     } catch (err) { alert(err.message); }
   });
 
+  // --- UPLOAD DE TOKENS ---
   tokenInput.addEventListener('change', async (e) => {
     const file = e.target.files[0]; tokenInput.value = '';
     if (!file) return;
+    if (!currentSceneId) { alert('Nenhuma cena ativa selecionada.'); return; }
     try {
       const raw = await fileToDataURL(file);
       openCropModal(raw, async (croppedDataURL) => {
-        const small = await resizeDataURL(croppedDataURL, 1024, 'image/png', 0.95);
-        const url = await uploadImage(small, 'tokens');
-        const tempId = 'temp-' + Date.now();
-        upsertTokenEl({ id: tempId, scene_id: currentSceneId, src_url: url, x: 40, y: 40, size: 96, z: Date.now(), rotation: 0, flip_x: false, active_state: 0, states: [] });
-        const { data } = await sb.rpc('add_token', { p_user_id: currentUserId, p_src_url: url, p_x: 40, p_y: 40, p_size: 96, p_z: Date.now() });
-        removeTokenEl(tempId);
-        if (data && data.length) upsertTokenEl(data[0]);
-      });
-    } catch (err) { alert(err.message); }
-  });
+        try {
+          const small = await resizeDataURL(croppedDataURL, 1024, 'image/png', 0.95);
+          const url = await uploadImage(small, 'tokens');
+          
+          const tempId = 'temp-' + Date.now();
+          const optimisticToken = {
+            id: tempId,
+            scene_id: currentSceneId,
+            src_url: url,
+            x: 40,
+            y: 40,
+            size: 96,
+            z: Date.now(),
+            rotation: 0,
+            flip_x: false,
+            active_state: 0,
+            states: []
+          };
+          upsertTokenEl(optimisticToken);
 
-  mapInput.addEventListener('change', async (e) => {
-    const file = e.target.files[0]; mapInput.value = '';
-    if (!file) return;
-    placeholder.style.display = 'flex'; placeholder.textContent = 'Enviando mapa base...';
-    try {
-      const raw = await fileToDataURL(file);
-      const resized = await resizeDataURL(raw, 4096, 'image/png', 0.95);
-      const url = await uploadImage(resized, 'maps');
-      await sb.from('scenes').update({ map_url: url }).eq('id', currentSceneId);
-      const { data } = await sb.from('map_elements').insert({
-        scene_id: currentSceneId, src_url: url, x: 0, y: 0, size: 2048, z: 0, rotation: 0, flip_x: false, is_base: true
-      }).select();
-      if (data && data.length) { baseMapId = data[0].id; upsertMapPieceEl(data[0]); }
-      placeholder.style.display = 'none';
-    } catch (err) { alert(err.message); placeholder.style.display = 'none'; }
+          const { data, error } = await sb.from('tokens').insert({
+            scene_id: currentSceneId,
+            src_url: url,
+            x: 40,
+            y: 40,
+            size: 96,
+            z: Date.now(),
+            rotation: 0,
+            flip_x: false,
+            active_state: 0,
+            states: []
+          }).select();
+          if (error) throw error;
+
+          removeTokenEl(tempId);
+          if (data && data.length) upsertTokenEl(data[0]);
+        } catch (err) { alert('Erro ao adicionar token: ' + err.message); }
+      });
+    } catch (err) { alert('Erro ao carregar imagem: ' + err.message); }
   });
 
   clearBtn.addEventListener('click', async () => {
-    if (!confirm('Limpar o mapa base e todos os tokens/peças?')) return;
+    if (!confirm('Limpar todas as peças de mapa e tokens?')) return;
     tokenEls.forEach(el => el.remove()); tokenEls.clear(); tokenData.clear();
     mapPieceEls.forEach(el => el.remove()); mapPieceEls.clear(); mapPieceData.clear();
-    baseMapId = null;
-    placeholder.style.display = 'flex'; placeholder.textContent = 'Importe um mapa base ou adicione peças para começar.';
+    placeholder.style.display = 'flex'; placeholder.textContent = 'Adicione peças de mapa para começar.';
     await sb.rpc('clear_board', { p_user_id: currentUserId });
   });
 
@@ -1335,7 +1347,11 @@
       } else {
         const useBtn = document.createElement('button'); useBtn.textContent = 'Usar';
         useBtn.addEventListener('click', async () => {
+          // Atualiza localmente e no banco de forma imediata
+          currentSceneId = s.id;
           await sb.from('rooms').update({ active_scene_id: s.id }).eq('id', currentRoomId);
+          await loadSceneContent(currentSceneId);
+          subscribeRealtimeChannels(currentSceneId);
           scenesOverlay.classList.add('hidden');
         });
         row.appendChild(useBtn);
@@ -1362,7 +1378,14 @@
         const raw = await fileToDataURL(file);
         const resized = await resizeDataURL(raw, 4096, 'image/png', 0.92);
         const url = await uploadImage(resized, 'maps');
-        await sb.from('scenes').insert({ room_id: currentRoomId, name: name, map_url: url });
+        const { data, error } = await sb.from('scenes').insert({ room_id: currentRoomId, name: name, map_url: url }).select().single();
+        if (error) throw error;
+        if (data) {
+          currentSceneId = data.id;
+          await sb.from('rooms').update({ active_scene_id: data.id }).eq('id', currentRoomId);
+          await loadSceneContent(currentSceneId);
+          subscribeRealtimeChannels(currentSceneId);
+        }
         scenesOverlay.classList.add('hidden');
       } catch (err) { alert(err.message); }
     });
@@ -1475,19 +1498,22 @@
   async function loadSceneContent(sceneId) {
     tokenEls.forEach(el => el.remove()); tokenEls.clear(); tokenData.clear();
     mapPieceEls.forEach(el => el.remove()); mapPieceEls.clear(); mapPieceData.clear();
-    baseMapId = null;
     if (!sceneId) return;
 
     const { data: toks } = await sb.from('tokens').select('*').eq('scene_id', sceneId);
     (toks || []).forEach(upsertTokenEl);
 
     const { data: pieces } = await sb.from('map_elements').select('*').eq('scene_id', sceneId).order('z');
-    (pieces || []).forEach(p => { if (p.is_base) baseMapId = p.id; upsertMapPieceEl(p); });
+    (pieces || []).forEach(p => upsertMapPieceEl(p));
 
     await loadFogElements();
 
-    if (baseMapId) placeholder.style.display = 'none';
-    else { placeholder.style.display = 'flex'; placeholder.textContent = 'Importe um mapa base ou adicione peças para começar.'; }
+    if ((pieces && pieces.length > 0) || (toks && toks.length > 0)) {
+      placeholder.style.display = 'none';
+    } else {
+      placeholder.style.display = 'flex';
+      placeholder.textContent = 'Adicione peças de mapa para começar.';
+    }
   }
 
   function subscribeRealtimeChannels(sceneId) {
@@ -1498,19 +1524,22 @@
 
     tokensChannel = sb.channel('tokens-' + sceneId)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'tokens' }, (p) => {
-        if (p.eventType === 'DELETE' || (p.old && p.old.id)) {
-          if (!p.new || p.new.scene_id !== sceneId) removeTokenEl(p.old ? p.old.id : p.new.id);
+        if (p.eventType === 'DELETE') {
+          if (p.old && tokenData.has(p.old.id)) removeTokenEl(p.old.id);
+        } else if (p.new && p.new.scene_id === sceneId) {
+          upsertTokenEl(p.new);
         }
-        if (p.new && p.new.scene_id === sceneId) upsertTokenEl(p.new);
       }).subscribe();
 
     mapElementsChannel = sb.channel('map-elements-' + sceneId)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'map_elements' }, (p) => {
-        if (p.eventType === 'DELETE' || (p.old && p.old.id)) {
-          if (!p.new || p.new.scene_id !== sceneId) removeMapPieceEl(p.old ? p.old.id : p.new.id);
+        if (p.eventType === 'DELETE') {
+          if (p.old && mapPieceData.has(p.old.id)) {
+            removeMapPieceEl(p.old.id);
+          }
+        } else if (p.new && p.new.scene_id === sceneId) {
+          upsertMapPieceEl(p.new);
         }
-        if (p.new && p.new.is_base && p.new.scene_id === sceneId) baseMapId = p.new.id;
-        if (p.new && p.new.scene_id === sceneId) upsertMapPieceEl(p.new);
       }).subscribe();
 
     fogElementsChannel = sb.channel('fog-elements-' + sceneId)
@@ -1536,6 +1565,22 @@
     if (openFogEditorBtn) openFogEditorBtn.classList.toggle('hidden', currentRole !== 'mestre');
 
     currentSceneId = roomData ? roomData.active_scene_id : null;
+
+    // Se a mesa não tiver nenhuma cena ativa configurada, busca ou cria uma automaticamente
+    if (!currentSceneId) {
+      const { data: scenes } = await sb.from('scenes').select('id').eq('room_id', roomId).order('created_at').limit(1);
+      if (scenes && scenes.length > 0) {
+        currentSceneId = scenes[0].id;
+        await sb.from('rooms').update({ active_scene_id: currentSceneId }).eq('id', roomId);
+      } else {
+        const { data: newScene } = await sb.from('scenes').insert({ room_id: roomId, name: 'Cena Principal' }).select().single();
+        if (newScene) {
+          currentSceneId = newScene.id;
+          await sb.from('rooms').update({ active_scene_id: currentSceneId }).eq('id', roomId);
+        }
+      }
+    }
+
     await loadSceneContent(currentSceneId);
     subscribeRealtimeChannels(currentSceneId);
 
@@ -1551,7 +1596,6 @@
       .subscribe((status) => { if (status === 'SUBSCRIBED') connDot.classList.add('ok'); });
   }
 
-  // --- LOBBY DE MESAS ---
   async function loadLobbyRooms() {
     roomListContainer.innerHTML = '<div style="text-align:center; color:var(--text-dim); padding:10px;">Carregando...</div>';
     const { data: rooms, error } = await sb.rpc('get_user_rooms', { p_user_id: currentUserId });
