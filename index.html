@@ -355,6 +355,32 @@
     }
   }
 
+
+  /* Correção mobile (vertical): a barra ocupa a largura da tela e quebra em linhas
+     em vez de estourar para fora e ser cortada */
+  @media (max-width: 700px) {
+    #topBar {
+      left: 10px;
+      right: 10px;
+      width: auto;
+      max-width: none;
+      transform: none;
+      flex-wrap: wrap;
+      justify-content: center;
+      row-gap: 6px;
+    }
+    #topBar.collapsed { transform: translateY(calc(-100% - 20px)); }
+
+    #normalNav {
+      flex-wrap: wrap;
+      justify-content: center;
+      max-width: 100%;
+    }
+
+    .brandTitle { padding-right: 8px; }
+    .brandTitle h1 { max-width: 90px; }
+  }
+
 </style>
 </head>
 <body>
