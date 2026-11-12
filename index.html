@@ -383,6 +383,11 @@
     .brandTitle h1 { max-width: 90px; }
   }
 
+  /* Aviso de câmera controlada pelo mestre */
+  #camLockBadge { position: fixed; left: 50%; bottom: max(14px, env(safe-area-inset-bottom, 14px)); transform: translateX(-50%);
+    z-index: 35; padding: 6px 14px; border-radius: 999px; font-size: 12px; font-weight: 600; color: #fff; pointer-events: none;
+    background: rgba(123, 44, 191, 0.85); border: 1px solid rgba(255,255,255,0.15); box-shadow: 0 4px 16px rgba(0,0,0,0.5); }
+  #camLiveBtn.active { background: var(--accent-gradient); color: var(--accent-text); }
 </style>
 </head>
 <body>
@@ -572,6 +577,8 @@
         </label>
         <button id="gridBtn" class="mestre-only" title="Configurar Grid">Grid</button>
         <button id="scenesBtn" class="mestre-only">Cenas</button>
+        <button id="camPullBtn" class="mestre-only" title="Centraliza a câmera de todos os jogadores na sua">📷 Puxar jogadores</button>
+        <button id="camLiveBtn" class="mestre-only" title="Os jogadores seguem a sua câmera em tempo real">📡 Câmera ao vivo: OFF</button>
         <button id="managePlayersBtn" class="mestre-only hidden">Jogadores</button>
         <button id="settingsBtn" title="Configurações">⚙️ Configurações</button>
         <button id="clearBtn" class="danger mestre-only" title="Limpar Tudo">Limpar</button>
@@ -619,6 +626,7 @@
     </div>
   </header>
   <button id="topBarToggle" title="Esconder/mostrar barra">▲</button>
+  <div id="camLockBadge" class="hidden">📷 Câmera controlada pelo mestre</div>
 
   <!-- Barra Lateral de Ferramentas -->
   <div id="sideToolbar">
@@ -849,6 +857,8 @@
   let fogElementsChannel = null;
   let wallsChannel = null;
   let roomSyncChannel = null;
+  let cameraChannel = null;
+  let cameraLocked = false;
   let scale = 1;
   let boardX = 0, boardY = 0;
 
@@ -2128,8 +2138,8 @@
   if (managePlayersBtn) managePlayersBtn.addEventListener('click', openPlayersPanel);
   if (closePlayersBtn) closePlayersBtn.addEventListener('click', () => playersOverlay.classList.add('hidden'));
 
-  zoomInBtn.addEventListener('click', () => { scale = Math.min(scale * 1.2, 10); applyZoom(); });
-  zoomOutBtn.addEventListener('click', () => { scale = Math.max(scale / 1.2, 0.05); applyZoom(); });
+  zoomInBtn.addEventListener('click', () => { if (cameraLocked) return; scale = Math.min(scale * 1.2, 10); applyZoom(); });
+  zoomOutBtn.addEventListener('click', () => { if (cameraLocked) return; scale = Math.max(scale / 1.2, 0.05); applyZoom(); });
 
   const activePointers = new Map();
   const middlePanPointers = new Map();
@@ -2143,7 +2153,7 @@
   boardWrap.addEventListener('dragstart', (e) => e.preventDefault());
 
   boardWrap.addEventListener('pointerdown', (e) => {
-    if (e.pointerType === 'mouse' && e.button === 1) {
+    if (e.pointerType === 'mouse' && e.button === 1 && !cameraLocked) {
       e.preventDefault();
       e.stopPropagation();
       e.stopImmediatePropagation();
@@ -2162,6 +2172,7 @@
     if (isEditorOpen && currentTool !== 'move') return;
     if (currentTool === 'select' && (e.target.closest('.token') || (e.target.closest('.mapPiece') && document.body.classList.contains('map-editor-active')))) return;
     deselectAll();
+    if (cameraLocked) return;
     boardWrap.setPointerCapture(e.pointerId);
     activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (activePointers.size === 1) {
@@ -2219,12 +2230,100 @@
 
   boardWrap.addEventListener('wheel', (e) => {
     e.preventDefault();
+    if (cameraLocked) return;
     const rect = boardWrap.getBoundingClientRect();
     const cx = e.clientX - rect.left, cy = e.clientY - rect.top, oldScale = scale;
     scale = Math.min(10, Math.max(0.05, scale * (e.deltaY < 0 ? 1.1 : 0.9)));
     boardX = cx - (scale / oldScale) * (cx - boardX); boardY = cy - (scale / oldScale) * (cy - boardY);
     applyZoom(); boardLocalStyle();
   }, { passive: false });
+
+  /* ===== Câmera do mestre (broadcast em tempo real, sem usar o banco) ===== */
+  const camPullBtn = document.getElementById('camPullBtn');
+  const camLiveBtn = document.getElementById('camLiveBtn');
+  const camLockBadge = document.getElementById('camLockBadge');
+  let camLive = false, camLiveTimer = null, camLastSent = 0, camLastKey = '', camUnlockTimer = null, camAnimTimer = null;
+
+  function getCameraState() {
+    const r = boardWrap.getBoundingClientRect();
+    return { cx: (r.width / 2 - boardX) / scale, cy: (r.height / 2 - boardY) / scale, ww: r.width / scale, wh: r.height / scale };
+  }
+
+  function sendCamera(live, mode) {
+    if (!cameraChannel || currentRole !== 'mestre') return;
+    const st = getCameraState();
+    cameraChannel.send({ type: 'broadcast', event: 'camera', payload: { ...st, live, mode } });
+  }
+
+  function applyCameraState(st, smoothSeconds, ease) {
+    const r = boardWrap.getBoundingClientRect();
+    if (!r.width || !r.height || !st.ww || !st.wh) return;
+    const newScale = Math.min(10, Math.max(0.05, Math.min(r.width / st.ww, r.height / st.wh)));
+    if (smoothSeconds > 0) {
+      board.style.transition = `left ${smoothSeconds}s ${ease}, top ${smoothSeconds}s ${ease}, transform ${smoothSeconds}s ${ease}`;
+      clearTimeout(camAnimTimer);
+      camAnimTimer = setTimeout(() => { board.style.transition = ''; }, smoothSeconds * 1000 + 60);
+    }
+    scale = newScale;
+    boardX = r.width / 2 - st.cx * newScale;
+    boardY = r.height / 2 - st.cy * newScale;
+    applyZoom(); boardLocalStyle();
+  }
+
+  function setCameraLocked(v) {
+    cameraLocked = v;
+    camLockBadge.classList.toggle('hidden', !v);
+    if (v) { activePointers.clear(); lastPinchDist = null; }
+  }
+
+  function handleCameraMessage(payload) {
+    if (currentRole === 'mestre' || !payload) return;
+    if (payload.live) {
+      setCameraLocked(true);
+      clearTimeout(camUnlockTimer);
+      camUnlockTimer = setTimeout(() => setCameraLocked(false), 5000);
+      applyCameraState(payload, 0.15, 'linear');
+    } else if (payload.mode === 'release') {
+      clearTimeout(camUnlockTimer);
+      setCameraLocked(false);
+    } else {
+      applyCameraState(payload, 0.5, 'ease-in-out');
+    }
+  }
+
+  function setupCameraChannel(roomId) {
+    stopCameraLive(true);
+    if (cameraChannel) sb.removeChannel(cameraChannel);
+    setCameraLocked(false);
+    cameraChannel = sb.channel('camera-' + roomId, { config: { broadcast: { self: false } } })
+      .on('broadcast', { event: 'camera' }, ({ payload }) => handleCameraMessage(payload))
+      .subscribe();
+  }
+
+  function stopCameraLive(silent) {
+    if (camLiveTimer) { clearInterval(camLiveTimer); camLiveTimer = null; }
+    if (camLive && !silent) sendCamera(false, 'release');
+    camLive = false;
+    camLiveBtn.classList.remove('active');
+    camLiveBtn.textContent = '📡 Câmera ao vivo: OFF';
+  }
+
+  function startCameraLive() {
+    camLive = true; camLastKey = ''; camLastSent = 0;
+    camLiveBtn.classList.add('active');
+    camLiveBtn.textContent = '📡 Câmera ao vivo: ON';
+    camLiveTimer = setInterval(() => {
+      const key = [boardX, boardY, scale].map(n => n.toFixed(2)).join('|');
+      const now = Date.now();
+      if (key !== camLastKey || now - camLastSent > 2000) {
+        camLastKey = key; camLastSent = now;
+        sendCamera(true, 'live');
+      }
+    }, 120);
+  }
+
+  camPullBtn.addEventListener('click', () => sendCamera(false, 'pull'));
+  camLiveBtn.addEventListener('click', () => { camLive ? stopCameraLive(false) : startCameraLive(); });
 
   function applyBarState() {
     const topHidden = localStorage.getItem('tabletop_topbar_hidden') === '1';
@@ -2333,6 +2432,7 @@
 
     await loadSceneContent(currentSceneId);
     subscribeRealtimeChannels(currentSceneId);
+    setupCameraChannel(roomId);
 
     if (roomSyncChannel) sb.removeChannel(roomSyncChannel);
     roomSyncChannel = sb.channel('room-sync-' + roomId)
@@ -2376,6 +2476,8 @@
   }
 
   btnReturnLobby.addEventListener('click', () => {
+    stopCameraLive(false); setCameraLocked(false);
+    if (cameraChannel) { sb.removeChannel(cameraChannel); cameraChannel = null; }
     if (roomSyncChannel) sb.removeChannel(roomSyncChannel);
     if (tokensChannel) sb.removeChannel(tokensChannel);
     if (mapElementsChannel) sb.removeChannel(mapElementsChannel);
