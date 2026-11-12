@@ -1715,7 +1715,7 @@
       el.style.left = x + 'px'; el.style.top = y + 'px';
       
       const now = Date.now();
-      if (now - lastSent > 70) {
+      if (now - lastSent > 100) {
         lastSent = now;
         if (type === 'token') {
           sb.rpc('move_token', { p_user_id: currentUserId, p_token_id: itemId, p_x: x, p_y: y }).then(({ error }) => { if (error) console.error(error); });
