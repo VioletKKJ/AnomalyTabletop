@@ -1924,6 +1924,7 @@
   zoomOutBtn.addEventListener('click', () => { scale = Math.max(scale / 1.2, 0.05); applyZoom(); });
 
   const activePointers = new Map();
+  const middlePanPointers = new Map();
   let panStartX, panStartY, panOrigX = 0, panOrigY = 0, lastPinchDist = null;
 
   function boardLocalStyle() {
@@ -1932,22 +1933,48 @@
   }
 
   boardWrap.addEventListener('dragstart', (e) => e.preventDefault());
+
   boardWrap.addEventListener('pointerdown', (e) => {
+    if (e.pointerType === 'mouse' && e.button === 1) {
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+      boardWrap.setPointerCapture(e.pointerId);
+
+      middlePanPointers.set(e.pointerId, {
+        x: e.clientX,
+        y: e.clientY,
+        boardX,
+        boardY
+      });
+      return;
+    }
+
     const isEditorOpen = document.body.classList.contains('fog-editor-active') || document.body.classList.contains('wall-editor-active');
-    if (isEditorOpen && currentTool !== 'move') return; 
+    if (isEditorOpen && currentTool !== 'move') return;
     if (currentTool === 'select' && (e.target.closest('.token') || (e.target.closest('.mapPiece') && document.body.classList.contains('map-editor-active')))) return;
     deselectAll();
     boardWrap.setPointerCapture(e.pointerId);
     activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    if (activePointers.size === 1) { panStartX = e.clientX; panStartY = e.clientY; panOrigX = boardX; panOrigY = boardY; lastPinchDist = null; }
-    else if (activePointers.size === 2) {
+    if (activePointers.size === 1) {
+      panStartX = e.clientX; panStartY = e.clientY; panOrigX = boardX; panOrigY = boardY; lastPinchDist = null;
+    } else if (activePointers.size === 2) {
       const pts = Array.from(activePointers.values());
       lastPinchDist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
     }
-  });
+  }, true);
 
   boardWrap.addEventListener('pointermove', (e) => {
     const isEditorOpen = document.body.classList.contains('fog-editor-active') || document.body.classList.contains('wall-editor-active');
+
+    const middlePan = middlePanPointers.get(e.pointerId);
+    if (middlePan) {
+      boardX = middlePan.boardX + (e.clientX - middlePan.x);
+      boardY = middlePan.boardY + (e.clientY - middlePan.y);
+      boardLocalStyle();
+      return;
+    }
+
     if (isEditorOpen && currentTool !== 'move' && activePointers.size < 2) return;
     if (!activePointers.has(e.pointerId)) return;
     activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
@@ -1971,9 +1998,13 @@
   });
 
   function releasePointer(e) {
+    if (middlePanPointers.delete(e.pointerId)) return;
     activePointers.delete(e.pointerId);
     if (activePointers.size < 2) lastPinchDist = null;
-    if (activePointers.size === 1) { const r = Array.from(activePointers.values())[0]; panStartX = r.x; panStartY = r.y; panOrigX = boardX; panOrigY = boardY; }
+    if (activePointers.size === 1) {
+      const r = Array.from(activePointers.values())[0];
+      panStartX = r.x; panStartY = r.y; panOrigX = boardX; panOrigY = boardY;
+    }
   }
   boardWrap.addEventListener('pointerup', releasePointer);
   boardWrap.addEventListener('pointercancel', releasePointer);
