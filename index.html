@@ -204,6 +204,138 @@
   .sceneRow .thumb { width: 52px; height: 38px; border-radius: 8px; background-size: cover; background-position: center;
     background-color: var(--bg); flex-shrink: 0; border: 1px solid var(--panel-border); }
   .sceneRow .activeTag { font-size: 11px; color: var(--accent); font-weight: 600; }
+
+
+  /* Barra superior: visual compacto e ações organizadas */
+  #topBar {
+    flex-wrap: nowrap;
+    gap: 8px;
+    padding: 7px 10px;
+    background: rgba(18, 19, 24, 0.88);
+    border-color: rgba(255, 255, 255, 0.09);
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.42);
+  }
+
+  .brandTitle {
+    gap: 8px;
+    margin-right: 2px;
+    padding-right: 12px;
+    border-color: rgba(255, 255, 255, 0.12);
+  }
+
+  .brandTitle h1 {
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  #roleBadge {
+    white-space: nowrap;
+  }
+
+  #normalNav {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    flex-wrap: nowrap;
+  }
+
+  #normalNav button,
+  #normalNav label.btn {
+    min-height: 34px;
+    padding: 6px 10px;
+    border-radius: 8px;
+  }
+
+  #normalNav .primary {
+    box-shadow: 0 2px 10px rgba(123, 44, 191, 0.24);
+  }
+
+  #zoomOut,
+  #zoomIn {
+    min-width: 34px;
+    padding-inline: 8px;
+    font-size: 15px;
+  }
+
+  #moreActionsBtn {
+    width: 36px;
+    min-width: 36px;
+    padding: 0;
+    justify-content: center;
+    font-size: 20px;
+    line-height: 1;
+    color: var(--text-dim);
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  #moreActionsBtn:hover,
+  #moreActionsBtn[aria-expanded="true"] {
+    color: #fff;
+    background: rgba(157, 78, 223, 0.22);
+    border-color: rgba(157, 78, 223, 0.4);
+  }
+
+  #moreActionsMenu {
+    position: absolute;
+    top: calc(100% + 9px);
+    right: 0;
+    z-index: 60;
+    display: none;
+    flex-direction: column;
+    gap: 5px;
+    min-width: 190px;
+    padding: 8px;
+    background: rgba(26, 28, 36, 0.97);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 14px;
+    box-shadow: 0 14px 36px rgba(0, 0, 0, 0.48);
+    backdrop-filter: blur(16px);
+  }
+
+  #moreActionsMenu.open {
+    display: flex;
+  }
+
+  #moreActionsMenu button,
+  #moreActionsMenu label.btn {
+    width: 100%;
+    justify-content: flex-start;
+    border-radius: 8px;
+    background: transparent;
+  }
+
+  @media (max-width: 700px) {
+    #topBar {
+      max-width: calc(100vw - 20px);
+      gap: 6px;
+      padding: 6px 8px;
+    }
+
+    .brandTitle h1 {
+      max-width: 100px;
+      font-size: 12px;
+    }
+
+    #roleBadge {
+      display: none;
+    }
+
+    #normalNav {
+      gap: 4px;
+    }
+
+    #normalNav button,
+    #normalNav label.btn {
+      min-height: 32px;
+      padding: 5px 8px;
+      font-size: 11px;
+    }
+  }
+
 </style>
 </head>
 <body>
@@ -374,24 +506,29 @@
     <span id="roleBadge" class="hidden"></span>
 
     <!-- Interface Padrão -->
-    <div id="normalNav" style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+    <div id="normalNav">
       <button class="mestre-only primary" id="openMapEditorBtn" title="Editor de Mapa">Editor</button>
       <button class="mestre-only primary" id="openFogEditorBtn" title="Editor de Névoa">Névoa</button>
       <button class="mestre-only primary" id="openWallEditorBtn" title="Editor de Paredes">Paredes</button>
-      
-      <label class="btn mestre-only primary" title="Adicionar Token">
-        + Token
-        <input type="file" id="tokenInput" accept="image/png,image/jpeg,image/webp">
-      </label>
 
-      <button id="zoomOut" title="Menos Zoom">−</button>
-      <button id="zoomIn" title="Mais Zoom">+</button>
-      <button id="gridBtn" class="mestre-only" title="Configurar Grid">Grid</button>
-      <button id="scenesBtn" class="mestre-only">Cenas</button>
-      <button id="managePlayersBtn" class="mestre-only hidden">Jogadores</button>
+      <button id="zoomOut" title="Menos Zoom" aria-label="Diminuir zoom">−</button>
+      <button id="zoomIn" title="Mais Zoom" aria-label="Aumentar zoom">+</button>
       <button id="btnReturnLobby" title="Trocar Mesa">Mesas</button>
-      <button id="settingsBtn" title="Configurações">⚙️</button>
-      <button id="clearBtn" class="danger mestre-only" title="Limpar Tudo">Limpar</button>
+
+      <button id="moreActionsBtn" type="button" title="Mais ações"
+        aria-label="Mais ações" aria-expanded="false">⋯</button>
+
+      <div id="moreActionsMenu" aria-label="Mais ações">
+        <label class="btn mestre-only primary" title="Adicionar Token">
+          + Token
+          <input type="file" id="tokenInput" accept="image/png,image/jpeg,image/webp">
+        </label>
+        <button id="gridBtn" class="mestre-only" title="Configurar Grid">Grid</button>
+        <button id="scenesBtn" class="mestre-only">Cenas</button>
+        <button id="managePlayersBtn" class="mestre-only hidden">Jogadores</button>
+        <button id="settingsBtn" title="Configurações">⚙️ Configurações</button>
+        <button id="clearBtn" class="danger mestre-only" title="Limpar Tudo">Limpar</button>
+      </div>
     </div>
 
     <!-- Interface Alternada (Modo Editor de Mapa) -->
@@ -474,6 +611,30 @@
 (function () {
   const topBar = document.getElementById('topBar');
   const topBarToggle = document.getElementById('topBarToggle');
+
+  const moreActionsBtn = document.getElementById('moreActionsBtn');
+  const moreActionsMenu = document.getElementById('moreActionsMenu');
+
+  moreActionsBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const isOpen = moreActionsMenu.classList.toggle('open');
+    moreActionsBtn.setAttribute('aria-expanded', String(isOpen));
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!moreActionsMenu.contains(e.target) && !moreActionsBtn.contains(e.target)) {
+      moreActionsMenu.classList.remove('open');
+      moreActionsBtn.setAttribute('aria-expanded', 'false');
+    }
+  });
+
+  moreActionsMenu.addEventListener('click', (e) => {
+    if (e.target.closest('button')) {
+      moreActionsMenu.classList.remove('open');
+      moreActionsBtn.setAttribute('aria-expanded', 'false');
+    }
+  });
+
   const sideToolbar = document.getElementById('sideToolbar');
   const sideToolbarToggle = document.getElementById('sideToolbarToggle');
   const boardWrap = document.getElementById('boardWrap');
