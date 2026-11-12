@@ -23,6 +23,7 @@
     --accent-text: #ffffff; 
     --danger: #ff5252; 
     --ok: #00e676;
+    --door: #ffc107;
   }
 
   * { box-sizing: border-box; user-select: none; -webkit-user-select: none; }
@@ -49,9 +50,9 @@
 
   /* Barra Superior Flutuante Minimalista */
   #topBar { position: fixed; top: max(12px, env(safe-area-inset-top, 12px)); left: 50%; transform: translateX(-50%) translateY(0); z-index: 30;
-    padding: 8px 14px; background: rgba(26, 28, 36, 0.85); border: 1px solid var(--panel-border);
-    backdrop-filter: blur(12px); display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: center;
-    border-radius: 14px; transition: transform .25s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 8px 32px rgba(0,0,0,0.6); max-width: 95vw; }
+    padding: 8px 14px; background: rgba(26, 28, 36, 0.88); border: 1px solid var(--panel-border);
+    backdrop-filter: blur(12px); display: flex; flex-wrap: wrap; gap: 6px; align-items: center; justify-content: center;
+    border-radius: 14px; transition: transform .25s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 8px 32px rgba(0,0,0,0.6); max-width: 96vw; }
   #topBar.collapsed { transform: translateX(-50%) translateY(calc(-100% - 20px)); }
   
   .brandTitle { display: flex; align-items: center; gap: 6px; margin-right: 4px; padding-right: 8px; border-right: 1px solid var(--panel-border); }
@@ -91,7 +92,9 @@
   button.primary, label.btn.primary { background: var(--accent-gradient); color: var(--accent-text); border: none; box-shadow: 0 2px 8px rgba(123, 44, 191, 0.4); }
   button.primary:hover, label.btn.primary:hover { opacity: 0.95; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(157, 78, 223, 0.6); }
   button.danger { background: rgba(255, 82, 82, 0.15); color: var(--danger); border: 1px solid rgba(255, 82, 82, 0.3); }
-  button.danger:hover { background: var(--danger); color: #fff; }
+  button.danger:hover, button.danger.active { background: var(--danger); color: #fff; }
+  button.door-btn { background: rgba(255, 193, 7, 0.2); color: var(--door); border: 1px solid rgba(255, 193, 7, 0.4); }
+  button.door-btn.active { background: var(--door); color: #000; font-weight: 700; }
   input[type=file] { display: none; }
 
   #boardWrap { position: fixed; inset: 0; overflow: hidden; touch-action: none;
@@ -121,11 +124,19 @@
   /* Camada de Paredes e Portas (Visível apenas no Editor de Paredes) */
   #wallsLayer { position: absolute; left: 0; top: 0; width: 40000px; height: 40000px; pointer-events: none; z-index: 25000; overflow: visible; display: none; }
   body.wall-editor-active #wallsLayer { display: block; pointer-events: auto; cursor: crosshair; }
+  body.wall-editor-active.wall-eraser-mode #wallsLayer { cursor: not-allowed; }
   
-  #wallsLayer line.wall-segment { stroke: #00e676; stroke-width: 4px; stroke-linecap: round; cursor: pointer; transition: stroke .2s; }
-  #wallsLayer line.wall-segment:hover { stroke: #ff5252; stroke-width: 6px; }
-  #wallsLayer line.door-segment { stroke: #ffc107; stroke-width: 5px; stroke-dasharray: 8,4; stroke-linecap: round; cursor: pointer; }
-  #wallsLayer line.door-segment.door-open { stroke: rgba(255, 193, 7, 0.3); stroke-dasharray: 2,8; }
+  #wallsLayer line.wall-hit { stroke: transparent; stroke-width: 18px; cursor: pointer; }
+  #wallsLayer line.wall-segment { stroke: #00e676; stroke-width: 4px; stroke-linecap: round; pointer-events: none; transition: stroke .15s; }
+  #wallsLayer line.door-segment { stroke: #ffc107; stroke-width: 5px; stroke-dasharray: 8,5; stroke-linecap: round; pointer-events: none; transition: opacity .15s; }
+  #wallsLayer line.door-segment.door-open { stroke: #ffc107; opacity: 0.3; stroke-dasharray: 3,8; }
+  
+  body.wall-eraser-mode #wallsLayer g.wall-group:hover line.wall-segment,
+  body.wall-eraser-mode #wallsLayer g.wall-group:hover line.door-segment { stroke: #ff5252 !important; opacity: 1 !important; }
+
+  #wallsLayer circle.wall-node { fill: #00e676; stroke: #121318; stroke-width: 1.5px; cursor: crosshair; }
+  #wallsLayer circle.wall-node.door-node { fill: #ffc107; }
+  #wallsLayer circle.snap-indicator { fill: none; stroke: #ffffff; stroke-width: 2px; pointer-events: none; }
 
   #placeholder { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
     color: var(--text-dim); font-size: 13px; text-align: center; padding: 20px; z-index: 0; gap: 10px; }
@@ -414,10 +425,12 @@
 
     <!-- Interface Alternada (Modo Editor de Paredes) -->
     <div id="wallEditorNav" class="hidden" style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
-      <span style="color:var(--accent); font-weight:600; font-size:12px;" id="wallStatusText">Paredes: Clique início e fim</span>
-      <button class="primary" id="btnWallType" title="Alternar entre Parede e Porta">🧱 Parede</button>
-      <button id="btnUndoWallPoint">⌫ Desfazer Ponto</button>
-      <button class="danger" id="btnClearWallScene">Limpar Paredes</button>
+      <span style="color:var(--accent); font-weight:600; font-size:12px;" id="wallStatusText">Toque p/ iniciar parede</span>
+      <button class="primary" id="btnWallModeWall" title="Desenhar Parede">🧱 Parede</button>
+      <button class="door-btn" id="btnWallModeDoor" title="Desenhar Porta">🚪 Porta</button>
+      <button class="danger" id="btnWallModeErase" title="Apagar Segmento">🗑️ Apagar</button>
+      <button id="btnBreakWallChain" title="Finalizar segmento atual sem apagar">✂️ Soltar Linha</button>
+      <button class="danger" id="btnClearWallScene">Limpar Tudo</button>
       <button id="closeWallEditorBtn">Sair</button>
     </div>
   </header>
@@ -496,18 +509,22 @@
   // Controles do Editor de Paredes
   const openWallEditorBtn = document.getElementById('openWallEditorBtn');
   const closeWallEditorBtn = document.getElementById('closeWallEditorBtn');
-  const btnWallType = document.getElementById('btnWallType');
-  const btnUndoWallPoint = document.getElementById('btnUndoWallPoint');
+  const btnWallModeWall = document.getElementById('btnWallModeWall');
+  const btnWallModeDoor = document.getElementById('btnWallModeDoor');
+  const btnWallModeErase = document.getElementById('btnWallModeErase');
+  const btnBreakWallChain = document.getElementById('btnBreakWallChain');
   const clearWallBtn = document.getElementById('btnClearWallScene');
   const wallStatusText = document.getElementById('wallStatusText');
 
   let editingFogObj = null;
   let editingFogPoints = [];
 
-  // Variáveis para Wall Editor
-  let currentWallType = 'wall'; // 'wall' ou 'door'
+  // Estado do Editor de Paredes
+  let wallToolMode = 'wall'; // 'wall', 'door', 'erase'
   let wallStartPoint = null;
   let wallDraftLine = null;
+  let snapIndicatorCircle = null;
+  let cachedWalls = [];
 
   const mapPieceInput = document.getElementById('mapPieceInput');
   const tokenInput = document.getElementById('tokenInput');
@@ -827,166 +844,292 @@
     updateDraftPolygon();
   });
 
-  // --- EDITOR DE PAREDES E PORTAS ---
+  // --- EDITOR DE PAREDES E PORTAS REFORMULADO ---
+  function setWallToolMode(mode) {
+    wallToolMode = mode;
+    document.body.classList.toggle('wall-eraser-mode', mode === 'erase');
+    
+    btnWallModeWall.classList.toggle('primary', mode === 'wall');
+    btnWallModeDoor.classList.toggle('active', mode === 'door');
+    btnWallModeErase.classList.toggle('active', mode === 'erase');
+
+    if (mode === 'erase') {
+      breakWallChain();
+      wallStatusText.textContent = 'Modo Borracha: Toque em uma parede para apagar';
+    } else if (mode === 'door') {
+      wallStatusText.textContent = wallStartPoint ? 'Porta: Toque no ponto final' : 'Porta: Toque no ponto inicial (ou porta existente p/ abrir)';
+    } else {
+      wallStatusText.textContent = wallStartPoint ? 'Parede: Toque no ponto final' : 'Parede: Toque no ponto inicial';
+    }
+  }
+
+  function breakWallChain() {
+    wallStartPoint = null;
+    if (wallDraftLine) { wallDraftLine.remove(); wallDraftLine = null; }
+    if (snapIndicatorCircle) { snapIndicatorCircle.remove(); snapIndicatorCircle = null; }
+    if (wallToolMode !== 'erase') {
+      wallStatusText.textContent = wallToolMode === 'door' ? 'Porta: Toque no início' : 'Parede: Toque no início';
+    }
+  }
+
+  btnWallModeWall.addEventListener('click', () => setWallToolMode('wall'));
+  btnWallModeDoor.addEventListener('click', () => setWallToolMode('door'));
+  btnWallModeErase.addEventListener('click', () => setWallToolMode('erase'));
+  btnBreakWallChain.addEventListener('click', breakWallChain);
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && document.body.classList.contains('wall-editor-active')) {
+      breakWallChain();
+    }
+  });
+
   openWallEditorBtn.addEventListener('click', () => {
     document.body.classList.add('wall-editor-active');
     normalNav.classList.add('hidden');
     wallEditorNav.classList.remove('hidden');
-    wallStartPoint = null;
-    wallStatusText.textContent = 'Paredes: Clique início e fim';
+    setWallToolMode('wall');
+    breakWallChain();
     loadWallElements();
   });
 
   closeWallEditorBtn.addEventListener('click', () => {
-    document.body.classList.remove('wall-editor-active');
+    document.body.classList.remove('wall-editor-active', 'wall-eraser-mode');
     wallEditorNav.classList.add('hidden');
     normalNav.classList.remove('hidden');
-    wallStartPoint = null;
-    if (wallDraftLine) { wallDraftLine.remove(); wallDraftLine = null; }
+    breakWallChain();
     loadWallElements();
-  });
-
-  btnWallType.addEventListener('click', () => {
-    if (currentWallType === 'wall') {
-      currentWallType = 'door';
-      btnWallType.textContent = '🚪 Porta';
-      btnWallType.style.background = '#ffc107';
-      btnWallType.style.color = '#000';
-    } else {
-      currentWallType = 'wall';
-      btnWallType.textContent = '🧱 Parede';
-      btnWallType.style.background = '';
-      btnWallType.style.color = '';
-    }
-  });
-
-  btnUndoWallPoint.addEventListener('click', () => {
-    wallStartPoint = null;
-    if (wallDraftLine) { wallDraftLine.remove(); wallDraftLine = null; }
-    wallStatusText.textContent = 'Ponto inicial limpo.';
   });
 
   clearWallBtn.addEventListener('click', async () => {
     if (!confirm('Deseja apagar todas as paredes e portas desta cena?')) return;
+    breakWallChain();
     await sb.from('walls').delete().eq('scene_id', currentSceneId);
     loadWallElements();
   });
 
+  function getSnapPoint(rawX, rawY) {
+    const snapRadius = 18 / scale;
+    let closest = null;
+    let minDist = snapRadius;
+
+    cachedWalls.forEach(w => {
+      [{ x: w.x1, y: w.y1 }, { x: w.x2, y: w.y2 }].forEach(pt => {
+        const d = Math.hypot(pt.x - rawX, pt.y - rawY);
+        if (d < minDist) {
+          minDist = d;
+          closest = { x: pt.x, y: pt.y };
+        }
+      });
+    });
+
+    return closest || { x: rawX, y: rawY, snapped: false };
+  }
+
   async function loadWallElements() {
+    const draftHtml = wallDraftLine ? wallDraftLine.outerHTML : '';
     wallsLayer.innerHTML = '';
+    if (draftHtml) {
+      wallsLayer.insertAdjacentHTML('beforeend', draftHtml);
+      wallDraftLine = wallsLayer.querySelector('#wallDraftLine');
+    }
+
     if (!currentSceneId) return;
     const { data: walls } = await sb.from('walls').select('*').eq('scene_id', currentSceneId);
-    (walls || []).forEach(w => renderWallSegment(w));
+    cachedWalls = walls || [];
+    cachedWalls.forEach(w => renderWallSegment(w));
   }
 
   function renderWallSegment(wallData) {
+    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    g.classList.add('wall-group');
+    g.dataset.id = wallData.id;
+
+    // Área invisível mais larga para facilitar o clique/toque no celular
+    const hitLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    hitLine.setAttribute('x1', wallData.x1);
+    hitLine.setAttribute('y1', wallData.y1);
+    hitLine.setAttribute('x2', wallData.x2);
+    hitLine.setAttribute('y2', wallData.y2);
+    hitLine.classList.add('wall-hit');
+
     const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
     line.setAttribute('x1', wallData.x1);
     line.setAttribute('y1', wallData.y1);
     line.setAttribute('x2', wallData.x2);
     line.setAttribute('y2', wallData.y2);
-    line.dataset.id = wallData.id;
 
-    if (wallData.wall_type === 'door') {
+    const isDoor = wallData.wall_type === 'door';
+    if (isDoor) {
       line.classList.add('door-segment');
       if (wallData.is_open) line.classList.add('door-open');
     } else {
       line.classList.add('wall-segment');
     }
 
-    line.addEventListener('click', async (e) => {
+    // Nós visuais nas pontas
+    const n1 = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    n1.setAttribute('cx', wallData.x1);
+    n1.setAttribute('cy', wallData.y1);
+    n1.setAttribute('r', '5');
+    n1.classList.add('wall-node');
+    if (isDoor) n1.classList.add('door-node');
+
+    const n2 = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    n2.setAttribute('cx', wallData.x2);
+    n2.setAttribute('cy', wallData.y2);
+    n2.setAttribute('r', '5');
+    n2.classList.add('wall-node');
+    if (isDoor) n2.classList.add('door-node');
+
+    // Evento único unificado no hitLine para evitar conflito com o boardWrap
+    hitLine.addEventListener('pointerdown', async (e) => {
       if (!document.body.classList.contains('wall-editor-active') || currentRole !== 'mestre') return;
+      if (currentTool === 'move') return;
       e.stopPropagation();
-      
-      if (wallData.wall_type === 'door') {
-        // Se for porta, clique alterna entre aberta/fechada, ou shift+clique apaga
-        if (e.shiftKey) {
-          if (confirm('Apagar este segmento?')) {
-            await sb.from('walls').delete().eq('id', wallData.id);
-            loadWallElements();
-          }
-        } else {
-          const newOpen = !wallData.is_open;
-          await sb.from('walls').update({ is_open: newOpen }).eq('id', wallData.id);
-          loadWallElements();
-        }
-      } else {
-        // Parede normal: clique com shift ou confirmação apaga
-        if (confirm('Deseja apagar esta parede?')) {
-          await sb.from('walls').delete().eq('id', wallData.id);
-          loadWallElements();
-        }
+      e.preventDefault();
+
+      if (wallToolMode === 'erase') {
+        g.remove();
+        cachedWalls = cachedWalls.filter(item => item.id !== wallData.id);
+        await sb.from('walls').delete().eq('id', wallData.id);
+        return;
+      }
+
+      if (isDoor && !wallStartPoint) {
+        const newOpen = !wallData.is_open;
+        wallData.is_open = newOpen;
+        line.classList.toggle('door-open', newOpen);
+        wallStatusText.textContent = newOpen ? '🚪 Porta ABERTA' : '🚪 Porta FECHADA';
+        await sb.from('walls').update({ is_open: newOpen }).eq('id', wallData.id);
       }
     });
 
-    wallsLayer.appendChild(line);
+    // Clicar diretamente em um nó faz snap e começa/termina a parede nele
+    [n1, n2].forEach((nodeEl, idx) => {
+      nodeEl.addEventListener('pointerdown', (e) => {
+        if (!document.body.classList.contains('wall-editor-active') || currentRole !== 'mestre') return;
+        if (currentTool === 'move' || wallToolMode === 'erase') return;
+        e.stopPropagation();
+        e.preventDefault();
+        const pt = idx === 0 ? { x: wallData.x1, y: wallData.y1 } : { x: wallData.x2, y: wallData.y2 };
+        handleWallCanvasPoint(pt.x, pt.y);
+      });
+    });
+
+    g.appendChild(hitLine);
+    g.appendChild(line);
+    g.appendChild(n1);
+    g.appendChild(n2);
+    wallsLayer.appendChild(g);
   }
 
-  // Interação de desenho de paredes no tabuleiro
-  boardWrap.addEventListener('pointerdown', async (e) => {
-    if (!document.body.classList.contains('wall-editor-active') || currentRole !== 'mestre') return;
-    // Se clicar em um elemento de parede existente, deixa o evento dele tratar
-    if (e.target.tagName === 'line') return;
-
-    const rect = boardWrap.getBoundingClientRect();
-    const x = (e.clientX - rect.left - boardX) / scale;
-    const y = (e.clientY - rect.top - boardY) / scale;
+  async function handleWallCanvasPoint(rawX, rawY) {
+    const snapped = getSnapPoint(rawX, rawY);
+    const x = snapped.x;
+    const y = snapped.y;
 
     if (!wallStartPoint) {
       wallStartPoint = { x, y };
-      wallStatusText.textContent = `Ponto 1 definido. Clique no ponto final.`;
+      wallStatusText.textContent = wallToolMode === 'door' ? 'Porta: Toque no fim' : 'Parede: Toque no fim';
       
+      if (wallDraftLine) wallDraftLine.remove();
       wallDraftLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      wallDraftLine.id = 'wallDraftLine';
       wallDraftLine.setAttribute('x1', x);
       wallDraftLine.setAttribute('y1', y);
       wallDraftLine.setAttribute('x2', x);
       wallDraftLine.setAttribute('y2', y);
-      wallDraftLine.setAttribute('stroke', currentWallType === 'door' ? '#ffc107' : '#00e676');
+      wallDraftLine.setAttribute('stroke', wallToolMode === 'door' ? '#ffc107' : '#00e676');
       wallDraftLine.setAttribute('stroke-width', '4');
-      wallDraftLine.setAttribute('stroke-dasharray', currentWallType === 'door' ? '8,4' : 'none');
+      wallDraftLine.setAttribute('stroke-dasharray', wallToolMode === 'door' ? '8,5' : 'none');
+      wallDraftLine.style.pointerEvents = 'none';
       wallsLayer.appendChild(wallDraftLine);
     } else {
-      // Segundo ponto: salva a parede e continua o traçado em cadeia (o ponto final vira o novo ponto inicial)
       const x1 = wallStartPoint.x;
       const y1 = wallStartPoint.y;
       const x2 = x;
       const y2 = y;
 
-      if (wallDraftLine) { wallDraftLine.remove(); wallDraftLine = null; }
+      // Evita segmentos de tamanho zero
+      if (Math.hypot(x2 - x1, y2 - y1) < 3) return;
 
-      await sb.from('walls').insert({
+      const typeToInsert = wallToolMode === 'door' ? 'door' : 'wall';
+      
+      // Atualiza imediatamente o início da próxima linha na cadeia
+      wallStartPoint = { x: x2, y: y2 };
+      if (wallDraftLine) {
+        wallDraftLine.setAttribute('x1', x2);
+        wallDraftLine.setAttribute('y1', y2);
+        wallDraftLine.setAttribute('x2', x2);
+        wallDraftLine.setAttribute('y2', y2);
+        wallDraftLine.setAttribute('stroke', typeToInsert === 'door' ? '#ffc107' : '#00e676');
+        wallDraftLine.setAttribute('stroke-dasharray', typeToInsert === 'door' ? '8,5' : 'none');
+      }
+
+      wallStatusText.textContent = `Criado! Continue ou clique "Soltar Linha"`;
+
+      const { data, error } = await sb.from('walls').insert({
         scene_id: currentSceneId,
         x1, y1, x2, y2,
-        wall_type: currentWallType,
+        wall_type: typeToInsert,
         is_open: false,
         z: Date.now()
-      });
+      }).select();
 
-      loadWallElements();
+      if (!error && data && data.length) {
+        cachedWalls.push(data[0]);
+        renderWallSegment(data[0]);
+      }
+    }
+  }
 
-      // Cadeia contínua: o fim atual vira o novo início
-      wallStartPoint = { x: x2, y: y2 };
-      wallStatusText.textContent = `Segmento criado [${currentWallType}]. Clique no próximo ponto ou use Desfazer.`;
-      
-      wallDraftLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-      wallDraftLine.setAttribute('x1', x2);
-      wallDraftLine.setAttribute('y1', y2);
-      wallDraftLine.setAttribute('x2', x2);
-      wallDraftLine.setAttribute('y2', y2);
-      wallDraftLine.setAttribute('stroke', currentWallType === 'door' ? '#ffc107' : '#00e676');
-      wallDraftLine.setAttribute('stroke-width', '4');
-      wallDraftLine.setAttribute('stroke-dasharray', currentWallType === 'door' ? '8,4' : 'none');
-      wallsLayer.appendChild(wallDraftLine);
+  // Clique direito no tabuleiro no modo paredes solta a cadeia atual
+  boardWrap.addEventListener('contextmenu', (e) => {
+    if (document.body.classList.contains('wall-editor-active') && wallStartPoint) {
+      e.preventDefault();
+      breakWallChain();
     }
   });
 
-  boardWrap.addEventListener('pointermove', (e) => {
-    if (!document.body.classList.contains('wall-editor-active') || !wallStartPoint || !wallDraftLine) return;
+  boardWrap.addEventListener('pointerdown', (e) => {
+    if (!document.body.classList.contains('wall-editor-active') || currentRole !== 'mestre') return;
+    if (currentTool === 'move' || e.button === 2) return;
+    if (wallToolMode === 'erase') return;
+
     const rect = boardWrap.getBoundingClientRect();
-    const x = (e.clientX - rect.left - boardX) / scale;
-    const y = (e.clientY - rect.top - boardY) / scale;
-    wallDraftLine.setAttribute('x2', x);
-    wallDraftLine.setAttribute('y2', y);
+    const rawX = (e.clientX - rect.left - boardX) / scale;
+    const rawY = (e.clientY - rect.top - boardY) / scale;
+    handleWallCanvasPoint(rawX, rawY);
+  });
+
+  boardWrap.addEventListener('pointermove', (e) => {
+    if (!document.body.classList.contains('wall-editor-active') || currentRole !== 'mestre') return;
+    if (wallToolMode === 'erase') return;
+
+    const rect = boardWrap.getBoundingClientRect();
+    const rawX = (e.clientX - rect.left - boardX) / scale;
+    const rawY = (e.clientY - rect.top - boardY) / scale;
+    const snapped = getSnapPoint(rawX, rawY);
+
+    // Indicador visual de snap (ímã)
+    if (snapped.x !== rawX || snapped.y !== rawY) {
+      if (!snapIndicatorCircle) {
+        snapIndicatorCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        snapIndicatorCircle.setAttribute('r', '9');
+        snapIndicatorCircle.classList.add('snap-indicator');
+        wallsLayer.appendChild(snapIndicatorCircle);
+      }
+      snapIndicatorCircle.setAttribute('cx', snapped.x);
+      snapIndicatorCircle.setAttribute('cy', snapped.y);
+    } else if (snapIndicatorCircle) {
+      snapIndicatorCircle.remove();
+      snapIndicatorCircle = null;
+    }
+
+    if (wallStartPoint && wallDraftLine) {
+      wallDraftLine.setAttribute('x2', snapped.x);
+      wallDraftLine.setAttribute('y2', snapped.y);
+    }
   });
 
   function applyZoom() { board.style.transform = `scale(${scale})`; }
@@ -1267,7 +1410,6 @@
 
   btnDeleteFogPolyInline.addEventListener('click', async () => {
     if (!editingFogObj) return;
-    if (!confirm('Apagar este polígono de névoa?')) return;
     await sb.from('fog_elements').delete().eq('id', editingFogObj.id);
     exitFogPolyEditing();
     loadFogElements();
@@ -1283,7 +1425,7 @@
 
   boardWrap.addEventListener('click', async (e) => {
     if (!document.body.classList.contains('fog-editor-active') || currentRole !== 'mestre') return;
-    if (editingFogObj) return; 
+    if (editingFogObj || currentTool === 'move') return; 
 
     const rect = boardWrap.getBoundingClientRect();
     const x = (e.clientX - rect.left - boardX) / scale;
@@ -1334,6 +1476,7 @@
 
     el.addEventListener('pointerdown', (e) => {
       if (currentTool !== 'select') return;
+      if (document.body.classList.contains('wall-editor-active') || document.body.classList.contains('fog-editor-active')) return;
       if (type === 'map' && (!document.body.classList.contains('map-editor-active') || currentRole !== 'mestre')) return;
       if (e.target === handle || e.target.classList.contains('rotateHandle')) return;
 
@@ -1790,7 +1933,8 @@
 
   boardWrap.addEventListener('dragstart', (e) => e.preventDefault());
   boardWrap.addEventListener('pointerdown', (e) => {
-    if (document.body.classList.contains('fog-editor-active') || document.body.classList.contains('wall-editor-active')) return; 
+    const isEditorOpen = document.body.classList.contains('fog-editor-active') || document.body.classList.contains('wall-editor-active');
+    if (isEditorOpen && currentTool !== 'move') return; 
     if (currentTool === 'select' && (e.target.closest('.token') || (e.target.closest('.mapPiece') && document.body.classList.contains('map-editor-active')))) return;
     deselectAll();
     boardWrap.setPointerCapture(e.pointerId);
@@ -1803,7 +1947,8 @@
   });
 
   boardWrap.addEventListener('pointermove', (e) => {
-    if (document.body.classList.contains('fog-editor-active') || document.body.classList.contains('wall-editor-active')) return;
+    const isEditorOpen = document.body.classList.contains('fog-editor-active') || document.body.classList.contains('wall-editor-active');
+    if (isEditorOpen && currentTool !== 'move' && activePointers.size < 2) return;
     if (!activePointers.has(e.pointerId)) return;
     activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (activePointers.size === 1) {
@@ -1878,7 +2023,6 @@
     }
   }
 
-  // Sincronização robusta Realtime sem necessidade de F5
   function subscribeRealtimeChannels(sceneId) {
     if (tokensChannel) sb.removeChannel(tokensChannel);
     if (mapElementsChannel) sb.removeChannel(mapElementsChannel);
