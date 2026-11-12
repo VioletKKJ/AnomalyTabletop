@@ -203,7 +203,7 @@
     </div>
   </div>
 
-<!-- Login / Cadastro -->
+  <!-- Login / Cadastro -->
   <div id="loginOverlay" class="hidden">
     <div class="card">
       <h2>Anomaly VTT</h2>
@@ -217,7 +217,6 @@
         <button class="primary" id="btnLogin">Entrar</button>
         <button id="btnSignup">Criar conta</button>
       </div>
-      <!-- Novo botão para voltar às configurações -->
       <button id="btnBackToSetup" style="width:100%; margin-top:10px; background:var(--panel-border);">⚙️ Reconfigurar Supabase</button>
     </div>
   </div>
@@ -387,16 +386,17 @@
 
     <!-- Interface Alternada (Modo Editor de Névoa) -->
     <div id="fogEditorNav" class="hidden" style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
-      <span style="color:var(--accent); font-weight:600; font-size:12px;" id="fogStatusText">Modo Névoa: Clique para marcar pontos</span>
+      <span style="color:var(--accent); font-weight:600; font-size:12px;" id="fogStatusText">Modo Névoa: Toque para marcar pontos</span>
       
       <div id="fogDrawControls" style="display:inline-flex; gap:6px;">
+        <button id="btnUndoFogPoint">⌫ Desfazer</button>
         <button class="primary" id="btnFinishFog">✅ Concluir</button>
       </div>
 
       <div id="fogPolyEditControls" class="hidden" style="display:inline-flex; gap:6px;">
-        <button id="btnToggleFogVisibility">👁️ Ocultar p/ Jogadores</button>
+        <button id="btnToggleFogVisibility">🙈 Névoa: ON</button>
         <button class="danger" id="btnDeleteFogPolyInline">🗑️ Apagar</button>
-        <button class="primary" id="btnDoneEditingFog">Salvar Edição</button>
+        <button class="primary" id="btnDoneEditingFog">Salvar</button>
       </div>
 
       <button class="danger" id="btnClearFogScene">Limpar Tudo</button>
@@ -462,6 +462,7 @@
   const closeFogEditorBtn = document.getElementById('closeFogEditorBtn');
   const clearFogBtn = document.getElementById('btnClearFogScene');
   const btnFinishFog = document.getElementById('btnFinishFog');
+  const btnUndoFogPoint = document.getElementById('btnUndoFogPoint');
   const fogStatusText = document.getElementById('fogStatusText');
 
   const fogDrawControls = document.getElementById('fogDrawControls');
@@ -493,9 +494,8 @@
   const loginError = document.getElementById('loginError');
   const btnLogin = document.getElementById('btnLogin');
   const btnSignup = document.getElementById('btnSignup');
-  const btnBackToSetup = document.getElementById('btnBackToSetup'); // Adicionado
-
-  // Ação para voltar ao setup a partir do login
+  const btnBackToSetup = document.getElementById('btnBackToSetup');
+  
   if (btnBackToSetup) {
     btnBackToSetup.addEventListener('click', () => {
       loginOverlay.classList.add('hidden');
@@ -763,6 +763,13 @@
     loadFogElements();
   });
 
+  btnUndoFogPoint.addEventListener('click', () => {
+    if (currentFogPoints.length > 0) {
+      currentFogPoints.pop();
+      updateDraftPolygon();
+    }
+  });
+
   btnFinishFog.addEventListener('click', async () => {
     if (currentFogPoints.length < 3) {
       alert('Um polígono precisa de pelo menos 3 pontos.');
@@ -925,7 +932,7 @@
     if (el) { el.remove(); mapPieceEls.delete(id); mapPieceData.delete(id); }
   }
 
-  // --- SISTEMA DE FOG OF WAR (COORDENADAS CORRETAS E VISIBILIDADE) ---
+  // --- SISTEMA DE FOG OF WAR ---
   async function loadFogElements() {
     const draftHtml = fogPointsDraftGroup ? fogPointsDraftGroup.outerHTML : '';
     const draftPolyHtml = fogPolygonDraft ? fogPolygonDraft.outerHTML : '';
@@ -979,7 +986,8 @@
     fogPolyEditControls.classList.remove('hidden');
 
     const isVis = editingFogObj.is_visible !== false;
-    btnToggleFogVisibility.textContent = isVis ? '👁️ Ocultar p/ Jogadores' : '🙈 Tornar Visível';
+    // Olho fechado = ON (bloqueando), Olho aberto = OFF (revelado)
+    btnToggleFogVisibility.textContent = isVis ? '🙈 Névoa: ON' : '👁️ Névoa: OFF';
 
     fogStatusText.textContent = 'Editando polígono. Arraste os pontos verdes no mapa.';
     renderFogEditorHandles();
@@ -1057,7 +1065,8 @@
     const newVis = !(editingFogObj.is_visible !== false);
     editingFogObj.is_visible = newVis;
     await sb.from('fog_elements').update({ is_visible: newVis }).eq('id', editingFogObj.id);
-    btnToggleFogVisibility.textContent = newVis ? '👁️ Ocultar p/ Jogadores' : '🙈 Tornar Visível';
+    // Olho fechado = ON, Olho aberto = OFF
+    btnToggleFogVisibility.textContent = newVis ? '🙈 Névoa: ON' : '👁️ Névoa: OFF';
     loadFogElements();
   });
 
@@ -1110,14 +1119,14 @@
     const pointsStr = currentFogPoints.map(p => `${p.x},${p.y}`).join(' ');
     fogPolygonDraft.setAttribute('points', pointsStr);
 
-    fogStatusText.textContent = `Modo Névoa: ${currentFogPoints.length} pontos marcados. Clique em "Concluir" para salvar.`;
+    fogStatusText.textContent = `Névoa: ${currentFogPoints.length} pontos. Toque em Concluir.`;
 
     fogPointsDraftGroup.innerHTML = '';
     currentFogPoints.forEach((p, idx) => {
       const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
       circle.setAttribute('cx', p.x);
       circle.setAttribute('cy', p.y);
-      circle.setAttribute('r', '5');
+      circle.setAttribute('r', '6');
       circle.setAttribute('fill', idx === 0 ? '#00e676' : '#ff5252');
       circle.setAttribute('stroke', '#fff');
       circle.setAttribute('stroke-width', '1.5');
@@ -1673,6 +1682,7 @@
     }
   }
 
+  // Sincronização robusta Realtime sem necessidade de F5
   function subscribeRealtimeChannels(sceneId) {
     if (tokensChannel) sb.removeChannel(tokensChannel);
     if (mapElementsChannel) sb.removeChannel(mapElementsChannel);
@@ -1680,27 +1690,25 @@
     if (!sceneId) return;
 
     tokensChannel = sb.channel('tokens-' + sceneId)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'tokens' }, (p) => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tokens', filter: `scene_id=eq.${sceneId}` }, (p) => {
         if (p.eventType === 'DELETE') {
           if (p.old && tokenData.has(p.old.id)) removeTokenEl(p.old.id);
-        } else if (p.new && p.new.scene_id === sceneId) {
+        } else if (p.new) {
           upsertTokenEl(p.new);
         }
       }).subscribe();
 
     mapElementsChannel = sb.channel('map-elements-' + sceneId)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'map_elements' }, (p) => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'map_elements', filter: `scene_id=eq.${sceneId}` }, (p) => {
         if (p.eventType === 'DELETE') {
-          if (p.old && mapPieceData.has(p.old.id)) {
-            removeMapPieceEl(p.old.id);
-          }
-        } else if (p.new && p.new.scene_id === sceneId) {
+          if (p.old && mapPieceData.has(p.old.id)) removeMapPieceEl(p.old.id);
+        } else if (p.new) {
           upsertMapPieceEl(p.new);
         }
       }).subscribe();
 
     fogElementsChannel = sb.channel('fog-elements-' + sceneId)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'fog_elements' }, () => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'fog_elements', filter: `scene_id=eq.${sceneId}` }, () => {
         loadFogElements();
       }).subscribe();
   }
@@ -1852,7 +1860,6 @@
       } else { loginOverlay.classList.remove('hidden'); }
     } catch (err) {
       setupError.textContent = err.message;
-      // Removido o setupOverlay.classList.add('hidden') daqui para o painel continuar aberto e permitir corrigir a chave
     }
   }
 
