@@ -144,6 +144,8 @@
   
   .token { position: absolute; touch-action: none; cursor: grab; user-select: none; -webkit-user-drag: none; will-change: left, top; }
   .token.dragging { opacity: .85; filter: drop-shadow(0 8px 16px rgba(0,0,0,0.6)); }
+  /* Movimento suave quando a posição vem de outro dispositivo */
+  .token:not(.dragging), .mapPiece:not(.dragging) { transition: left .14s linear, top .14s linear; }
 
   .mapPiece { position: absolute; touch-action: none; user-select: none; -webkit-user-drag: none; pointer-events: none; will-change: left, top; }
   body.map-editor-active .mapPiece { pointer-events: auto; cursor: grab; }
@@ -1422,7 +1424,7 @@
     el.style.zIndex = Math.round(10000 + (tok.z || 0));
 
     if (!el.resizing && !el.dragging) updateDimensions(el, safeUrl, tok.size || 64);
-    if (!el.dragging) { el.style.left = tok.x + 'px'; el.style.top = tok.y + 'px'; }
+    if (!el.dragging && !(el.lastDragEnd && Date.now() - el.lastDragEnd < 600)) { el.style.left = tok.x + 'px'; el.style.top = tok.y + 'px'; }
   }
 
   function removeTokenEl(id) {
@@ -1471,7 +1473,7 @@
     el.style.zIndex = Math.round(piece.z || 1);
 
     if (!el.resizing && !el.dragging) updateDimensions(el, safeUrl, piece.size || 1024);
-    if (!el.dragging) { el.style.left = piece.x + 'px'; el.style.top = piece.y + 'px'; }
+    if (!el.dragging && !(el.lastDragEnd && Date.now() - el.lastDragEnd < 600)) { el.style.left = piece.x + 'px'; el.style.top = piece.y + 'px'; }
   }
 
   function removeMapPieceEl(id) {
@@ -1713,7 +1715,7 @@
       el.style.left = x + 'px'; el.style.top = y + 'px';
       
       const now = Date.now();
-      if (now - lastSent > 100) {
+      if (now - lastSent > 70) {
         lastSent = now;
         if (type === 'token') {
           sb.rpc('move_token', { p_user_id: currentUserId, p_token_id: itemId, p_x: x, p_y: y }).then(({ error }) => { if (error) console.error(error); });
@@ -1726,7 +1728,7 @@
     function end() {
       clearTimeout(longPressTimer);
       if (!dragging) return;
-      dragging = false; el.dragging = false; el.classList.remove('dragging');
+      dragging = false; el.dragging = false; el.classList.remove('dragging'); el.lastDragEnd = Date.now();
       const x = parseFloat(el.style.left) || 0, y = parseFloat(el.style.top) || 0;
       if (type === 'token') {
         sb.rpc('move_token', { p_user_id: currentUserId, p_token_id: itemId, p_x: x, p_y: y }).then(({ error }) => { if (error) console.error(error); });
