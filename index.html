@@ -110,7 +110,6 @@
   #fogLayer { position: absolute; left: 0; top: 0; width: 40000px; height: 40000px; pointer-events: none; z-index: 20000; overflow: visible; }
   body.fog-editor-active #fogLayer { pointer-events: auto; cursor: crosshair; }
   
-  /* Regras visuais para Jogadores x Mestre */
   body.jogador #fogLayer polygon { fill: rgba(12, 13, 18, 1) !important; stroke: none !important; }
   body.jogador #fogLayer polygon.fog-hidden-player { display: none !important; }
 
@@ -118,6 +117,15 @@
   body:not(.jogador) #fogLayer polygon.fog-hidden-mestre { fill: rgba(255, 193, 7, 0.2) !important; stroke: #ffc107 !important; stroke-dasharray: 4,4; }
   body:not(.jogador).fog-editor-active #fogLayer polygon { cursor: pointer; }
   body:not(.jogador).fog-editor-active #fogLayer polygon:hover { stroke: #ff5252 !important; stroke-width: 3px; }
+
+  /* Camada de Paredes e Portas (Visível apenas no Editor de Paredes) */
+  #wallsLayer { position: absolute; left: 0; top: 0; width: 40000px; height: 40000px; pointer-events: none; z-index: 25000; overflow: visible; display: none; }
+  body.wall-editor-active #wallsLayer { display: block; pointer-events: auto; cursor: crosshair; }
+  
+  #wallsLayer line.wall-segment { stroke: #00e676; stroke-width: 4px; stroke-linecap: round; cursor: pointer; transition: stroke .2s; }
+  #wallsLayer line.wall-segment:hover { stroke: #ff5252; stroke-width: 6px; }
+  #wallsLayer line.door-segment { stroke: #ffc107; stroke-width: 5px; stroke-dasharray: 8,4; stroke-linecap: round; cursor: pointer; }
+  #wallsLayer line.door-segment.door-open { stroke: rgba(255, 193, 7, 0.3); stroke-dasharray: 2,8; }
 
   #placeholder { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
     color: var(--text-dim); font-size: 13px; text-align: center; padding: 20px; z-index: 0; gap: 10px; }
@@ -358,6 +366,7 @@
     <div id="normalNav" style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
       <button class="mestre-only primary" id="openMapEditorBtn" title="Editor de Mapa">Editor</button>
       <button class="mestre-only primary" id="openFogEditorBtn" title="Editor de Névoa">Névoa</button>
+      <button class="mestre-only primary" id="openWallEditorBtn" title="Editor de Paredes">Paredes</button>
       
       <label class="btn mestre-only primary" title="Adicionar Token">
         + Token
@@ -386,7 +395,7 @@
 
     <!-- Interface Alternada (Modo Editor de Névoa) -->
     <div id="fogEditorNav" class="hidden" style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
-      <span style="color:var(--accent); font-weight:600; font-size:12px;" id="fogStatusText">Modo Névoa: Toque para marcar pontos</span>
+      <span style="color:var(--accent); font-weight:600; font-size:12px;" id="fogStatusText">Névoa: Toque para marcar pontos</span>
       
       <div id="fogDrawControls" style="display:inline-flex; gap:6px;">
         <button id="btnUndoFogPoint">⌫ Desfazer</button>
@@ -401,6 +410,15 @@
 
       <button class="danger" id="btnClearFogScene">Limpar Tudo</button>
       <button id="closeFogEditorBtn">Sair</button>
+    </div>
+
+    <!-- Interface Alternada (Modo Editor de Paredes) -->
+    <div id="wallEditorNav" class="hidden" style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+      <span style="color:var(--accent); font-weight:600; font-size:12px;" id="wallStatusText">Paredes: Clique início e fim</span>
+      <button class="primary" id="btnWallType" title="Alternar entre Parede e Porta">🧱 Parede</button>
+      <button id="btnUndoWallPoint">⌫ Desfazer Ponto</button>
+      <button class="danger" id="btnClearWallScene">Limpar Paredes</button>
+      <button id="closeWallEditorBtn">Sair</button>
     </div>
   </header>
   <button id="topBarToggle" title="Esconder/mostrar barra">▲</button>
@@ -420,6 +438,7 @@
       <div id="gridLayer"></div>
       <div id="tokensLayer"></div>
       <svg id="fogLayer"></svg>
+      <svg id="wallsLayer"></svg>
     </div>
   </div>
 
@@ -448,6 +467,7 @@
   const board = document.getElementById('board');
   const gridLayer = document.getElementById('gridLayer');
   const fogLayer = document.getElementById('fogLayer');
+  const wallsLayer = document.getElementById('wallsLayer');
   const mapPiecesLayer = document.getElementById('mapPiecesLayer');
   const tokensLayer = document.getElementById('tokensLayer');
   const placeholder = document.getElementById('placeholder');
@@ -456,6 +476,8 @@
   const normalNav = document.getElementById('normalNav');
   const editorNav = document.getElementById('editorNav');
   const fogEditorNav = document.getElementById('fogEditorNav');
+  const wallEditorNav = document.getElementById('wallEditorNav');
+
   const openMapEditorBtn = document.getElementById('openMapEditorBtn');
   const closeMapEditorBtn = document.getElementById('closeMapEditorBtn');
   const openFogEditorBtn = document.getElementById('openFogEditorBtn');
@@ -471,8 +493,21 @@
   const btnDeleteFogPolyInline = document.getElementById('btnDeleteFogPolyInline');
   const btnDoneEditingFog = document.getElementById('btnDoneEditingFog');
 
+  // Controles do Editor de Paredes
+  const openWallEditorBtn = document.getElementById('openWallEditorBtn');
+  const closeWallEditorBtn = document.getElementById('closeWallEditorBtn');
+  const btnWallType = document.getElementById('btnWallType');
+  const btnUndoWallPoint = document.getElementById('btnUndoWallPoint');
+  const clearWallBtn = document.getElementById('btnClearWallScene');
+  const wallStatusText = document.getElementById('wallStatusText');
+
   let editingFogObj = null;
   let editingFogPoints = [];
+
+  // Variáveis para Wall Editor
+  let currentWallType = 'wall'; // 'wall' ou 'door'
+  let wallStartPoint = null;
+  let wallDraftLine = null;
 
   const mapPieceInput = document.getElementById('mapPieceInput');
   const tokenInput = document.getElementById('tokenInput');
@@ -587,6 +622,7 @@
   let tokensChannel = null;
   let mapElementsChannel = null;
   let fogElementsChannel = null;
+  let wallsChannel = null;
   let roomSyncChannel = null;
   let scale = 1;
   let boardX = 0, boardY = 0;
@@ -791,6 +827,168 @@
     updateDraftPolygon();
   });
 
+  // --- EDITOR DE PAREDES E PORTAS ---
+  openWallEditorBtn.addEventListener('click', () => {
+    document.body.classList.add('wall-editor-active');
+    normalNav.classList.add('hidden');
+    wallEditorNav.classList.remove('hidden');
+    wallStartPoint = null;
+    wallStatusText.textContent = 'Paredes: Clique início e fim';
+    loadWallElements();
+  });
+
+  closeWallEditorBtn.addEventListener('click', () => {
+    document.body.classList.remove('wall-editor-active');
+    wallEditorNav.classList.add('hidden');
+    normalNav.classList.remove('hidden');
+    wallStartPoint = null;
+    if (wallDraftLine) { wallDraftLine.remove(); wallDraftLine = null; }
+    loadWallElements();
+  });
+
+  btnWallType.addEventListener('click', () => {
+    if (currentWallType === 'wall') {
+      currentWallType = 'door';
+      btnWallType.textContent = '🚪 Porta';
+      btnWallType.style.background = '#ffc107';
+      btnWallType.style.color = '#000';
+    } else {
+      currentWallType = 'wall';
+      btnWallType.textContent = '🧱 Parede';
+      btnWallType.style.background = '';
+      btnWallType.style.color = '';
+    }
+  });
+
+  btnUndoWallPoint.addEventListener('click', () => {
+    wallStartPoint = null;
+    if (wallDraftLine) { wallDraftLine.remove(); wallDraftLine = null; }
+    wallStatusText.textContent = 'Ponto inicial limpo.';
+  });
+
+  clearWallBtn.addEventListener('click', async () => {
+    if (!confirm('Deseja apagar todas as paredes e portas desta cena?')) return;
+    await sb.from('walls').delete().eq('scene_id', currentSceneId);
+    loadWallElements();
+  });
+
+  async function loadWallElements() {
+    wallsLayer.innerHTML = '';
+    if (!currentSceneId) return;
+    const { data: walls } = await sb.from('walls').select('*').eq('scene_id', currentSceneId);
+    (walls || []).forEach(w => renderWallSegment(w));
+  }
+
+  function renderWallSegment(wallData) {
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.setAttribute('x1', wallData.x1);
+    line.setAttribute('y1', wallData.y1);
+    line.setAttribute('x2', wallData.x2);
+    line.setAttribute('y2', wallData.y2);
+    line.dataset.id = wallData.id;
+
+    if (wallData.wall_type === 'door') {
+      line.classList.add('door-segment');
+      if (wallData.is_open) line.classList.add('door-open');
+    } else {
+      line.classList.add('wall-segment');
+    }
+
+    line.addEventListener('click', async (e) => {
+      if (!document.body.classList.contains('wall-editor-active') || currentRole !== 'mestre') return;
+      e.stopPropagation();
+      
+      if (wallData.wall_type === 'door') {
+        // Se for porta, clique alterna entre aberta/fechada, ou shift+clique apaga
+        if (e.shiftKey) {
+          if (confirm('Apagar este segmento?')) {
+            await sb.from('walls').delete().eq('id', wallData.id);
+            loadWallElements();
+          }
+        } else {
+          const newOpen = !wallData.is_open;
+          await sb.from('walls').update({ is_open: newOpen }).eq('id', wallData.id);
+          loadWallElements();
+        }
+      } else {
+        // Parede normal: clique com shift ou confirmação apaga
+        if (confirm('Deseja apagar esta parede?')) {
+          await sb.from('walls').delete().eq('id', wallData.id);
+          loadWallElements();
+        }
+      }
+    });
+
+    wallsLayer.appendChild(line);
+  }
+
+  // Interação de desenho de paredes no tabuleiro
+  boardWrap.addEventListener('pointerdown', async (e) => {
+    if (!document.body.classList.contains('wall-editor-active') || currentRole !== 'mestre') return;
+    // Se clicar em um elemento de parede existente, deixa o evento dele tratar
+    if (e.target.tagName === 'line') return;
+
+    const rect = boardWrap.getBoundingClientRect();
+    const x = (e.clientX - rect.left - boardX) / scale;
+    const y = (e.clientY - rect.top - boardY) / scale;
+
+    if (!wallStartPoint) {
+      wallStartPoint = { x, y };
+      wallStatusText.textContent = `Ponto 1 definido. Clique no ponto final.`;
+      
+      wallDraftLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      wallDraftLine.setAttribute('x1', x);
+      wallDraftLine.setAttribute('y1', y);
+      wallDraftLine.setAttribute('x2', x);
+      wallDraftLine.setAttribute('y2', y);
+      wallDraftLine.setAttribute('stroke', currentWallType === 'door' ? '#ffc107' : '#00e676');
+      wallDraftLine.setAttribute('stroke-width', '4');
+      wallDraftLine.setAttribute('stroke-dasharray', currentWallType === 'door' ? '8,4' : 'none');
+      wallsLayer.appendChild(wallDraftLine);
+    } else {
+      // Segundo ponto: salva a parede e continua o traçado em cadeia (o ponto final vira o novo ponto inicial)
+      const x1 = wallStartPoint.x;
+      const y1 = wallStartPoint.y;
+      const x2 = x;
+      const y2 = y;
+
+      if (wallDraftLine) { wallDraftLine.remove(); wallDraftLine = null; }
+
+      await sb.from('walls').insert({
+        scene_id: currentSceneId,
+        x1, y1, x2, y2,
+        wall_type: currentWallType,
+        is_open: false,
+        z: Date.now()
+      });
+
+      loadWallElements();
+
+      // Cadeia contínua: o fim atual vira o novo início
+      wallStartPoint = { x: x2, y: y2 };
+      wallStatusText.textContent = `Segmento criado [${currentWallType}]. Clique no próximo ponto ou use Desfazer.`;
+      
+      wallDraftLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      wallDraftLine.setAttribute('x1', x2);
+      wallDraftLine.setAttribute('y1', y2);
+      wallDraftLine.setAttribute('x2', x2);
+      wallDraftLine.setAttribute('y2', y2);
+      wallDraftLine.setAttribute('stroke', currentWallType === 'door' ? '#ffc107' : '#00e676');
+      wallDraftLine.setAttribute('stroke-width', '4');
+      wallDraftLine.setAttribute('stroke-dasharray', currentWallType === 'door' ? '8,4' : 'none');
+      wallsLayer.appendChild(wallDraftLine);
+    }
+  });
+
+  boardWrap.addEventListener('pointermove', (e) => {
+    if (!document.body.classList.contains('wall-editor-active') || !wallStartPoint || !wallDraftLine) return;
+    const rect = boardWrap.getBoundingClientRect();
+    const x = (e.clientX - rect.left - boardX) / scale;
+    const y = (e.clientY - rect.top - boardY) / scale;
+    wallDraftLine.setAttribute('x2', x);
+    wallDraftLine.setAttribute('y2', y);
+  });
+
   function applyZoom() { board.style.transform = `scale(${scale})`; }
 
   function applyElementSize(el, size, ar) {
@@ -986,9 +1184,7 @@
     fogPolyEditControls.classList.remove('hidden');
 
     const isVis = editingFogObj.is_visible !== false;
-    // Olho fechado = ON (bloqueando), Olho aberto = OFF (revelado)
     btnToggleFogVisibility.textContent = isVis ? '🙈 Névoa: ON' : '👁️ Névoa: OFF';
-
     fogStatusText.textContent = 'Editando polígono. Arraste os pontos verdes no mapa.';
     renderFogEditorHandles();
   }
@@ -1065,7 +1261,6 @@
     const newVis = !(editingFogObj.is_visible !== false);
     editingFogObj.is_visible = newVis;
     await sb.from('fog_elements').update({ is_visible: newVis }).eq('id', editingFogObj.id);
-    // Olho fechado = ON, Olho aberto = OFF
     btnToggleFogVisibility.textContent = newVis ? '🙈 Névoa: ON' : '👁️ Névoa: OFF';
     loadFogElements();
   });
@@ -1595,7 +1790,7 @@
 
   boardWrap.addEventListener('dragstart', (e) => e.preventDefault());
   boardWrap.addEventListener('pointerdown', (e) => {
-    if (document.body.classList.contains('fog-editor-active')) return; 
+    if (document.body.classList.contains('fog-editor-active') || document.body.classList.contains('wall-editor-active')) return; 
     if (currentTool === 'select' && (e.target.closest('.token') || (e.target.closest('.mapPiece') && document.body.classList.contains('map-editor-active')))) return;
     deselectAll();
     boardWrap.setPointerCapture(e.pointerId);
@@ -1608,7 +1803,7 @@
   });
 
   boardWrap.addEventListener('pointermove', (e) => {
-    if (document.body.classList.contains('fog-editor-active')) return;
+    if (document.body.classList.contains('fog-editor-active') || document.body.classList.contains('wall-editor-active')) return;
     if (!activePointers.has(e.pointerId)) return;
     activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (activePointers.size === 1) {
@@ -1673,6 +1868,7 @@
     (pieces || []).forEach(p => upsertMapPieceEl(p));
 
     await loadFogElements();
+    await loadWallElements();
 
     if ((pieces && pieces.length > 0) || (toks && toks.length > 0)) {
       placeholder.style.display = 'none';
@@ -1687,6 +1883,7 @@
     if (tokensChannel) sb.removeChannel(tokensChannel);
     if (mapElementsChannel) sb.removeChannel(mapElementsChannel);
     if (fogElementsChannel) sb.removeChannel(fogElementsChannel);
+    if (wallsChannel) sb.removeChannel(wallsChannel);
     if (!sceneId) return;
 
     tokensChannel = sb.channel('tokens-' + sceneId)
@@ -1711,6 +1908,11 @@
       .on('postgres_changes', { event: '*', schema: 'public', table: 'fog_elements', filter: `scene_id=eq.${sceneId}` }, () => {
         loadFogElements();
       }).subscribe();
+
+    wallsChannel = sb.channel('walls-' + sceneId)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'walls', filter: `scene_id=eq.${sceneId}` }, () => {
+        loadWallElements();
+      }).subscribe();
   }
 
   async function enterRoom(roomId) {
@@ -1728,6 +1930,7 @@
     roleBadge.classList.remove('hidden');
     if (managePlayersBtn) managePlayersBtn.classList.toggle('hidden', currentRole !== 'mestre');
     if (openFogEditorBtn) openFogEditorBtn.classList.toggle('hidden', currentRole !== 'mestre');
+    if (openWallEditorBtn) openWallEditorBtn.classList.toggle('hidden', currentRole !== 'mestre');
 
     currentSceneId = roomData ? roomData.active_scene_id : null;
 
@@ -1794,6 +1997,7 @@
     if (tokensChannel) sb.removeChannel(tokensChannel);
     if (mapElementsChannel) sb.removeChannel(mapElementsChannel);
     if (fogElementsChannel) sb.removeChannel(fogElementsChannel);
+    if (wallsChannel) sb.removeChannel(wallsChannel);
     lobbyOverlay.classList.remove('hidden');
     loadLobbyRooms();
   });
