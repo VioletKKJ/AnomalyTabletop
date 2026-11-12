@@ -98,7 +98,7 @@
     background: radial-gradient(circle at center, #181a24 0%, #0d0e12 100%); }
   #board { position: absolute; top: 0; left: 0; transform-origin: 0 0; will-change: transform; width: 1px; height: 1px; }
   
-  #gridLayer { position: absolute; left: -20000px; top: -20000px; width: 40000px; height: 40000px; pointer-events: none; z-index: 50; display: none; }
+  #gridLayer { position: absolute; left: 0; top: 0; width: 40000px; height: 40000px; pointer-events: none; z-index: 50; display: none; }
   
   #mapPiecesLayer { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
   body.map-editor-active #mapPiecesLayer { pointer-events: auto; }
@@ -107,7 +107,7 @@
   #tokensLayer > * { pointer-events: auto; }
 
   /* Camada do Fog of War */
-  #fogLayer { position: absolute; left: -20000px; top: -20000px; width: 40000px; height: 40000px; pointer-events: none; z-index: 20000; }
+  #fogLayer { position: absolute; left: 0; top: 0; width: 40000px; height: 40000px; pointer-events: none; z-index: 20000; overflow: visible; }
   body.fog-editor-active #fogLayer { pointer-events: auto; cursor: crosshair; }
   
   /* Regras visuais para Jogadores x Mestre */
@@ -392,8 +392,8 @@
       </div>
 
       <div id="fogPolyEditControls" class="hidden" style="display:inline-flex; gap:6px;">
-        <button id="btnToggleFogVisibility">👁️ Visível p/ Jogadores</button>
-        <button class="danger" id="btnDeleteFogPolyInline">🗑️ Apagar Polígono</button>
+        <button id="btnToggleFogVisibility">👁️ Ocultar p/ Jogadores</button>
+        <button class="danger" id="btnDeleteFogPolyInline">🗑️ Apagar</button>
         <button class="primary" id="btnDoneEditingFog">Salvar Edição</button>
       </div>
 
@@ -578,6 +578,7 @@
   let fogElementsChannel = null;
   let roomSyncChannel = null;
   let scale = 1;
+  let boardX = 0, boardY = 0;
 
   let tokenEls = new Map();
   let tokenData = new Map();
@@ -761,12 +762,13 @@
     if (fogPolygonDraft) { fogPolygonDraft.remove(); fogPolygonDraft = null; }
     if (fogPointsDraftGroup) { fogPointsDraftGroup.remove(); fogPointsDraftGroup = null; }
 
-    await sb.from('fog_elements').insert({
+    const { error } = await sb.from('fog_elements').insert({
       scene_id: currentSceneId,
       points: pointsStr,
       is_visible: true,
       z: Date.now()
     });
+    if (error) { alert('Erro ao salvar névoa: ' + error.message); return; }
     loadFogElements();
     updateDraftPolygon();
   });
@@ -912,7 +914,7 @@
     if (el) { el.remove(); mapPieceEls.delete(id); mapPieceData.delete(id); }
   }
 
-  // --- SISTEMA DE FOG OF WAR (EDICÃO DIRETA E VISIBILIDADE) ---
+  // --- SISTEMA DE FOG OF WAR (COORDENADAS CORRETAS E VISIBILIDADE) ---
   async function loadFogElements() {
     const draftHtml = fogPointsDraftGroup ? fogPointsDraftGroup.outerHTML : '';
     const draftPolyHtml = fogPolygonDraft ? fogPolygonDraft.outerHTML : '';
@@ -968,7 +970,7 @@
     const isVis = editingFogObj.is_visible !== false;
     btnToggleFogVisibility.textContent = isVis ? '👁️ Ocultar p/ Jogadores' : '🙈 Tornar Visível';
 
-    fogStatusText.textContent = 'Editando polígono selecionado. Arraste os pontos no mapa.';
+    fogStatusText.textContent = 'Editando polígono. Arraste os pontos verdes no mapa.';
     renderFogEditorHandles();
   }
 
@@ -1011,9 +1013,9 @@
 
       circle.addEventListener('pointermove', (e) => {
         if (!isDraggingVertex) return;
-        const rect = board.getBoundingClientRect();
-        const x = (e.clientX - rect.left) / scale + 20000;
-        const y = (e.clientY - rect.top) / scale + 20000;
+        const rect = boardWrap.getBoundingClientRect();
+        const x = (e.clientX - rect.left - boardX) / scale;
+        const y = (e.clientY - rect.top - boardY) / scale;
         editingFogPoints[idx] = { x, y };
         circle.setAttribute('cx', x);
         circle.setAttribute('cy', y);
@@ -1064,13 +1066,13 @@
     loadFogElements();
   });
 
-  fogLayer.addEventListener('click', async (e) => {
+  boardWrap.addEventListener('click', async (e) => {
     if (!document.body.classList.contains('fog-editor-active') || currentRole !== 'mestre') return;
     if (editingFogObj) return; 
 
-    const rect = board.getBoundingClientRect();
-    const x = (e.clientX - rect.left) / scale + 20000;
-    const y = (e.clientY - rect.top) / scale + 20000;
+    const rect = boardWrap.getBoundingClientRect();
+    const x = (e.clientX - rect.left - boardX) / scale;
+    const y = (e.clientY - rect.top - boardY) / scale;
 
     currentFogPoints.push({ x, y });
 
@@ -1563,11 +1565,13 @@
   zoomInBtn.addEventListener('click', () => { scale = Math.min(scale * 1.2, 10); applyZoom(); });
   zoomOutBtn.addEventListener('click', () => { scale = Math.max(scale / 1.2, 0.05); applyZoom(); });
 
-  let boardX = 0, boardY = 0;
   const activePointers = new Map();
   let panStartX, panStartY, panOrigX = 0, panOrigY = 0, lastPinchDist = null;
 
-  function boardLocalStyle() { board.style.left = boardX + 'px'; board.style.top = boardY + 'px'; }
+  function boardLocalStyle() {
+    board.style.left = boardX + 'px';
+    board.style.top = boardY + 'px';
+  }
 
   boardWrap.addEventListener('dragstart', (e) => e.preventDefault());
   boardWrap.addEventListener('pointerdown', (e) => {
