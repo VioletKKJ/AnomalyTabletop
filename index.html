@@ -203,7 +203,7 @@
     </div>
   </div>
 
-  <!-- Login / Cadastro -->
+<!-- Login / Cadastro -->
   <div id="loginOverlay" class="hidden">
     <div class="card">
       <h2>Anomaly VTT</h2>
@@ -217,6 +217,8 @@
         <button class="primary" id="btnLogin">Entrar</button>
         <button id="btnSignup">Criar conta</button>
       </div>
+      <!-- Novo botão para voltar às configurações -->
+      <button id="btnBackToSetup" style="width:100%; margin-top:10px; background:var(--panel-border);">⚙️ Reconfigurar Supabase</button>
     </div>
   </div>
 
@@ -491,6 +493,15 @@
   const loginError = document.getElementById('loginError');
   const btnLogin = document.getElementById('btnLogin');
   const btnSignup = document.getElementById('btnSignup');
+  const btnBackToSetup = document.getElementById('btnBackToSetup'); // Adicionado
+
+  // Ação para voltar ao setup a partir do login
+  if (btnBackToSetup) {
+    btnBackToSetup.addEventListener('click', () => {
+      loginOverlay.classList.add('hidden');
+      setupOverlay.classList.remove('hidden');
+    });
+  }
   
   const lobbyOverlay = document.getElementById('lobbyOverlay');
   const roomListContainer = document.getElementById('roomListContainer');
@@ -1841,7 +1852,7 @@
       } else { loginOverlay.classList.remove('hidden'); }
     } catch (err) {
       setupError.textContent = err.message;
-      setupOverlay.classList.add('hidden');
+      // Removido o setupOverlay.classList.add('hidden') daqui para o painel continuar aberto e permitir corrigir a chave
     }
   }
 
