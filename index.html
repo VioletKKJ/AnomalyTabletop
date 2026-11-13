@@ -179,6 +179,30 @@
   #contextMenu .stateThumb:hover { transform: scale(1.08); }
   #contextMenu .stateThumb.active { border-color: var(--accent); box-shadow: 0 0 8px rgba(157, 78, 223, 0.6); }
 
+
+  #boardContextMenu {
+    position: fixed;
+    z-index: 60001;
+    display: none;
+    min-width: 190px;
+    padding: 8px;
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(10px);
+  }
+  #boardContextMenu.open { display: block; }
+  #boardContextMenu button {
+    width: 100%;
+    justify-content: flex-start;
+    background: transparent;
+    border: none;
+    margin: 2px 0;
+  }
+  #boardContextMenu button:hover { background: var(--panel-border); color: #fff; }
+  #boardContextMenu hr { border: none; border-top: 1px solid var(--panel-border); margin: 6px 0; }
+
   #setupOverlay, #loginOverlay, #createRoomOverlay, #joinRoomOverlay, #cropOverlay, #playersOverlay, #scenesOverlay, #gridOverlay {
     position: fixed; inset: 0; background: rgba(10, 11, 15, 0.8); backdrop-filter: blur(8px); display: flex;
     align-items: center; justify-content: center; z-index: 100000; padding: 16px; }
@@ -671,6 +695,14 @@
     <button id="menuFlip">Espelhar</button>
     <hr>
     <button id="menuDelete" class="mestre-only danger">Apagar</button>
+  </div>
+
+  <div id="boardContextMenu" role="menu" aria-label="Ações do tabuleiro">
+    <button id="boardContextZoomIn" type="button">＋ Aumentar zoom</button>
+    <button id="boardContextZoomOut" type="button">− Diminuir zoom</button>
+    <hr>
+    <button id="boardContextPullPlayers" class="mestre-only" type="button">📷 Puxar jogadores</button>
+    <button id="boardContextToggleLive" class="mestre-only" type="button">📡 Câmera ao vivo</button>
   </div>
 
 <script>
@@ -1368,14 +1400,6 @@
       }
     }
   }
-
-  // Clique direito no tabuleiro no modo paredes solta a cadeia atual
-  boardWrap.addEventListener('contextmenu', (e) => {
-    if (document.body.classList.contains('wall-editor-active') && wallStartPoint) {
-      e.preventDefault();
-      breakWallChain();
-    }
-  });
 
   boardWrap.addEventListener('pointerdown', (e) => {
     if (!document.body.classList.contains('wall-editor-active') || currentRole !== 'mestre') return;
@@ -2398,6 +2422,75 @@
 
   camPullBtn.addEventListener('click', () => sendCamera(false, 'pull'));
   camLiveBtn.addEventListener('click', () => { camLive ? stopCameraLive(false) : startCameraLive(); });
+
+
+  // Menu contextual do fundo do tabuleiro
+  const boardContextMenu = document.getElementById('boardContextMenu');
+  const boardContextPullPlayers = document.getElementById('boardContextPullPlayers');
+  const boardContextToggleLive = document.getElementById('boardContextToggleLive');
+  const boardContextZoomIn = document.getElementById('boardContextZoomIn');
+  const boardContextZoomOut = document.getElementById('boardContextZoomOut');
+
+  // Desativa o menu nativo do navegador; o menu de peças continua funcionando.
+  document.addEventListener('contextmenu', (e) => e.preventDefault(), true);
+
+  boardWrap.addEventListener('contextmenu', (e) => {
+    // Tokens e peças mantêm o menu contextual que já possuem.
+    if (e.target.closest('.token, .mapPiece')) return;
+
+    // No editor de paredes, o botão direito apenas encerra a cadeia atual.
+    if (document.body.classList.contains('wall-editor-active') && wallStartPoint) {
+      e.preventDefault();
+      breakWallChain();
+      return;
+    }
+
+    e.preventDefault();
+    boardContextMenu.classList.add('open');
+
+    const menuWidth = boardContextMenu.offsetWidth;
+    const menuHeight = boardContextMenu.offsetHeight;
+    const maxLeft = Math.max(8, window.innerWidth - menuWidth - 8);
+    const maxTop = Math.max(8, window.innerHeight - menuHeight - 8);
+    boardContextMenu.style.left = `${Math.max(8, Math.min(e.clientX, maxLeft))}px`;
+    boardContextMenu.style.top = `${Math.max(8, Math.min(e.clientY, maxTop))}px`;
+
+    boardContextToggleLive.textContent = camLive
+      ? '📡 Desativar câmera ao vivo'
+      : '📡 Ativar câmera ao vivo';
+  });
+
+  boardContextPullPlayers.addEventListener('click', () => {
+    sendCamera(false, 'pull');
+    boardContextMenu.classList.remove('open');
+  });
+
+  boardContextToggleLive.addEventListener('click', () => {
+    camLive ? stopCameraLive(false) : startCameraLive();
+    boardContextMenu.classList.remove('open');
+  });
+
+  boardContextZoomIn.addEventListener('click', () => {
+    if (!cameraLocked) {
+      scale = Math.min(10, scale * 1.2);
+      applyZoom();
+    }
+    boardContextMenu.classList.remove('open');
+  });
+
+  boardContextZoomOut.addEventListener('click', () => {
+    if (!cameraLocked) {
+      scale = Math.max(0.05, scale / 1.2);
+      applyZoom();
+    }
+    boardContextMenu.classList.remove('open');
+  });
+
+  document.addEventListener('pointerdown', (e) => {
+    if (!boardContextMenu.contains(e.target)) {
+      boardContextMenu.classList.remove('open');
+    }
+  });
 
   /* ===== Régua: 1 quadrado da grid = metersPerSquare (padrão 1,5 m), ortogonal e isométrica ===== */
   const rulerLayer = document.getElementById('rulerLayer');
