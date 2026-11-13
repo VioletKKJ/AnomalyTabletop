@@ -153,16 +153,18 @@
 
   .pieceImg { position: absolute; inset: 0; background-size: contain; background-position: center; background-repeat: no-repeat; pointer-events: none; user-select: none; -webkit-user-drag: none; image-rendering: auto; }
   
-  .resizeHandle { position: absolute; right: -8px; bottom: -8px; width: 18px; height: 18px;
-    border-radius: 50%; background: var(--accent); border: 2px solid #fff; touch-action: none;
+  /* --inv-zoom = 1 / zoom da tela: mantém as bolinhas do mesmo tamanho visual em qualquer zoom */
+  .resizeHandle { position: absolute; right: calc(-12px * var(--inv-zoom, 1)); bottom: calc(-12px * var(--inv-zoom, 1));
+    width: calc(24px * var(--inv-zoom, 1)); height: calc(24px * var(--inv-zoom, 1));
+    border-radius: 50%; background: var(--accent); border: calc(2px * var(--inv-zoom, 1)) solid #fff; touch-action: none;
     cursor: nwse-resize; display: none; box-shadow: 0 0 10px rgba(157, 78, 223, 0.8); }
   
-  .rotateHandle { position: absolute; left: 50%; top: -24px; transform: translateX(-50%);
-    width: 18px; height: 18px; border-radius: 50%; background: var(--ok); border: 2px solid #fff;
+  .rotateHandle { position: absolute; left: 50%; top: calc(-36px * var(--inv-zoom, 1)); transform: translateX(-50%);
+    width: calc(24px * var(--inv-zoom, 1)); height: calc(24px * var(--inv-zoom, 1)); border-radius: 50%; background: var(--ok); border: calc(2px * var(--inv-zoom, 1)) solid #fff;
     touch-action: none; cursor: grab; display: none; box-shadow: 0 0 10px rgba(0, 230, 118, 0.8); }
 
   .selected .resizeHandle, .selected .rotateHandle { display: block; }
-  .selected .pieceImg { outline: 2px dashed var(--accent); outline-offset: 4px; filter: drop-shadow(0 0 6px rgba(157, 78, 223, 0.5)); }
+  .selected .pieceImg { outline: calc(2px * var(--inv-zoom, 1)) dashed var(--accent); outline-offset: calc(4px * var(--inv-zoom, 1)); filter: drop-shadow(0 0 6px rgba(157, 78, 223, 0.5)); }
 
   #contextMenu { position: fixed; z-index: 60000; background: var(--panel); border: 1px solid var(--panel-border);
     border-radius: 12px; padding: 8px; display: none; min-width: 210px; box-shadow: 0 10px 30px rgba(0,0,0,0.6);
@@ -1350,7 +1352,7 @@
     }
   });
 
-  function applyZoom() { board.style.transform = `scale(${scale})`; }
+  function applyZoom() { board.style.transform = `scale(${scale})`; board.style.setProperty('--inv-zoom', String(1 / scale)); }
 
   function applyElementSize(el, size, ar) {
     let w, h;
@@ -1767,7 +1769,7 @@
       if (!resizing) return;
       e.stopPropagation();
       const d = ((e.clientX - startX) + (e.clientY - startY)) / 2 / scale;
-      const newSize = Math.max(24, Math.min(8000, origSize + d));
+      const newSize = Math.max(24, origSize + d);
       const dataMap = type === 'token' ? tokenData : mapPieceData;
       const item = dataMap.get(itemId);
       const url = type === 'token' ? imageForToken(item) : item.src_url;
