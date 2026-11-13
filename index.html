@@ -385,6 +385,10 @@
     .brandTitle h1 { max-width: 90px; }
   }
 
+  /* Régua */
+  #rulerLayer { position: absolute; left: 0; top: 0; width: 40000px; height: 40000px; pointer-events: none; z-index: 30000; overflow: visible; }
+  body.tool-ruler #boardWrap, body.tool-ruler .token { cursor: crosshair; }
+
   /* Aviso de câmera controlada pelo mestre */
   #camLockBadge { position: fixed; left: 50%; bottom: max(14px, env(safe-area-inset-bottom, 14px)); transform: translateX(-50%);
     z-index: 35; padding: 6px 14px; border-radius: 999px; font-size: 12px; font-weight: 600; color: #fff; pointer-events: none;
@@ -535,6 +539,9 @@
       <input type="range" id="gridSize" min="20" max="300" value="64">
       <span id="gridSizeVal" style="font-size:11px; color:var(--text-dim);">64px</span>
 
+      <label>Metros por quadrado (régua)</label>
+      <input type="number" id="gridMeters" min="0.1" step="0.1" value="1.5">
+
       <label>Cor das Linhas</label>
       <input type="color" id="gridColor" value="#9d4edf">
 
@@ -634,6 +641,7 @@
   <div id="sideToolbar">
     <button class="toolBtn active" id="toolSelectBtn" data-tool="select" title="Selecionar e Mover">🖱️</button>
     <button class="toolBtn" id="toolMoveBtn" data-tool="move" title="Mover Câmera">✋</button>
+    <button class="toolBtn" id="toolRulerBtn" data-tool="ruler" title="Régua (arraste para medir; Esc limpa)">📏</button>
   </div>
   <button id="sideToolbarToggle" title="Esconder/mostrar ferramentas">▶</button>
 
@@ -646,6 +654,7 @@
       <div id="tokensLayer"></div>
       <svg id="fogLayer"></svg>
       <svg id="wallsLayer"></svg>
+      <svg id="rulerLayer"></svg>
     </div>
   </div>
 
@@ -813,8 +822,9 @@
   const gridOpacityVal = document.getElementById('gridOpacityVal');
   const gridLineWidthRange = document.getElementById('gridLineWidth');
   const gridLineWidthVal = document.getElementById('gridLineWidthVal');
+  const gridMetersInp = document.getElementById('gridMeters');
   
-  let gridConfig = { enabled: false, type: 'isometric', size: 64, color: '#9d4edf', opacity: 0.4, lineWidth: 1 };
+  let gridConfig = { enabled: false, type: 'isometric', size: 64, color: '#9d4edf', opacity: 0.4, lineWidth: 1, metersPerSquare: 1.5 };
   
   const contextMenu = document.getElementById('contextMenu');
   const tokenStatesRow = document.getElementById('tokenStatesRow');
@@ -841,11 +851,14 @@
 
   const toolSelectBtn = document.getElementById('toolSelectBtn');
   const toolMoveBtn = document.getElementById('toolMoveBtn');
+  const toolRulerBtn = document.getElementById('toolRulerBtn');
   let currentTool = 'select';
-  [toolSelectBtn, toolMoveBtn].forEach((btn) => {
+  [toolSelectBtn, toolMoveBtn, toolRulerBtn].forEach((btn) => {
     btn.addEventListener('click', () => {
       currentTool = btn.dataset.tool;
-      [toolSelectBtn, toolMoveBtn].forEach((b) => b.classList.toggle('active', b === btn));
+      [toolSelectBtn, toolMoveBtn, toolRulerBtn].forEach((b) => b.classList.toggle('active', b === btn));
+      document.body.classList.toggle('tool-ruler', currentTool === 'ruler');
+      if (currentTool !== 'ruler') clearRuler();
     });
   });
 
@@ -906,12 +919,13 @@
       gridOpacityVal.textContent = gridConfig.opacity;
       gridLineWidthRange.value = gridConfig.lineWidth;
       gridLineWidthVal.textContent = gridConfig.lineWidth + 'px';
+      gridMetersInp.value = gridConfig.metersPerSquare;
       gridOverlay.classList.remove('hidden');
     });
   }
   if (closeGridBtn) closeGridBtn.addEventListener('click', () => gridOverlay.classList.add('hidden'));
 
-  [gridEnabledSel, gridTypeSel, gridSizeRange, gridColorInp, gridOpacityRange, gridLineWidthRange].forEach(inp => {
+  [gridEnabledSel, gridTypeSel, gridSizeRange, gridColorInp, gridOpacityRange, gridLineWidthRange, gridMetersInp].forEach(inp => {
     inp.addEventListener('input', () => {
       gridConfig.enabled = gridEnabledSel.value === 'true';
       gridConfig.type = gridTypeSel.value;
@@ -922,9 +936,61 @@
       gridOpacityVal.textContent = gridConfig.opacity;
       gridConfig.lineWidth = parseInt(gridLineWidthRange.value) || 1;
       gridLineWidthVal.textContent = gridConfig.lineWidth + 'px';
+      gridConfig.metersPerSquare = parseFloat(String(gridMetersInp.value).replace(',', '.')) || 1.5;
       drawGrid();
+      saveGrid();
     });
   });
+
+  /* ===== Grid salva por cena (Supabase: scenes.grid_config + cópia local) ===== */
+  let gridSaveTimer = null, gridLastBroadcast = 0;
+
+  function normalizeGrid(raw) {
+    const g = Object.assign({ enabled: false, type: 'isometric', size: 64, color: '#9d4edf', opacity: 0.4, lineWidth: 1, metersPerSquare: 1.5 }, raw || {});
+    g.enabled = g.enabled === true || g.enabled === 'true';
+    g.type = g.type === 'square' ? 'square' : 'isometric';
+    g.size = parseInt(g.size) || 64;
+    g.color = typeof g.color === 'string' ? g.color : '#9d4edf';
+    g.opacity = parseFloat(g.opacity) || 0.4;
+    g.lineWidth = parseInt(g.lineWidth) || 1;
+    g.metersPerSquare = parseFloat(g.metersPerSquare) || 1.5;
+    return g;
+  }
+
+  function gridStorageKey(sceneId) { return 'tabletop_grid_' + sceneId; }
+
+  async function loadGridForScene(sceneId) {
+    let cfg = null;
+    try {
+      const { data, error } = await sb.from('scenes').select('grid_config').eq('id', sceneId).maybeSingle();
+      if (!error && data && data.grid_config) cfg = data.grid_config;
+    } catch (e) { /* coluna ainda não existe: usa a cópia local */ }
+    if (!cfg) {
+      try { const raw = localStorage.getItem(gridStorageKey(sceneId)); if (raw) cfg = JSON.parse(raw); } catch (e) {}
+    }
+    gridConfig = normalizeGrid(cfg);
+    drawGrid();
+  }
+
+  function broadcastGrid(sceneId, cfg) {
+    if (cameraChannel && currentRole === 'mestre') {
+      cameraChannel.send({ type: 'broadcast', event: 'grid', payload: { scene_id: sceneId, grid: cfg } });
+    }
+  }
+
+  function saveGrid() {
+    if (!currentSceneId || currentRole !== 'mestre') return;
+    const sceneId = currentSceneId, cfg = Object.assign({}, gridConfig);
+    try { localStorage.setItem(gridStorageKey(sceneId), JSON.stringify(cfg)); } catch (e) {}
+    const now = Date.now();
+    if (now - gridLastBroadcast > 150) { gridLastBroadcast = now; broadcastGrid(sceneId, cfg); }
+    clearTimeout(gridSaveTimer);
+    gridSaveTimer = setTimeout(async () => {
+      broadcastGrid(sceneId, cfg);
+      const { error } = await sb.from('scenes').update({ grid_config: cfg }).eq('id', sceneId);
+      if (error) console.warn('Grid não salva no Supabase (rode o SQL da coluna grid_config):', error.message);
+    }, 600);
+  }
 
   function fileToDataURL(file) {
     return new Promise((resolve, reject) => {
@@ -1352,7 +1418,7 @@
     }
   });
 
-  function applyZoom() { board.style.transform = `scale(${scale})`; board.style.setProperty('--inv-zoom', String(1 / scale)); }
+  function applyZoom() { board.style.transform = `scale(${scale})`; board.style.setProperty('--inv-zoom', String(1 / scale)); if (typeof renderRuler === 'function') renderRuler(); }
 
   function applyElementSize(el, size, ar) {
     let w, h;
@@ -2173,6 +2239,7 @@
     const isEditorOpen = document.body.classList.contains('fog-editor-active') || document.body.classList.contains('wall-editor-active');
     if (isEditorOpen && currentTool !== 'move') return;
     if (currentTool === 'select' && (e.target.closest('.token') || (e.target.closest('.mapPiece') && document.body.classList.contains('map-editor-active')))) return;
+    if (currentTool === 'ruler') return;
     deselectAll();
     if (cameraLocked) return;
     boardWrap.setPointerCapture(e.pointerId);
@@ -2299,6 +2366,11 @@
     setCameraLocked(false);
     cameraChannel = sb.channel('camera-' + roomId, { config: { broadcast: { self: false } } })
       .on('broadcast', { event: 'camera' }, ({ payload }) => handleCameraMessage(payload))
+      .on('broadcast', { event: 'grid' }, ({ payload }) => {
+        if (currentRole === 'mestre' || !payload || payload.scene_id !== currentSceneId) return;
+        gridConfig = normalizeGrid(payload.grid);
+        drawGrid();
+      })
       .subscribe();
   }
 
@@ -2327,6 +2399,101 @@
   camPullBtn.addEventListener('click', () => sendCamera(false, 'pull'));
   camLiveBtn.addEventListener('click', () => { camLive ? stopCameraLive(false) : startCameraLive(); });
 
+  /* ===== Régua: 1 quadrado da grid = metersPerSquare (padrão 1,5 m), ortogonal e isométrica ===== */
+  const rulerLayer = document.getElementById('rulerLayer');
+  const SVGNS = 'http://www.w3.org/2000/svg';
+  let rulerA = null, rulerB = null, rulerDragging = false, rulerPointerId = null;
+
+  function boardPointFromEvent(e) {
+    const r = boardWrap.getBoundingClientRect();
+    return { x: (e.clientX - r.left - boardX) / scale, y: (e.clientY - r.top - boardY) / scale };
+  }
+
+  function snapToToken(pt) {
+    let best = null, bestZ = -Infinity;
+    tokenEls.forEach((el) => {
+      const l = parseFloat(el.style.left) || 0, t = parseFloat(el.style.top) || 0;
+      const w = el.offsetWidth, h = el.offsetHeight;
+      if (pt.x >= l && pt.x <= l + w && pt.y >= t && pt.y <= t + h) {
+        const z = parseFloat(el.style.zIndex) || 0;
+        if (z >= bestZ) { bestZ = z; best = { x: l + w / 2, y: t + h / 2 }; }
+      }
+    });
+    return best || pt;
+  }
+
+  // Distância em "quadrados". Na isométrica o quadrado é o losango (largura = size, altura = size/2),
+  // então converte para coordenadas do quadrado antes de medir.
+  function measureCells(a, b) {
+    const size = gridConfig.size || 64;
+    const dx = b.x - a.x, dy = b.y - a.y;
+    if (gridConfig.type === 'isometric') {
+      const da = dx / size + dy / (size / 2);
+      const db = dx / size - dy / (size / 2);
+      return Math.hypot(da, db);
+    }
+    return Math.hypot(dx, dy) / size;
+  }
+
+  function fmtNum(n) { return n.toLocaleString('pt-BR', { maximumFractionDigits: 1 }); }
+
+  function renderRuler() {
+    if (!rulerLayer) return;
+    rulerLayer.innerHTML = '';
+    if (!rulerA || !rulerB) return;
+    const k = 1 / scale;
+    const mk = (tag, attrs) => {
+      const n = document.createElementNS(SVGNS, tag);
+      for (const key in attrs) n.setAttribute(key, attrs[key]);
+      rulerLayer.appendChild(n);
+      return n;
+    };
+    const line = { x1: rulerA.x, y1: rulerA.y, x2: rulerB.x, y2: rulerB.y, 'stroke-linecap': 'round' };
+    mk('line', Object.assign({ stroke: '#121318', 'stroke-width': 6 * k }, line));
+    mk('line', Object.assign({ stroke: '#ffd54f', 'stroke-width': 3 * k }, line));
+    [rulerA, rulerB].forEach((pt) => mk('circle', { cx: pt.x, cy: pt.y, r: 6 * k, fill: '#ffd54f', stroke: '#121318', 'stroke-width': 2 * k }));
+
+    if (Math.hypot(rulerB.x - rulerA.x, rulerB.y - rulerA.y) * scale < 4) return;
+    const cells = measureCells(rulerA, rulerB);
+    const meters = cells * (gridConfig.metersPerSquare || 1.5);
+    const label = `${fmtNum(meters)} m · ${fmtNum(cells)} ${Math.abs(cells - 1) < 0.05 ? 'quadrado' : 'quadrados'}`;
+    const t = mk('text', {
+      x: (rulerA.x + rulerB.x) / 2, y: (rulerA.y + rulerB.y) / 2 - 14 * k,
+      'text-anchor': 'middle', 'font-size': 15 * k, 'font-weight': 700, fill: '#fff',
+      stroke: '#121318', 'stroke-width': 4 * k, 'paint-order': 'stroke', 'stroke-linejoin': 'round',
+      'font-family': 'system-ui, sans-serif'
+    });
+    t.textContent = label;
+  }
+
+  function clearRuler() { rulerA = null; rulerB = null; rulerDragging = false; renderRuler(); }
+
+  boardWrap.addEventListener('pointerdown', (e) => {
+    if (currentTool !== 'ruler') return;
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    if (document.body.classList.contains('wall-editor-active') || document.body.classList.contains('fog-editor-active')) return;
+    if (rulerDragging) { clearRuler(); return; } // segundo dedo cancela a medição
+    e.preventDefault();
+    boardWrap.setPointerCapture(e.pointerId);
+    rulerPointerId = e.pointerId; rulerDragging = true;
+    rulerA = snapToToken(boardPointFromEvent(e));
+    rulerB = { x: rulerA.x, y: rulerA.y };
+    renderRuler();
+  });
+  boardWrap.addEventListener('pointermove', (e) => {
+    if (!rulerDragging || e.pointerId !== rulerPointerId) return;
+    rulerB = snapToToken(boardPointFromEvent(e));
+    renderRuler();
+  });
+  function endRuler(e) {
+    if (!rulerDragging || e.pointerId !== rulerPointerId) return;
+    rulerDragging = false;
+    if (rulerA && rulerB && Math.hypot(rulerB.x - rulerA.x, rulerB.y - rulerA.y) * scale < 4) clearRuler();
+  }
+  boardWrap.addEventListener('pointerup', endRuler);
+  boardWrap.addEventListener('pointercancel', endRuler);
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') clearRuler(); });
+
   function applyBarState() {
     const topHidden = localStorage.getItem('tabletop_topbar_hidden') === '1';
     const sideHidden = localStorage.getItem('tabletop_sidebar_hidden') === '1';
@@ -2345,6 +2512,8 @@
     tokenEls.forEach(el => el.remove()); tokenEls.clear(); tokenData.clear();
     mapPieceEls.forEach(el => el.remove()); mapPieceEls.clear(); mapPieceData.clear();
     if (!sceneId) return;
+
+    await loadGridForScene(sceneId);
 
     const { data: toks } = await sb.from('tokens').select('*').eq('scene_id', sceneId);
     (toks || []).forEach(upsertTokenEl);
