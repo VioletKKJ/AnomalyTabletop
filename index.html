@@ -612,6 +612,7 @@
         <button id="scenesBtn" class="mestre-only">Cenas</button>
         <button id="camPullBtn" class="mestre-only" title="Centraliza a câmera de todos os jogadores na sua">📷 Puxar jogadores</button>
         <button id="camLiveBtn" class="mestre-only" title="Os jogadores seguem a sua câmera em tempo real">📡 Câmera ao vivo: OFF</button>
+        <button id="cinematicCameraBtn" class="mestre-only" title="Câmera com leve balanço suave local">🎥 Câmera cinematográfica: OFF</button>
         <button id="managePlayersBtn" class="mestre-only hidden">Jogadores</button>
         <button id="settingsBtn" title="Configurações">⚙️ Configurações</button>
         <button id="clearBtn" class="danger mestre-only" title="Limpar Tudo">Limpar</button>
@@ -1442,7 +1443,7 @@
     }
   });
 
-  function applyZoom() { board.style.transform = `scale(${scale})`; board.style.setProperty('--inv-zoom', String(1 / scale)); if (typeof renderRuler === 'function') renderRuler(); }
+  function applyZoom() { syncBoardVisualTransform(); board.style.setProperty('--inv-zoom', String(1 / scale)); if (typeof renderRuler === 'function') renderRuler(); }
 
   function applyElementSize(el, size, ar) {
     let w, h;
@@ -2422,6 +2423,63 @@
 
   camPullBtn.addEventListener('click', () => sendCamera(false, 'pull'));
   camLiveBtn.addEventListener('click', () => { camLive ? stopCameraLive(false) : startCameraLive(); });
+
+  // Balanço cinematográfico puramente local: não envia eventos nem usa o Supabase.
+  const cinematicCameraBtn = document.getElementById('cinematicCameraBtn');
+  let cinematicCameraEnabled = false;
+  let cinematicCameraPhase = 0;
+  let cinematicCameraFrame = null;
+
+  function syncBoardVisualTransform() {
+    if (!cinematicCameraEnabled) {
+      board.style.transform = `scale(${scale})`;
+      return;
+    }
+
+    const shakeX = Math.sin(cinematicCameraPhase) * 1.8;
+    const shakeY = Math.cos(cinematicCameraPhase * 1.4) * 1.4;
+    const tilt = Math.sin(cinematicCameraPhase * 0.8) * 0.8;
+
+    board.style.transform = `translate(${shakeX}px, ${shakeY}px) rotate(${tilt}deg) scale(${scale})`;
+    board.style.transformOrigin = '0 0';
+  }
+
+  function startCinematicCamera() {
+    cinematicCameraEnabled = true;
+    cinematicCameraBtn.classList.add('active');
+    cinematicCameraBtn.textContent = '🎥 Câmera cinematográfica: ON';
+
+    const loop = () => {
+      if (!cinematicCameraEnabled) return;
+      cinematicCameraPhase += 0.08;
+      syncBoardVisualTransform();
+      cinematicCameraFrame = requestAnimationFrame(loop);
+    };
+
+    cinematicCameraFrame = requestAnimationFrame(loop);
+  }
+
+  function stopCinematicCamera() {
+    cinematicCameraEnabled = false;
+    cinematicCameraBtn.classList.remove('active');
+    cinematicCameraBtn.textContent = '🎥 Câmera cinematográfica: OFF';
+
+    if (cinematicCameraFrame) {
+      cancelAnimationFrame(cinematicCameraFrame);
+      cinematicCameraFrame = null;
+    }
+
+    cinematicCameraPhase = 0;
+    syncBoardVisualTransform();
+  }
+
+  cinematicCameraBtn.addEventListener('click', () => {
+    if (cinematicCameraEnabled) {
+      stopCinematicCamera();
+    } else {
+      startCinematicCamera();
+    }
+  });
 
 
   // Menu contextual do fundo do tabuleiro
