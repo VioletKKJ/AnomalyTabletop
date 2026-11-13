@@ -2436,9 +2436,10 @@
       return;
     }
 
-    const shakeX = Math.sin(cinematicCameraPhase) * 1.8;
-    const shakeY = Math.cos(cinematicCameraPhase * 1.4) * 1.4;
-    const tilt = Math.sin(cinematicCameraPhase * 0.8) * 0.8;
+    // Movimento ambiente quase imperceptível, sem sacudir o tabuleiro.
+    const shakeX = Math.sin(cinematicCameraPhase) * 0.35;
+    const shakeY = Math.cos(cinematicCameraPhase * 1.4) * 0.25;
+    const tilt = Math.sin(cinematicCameraPhase * 0.8) * 0.10;
 
     board.style.transform = `translate(${shakeX}px, ${shakeY}px) rotate(${tilt}deg) scale(${scale})`;
     board.style.transformOrigin = '0 0';
@@ -2451,7 +2452,7 @@
 
     const loop = () => {
       if (!cinematicCameraEnabled) return;
-      cinematicCameraPhase += 0.08;
+      cinematicCameraPhase += 0.025;
       syncBoardVisualTransform();
       cinematicCameraFrame = requestAnimationFrame(loop);
     };
