@@ -24,6 +24,7 @@
     --danger: #ff5252; 
     --ok: #00e676;
     --door: #ffc107;
+    --light-color: #ffaa44;
   }
 
   * { box-sizing: border-box; user-select: none; -webkit-user-select: none; }
@@ -109,6 +110,10 @@
   #tokensLayer { position: absolute; inset: 0; z-index: 10000; pointer-events: none; }
   #tokensLayer > * { pointer-events: auto; }
 
+  /* Camada de Iluminação Dinâmica / Sombra */
+  #lightingLayer { position: absolute; left: 0; top: 0; width: 40000px; height: 40000px; pointer-events: none; z-index: 18000; overflow: visible; }
+  body:not(.jogador) #lightingLayer { opacity: 0.75; } /* Mestre vê luzes translúcidas */
+
   /* Camada do Fog of War */
   #fogLayer { position: absolute; left: 0; top: 0; width: 40000px; height: 40000px; pointer-events: none; z-index: 20000; overflow: visible; }
   body.fog-editor-active #fogLayer { pointer-events: auto; cursor: crosshair; }
@@ -121,11 +126,14 @@
   body:not(.jogador).fog-editor-active #fogLayer polygon { cursor: pointer; }
   body:not(.jogador).fog-editor-active #fogLayer polygon:hover { stroke: #ff5252 !important; stroke-width: 3px; }
 
-  /* Camada de Paredes e Portas (Visível apenas no Editor de Paredes) */
+  /* Camada de Paredes, Portas e Luzes (Visível no Editor correspondente) */
   #wallsLayer { position: absolute; left: 0; top: 0; width: 40000px; height: 40000px; pointer-events: none; z-index: 25000; overflow: visible; display: none; }
   body.wall-editor-active #wallsLayer { display: block; pointer-events: auto; cursor: crosshair; }
   body.wall-editor-active.wall-eraser-mode #wallsLayer { cursor: not-allowed; }
-  
+
+  #lightsEditLayer { position: absolute; left: 0; top: 0; width: 40000px; height: 40000px; pointer-events: none; z-index: 26000; overflow: visible; display: none; }
+  body.light-editor-active #lightsEditLayer { display: block; pointer-events: auto; cursor: crosshair; }
+
   #wallsLayer line.wall-hit { stroke: transparent; stroke-width: 18px; cursor: pointer; }
   #wallsLayer line.wall-segment { stroke: #00e676; stroke-width: 4px; stroke-linecap: round; pointer-events: none; transition: stroke .15s; }
   #wallsLayer line.door-segment { stroke: #ffc107; stroke-width: 5px; stroke-dasharray: 8,5; stroke-linecap: round; pointer-events: none; transition: opacity .15s; }
@@ -138,22 +146,27 @@
   #wallsLayer circle.wall-node.door-node { fill: #ffc107; }
   #wallsLayer circle.snap-indicator { fill: none; stroke: #ffffff; stroke-width: 2px; pointer-events: none; }
 
+  /* Marcadores de luzes no editor */
+  .light-marker { position: absolute; width: 28px; height: 28px; transform: translate(-50%, -50%); border-radius: 50%;
+    background: var(--light-color); border: 2px solid #fff; cursor: pointer; z-index: 26500;
+    box-shadow: 0 0 12px var(--light-color); display: flex; align-items: center; justify-content: center; font-size: 14px; }
+  body:not(.light-editor-active) .light-marker { display: none; }
+
   #placeholder { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
     color: var(--text-dim); font-size: 13px; text-align: center; padding: 20px; z-index: 0; gap: 10px; }
   #placeholder::before { content: "🌌"; font-size: 36px; opacity: 0.7; }
   
   .token { position: absolute; touch-action: none; cursor: grab; user-select: none; -webkit-user-drag: none; will-change: left, top; }
   .token.dragging { opacity: .85; filter: drop-shadow(0 8px 16px rgba(0,0,0,0.6)); }
-  /* Movimento suave quando a posição vem de outro dispositivo */
   .token:not(.dragging), .mapPiece:not(.dragging) { transition: left .14s linear, top .14s linear; }
 
   .mapPiece { position: absolute; touch-action: none; user-select: none; -webkit-user-drag: none; pointer-events: none; will-change: left, top; }
   body.map-editor-active .mapPiece { pointer-events: auto; cursor: grab; }
   .mapPiece.dragging { opacity: .85; }
 
-  .pieceImg { position: absolute; inset: 0; background-size: contain; background-position: center; background-repeat: no-repeat; pointer-events: none; user-select: none; -webkit-user-drag: none; image-rendering: auto; }
+  .pieceImg, .pieceVideo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; pointer-events: none; user-select: none; -webkit-user-drag: none; }
+  .pieceImg { background-size: contain; background-position: center; background-repeat: no-repeat; }
   
-  /* --inv-zoom = 1 / zoom da tela: mantém as bolinhas do mesmo tamanho visual em qualquer zoom */
   .resizeHandle { position: absolute; right: calc(-12px * var(--inv-zoom, 1)); bottom: calc(-12px * var(--inv-zoom, 1));
     width: calc(24px * var(--inv-zoom, 1)); height: calc(24px * var(--inv-zoom, 1));
     border-radius: 50%; background: var(--accent); border: calc(2px * var(--inv-zoom, 1)) solid #fff; touch-action: none;
@@ -164,7 +177,7 @@
     touch-action: none; cursor: grab; display: none; box-shadow: 0 0 10px rgba(0, 230, 118, 0.8); }
 
   .selected .resizeHandle, .selected .rotateHandle { display: block; }
-  .selected .pieceImg { outline: calc(2px * var(--inv-zoom, 1)) dashed var(--accent); outline-offset: calc(4px * var(--inv-zoom, 1)); filter: drop-shadow(0 0 6px rgba(157, 78, 223, 0.5)); }
+  .selected .pieceImg, .selected .pieceVideo { outline: calc(2px * var(--inv-zoom, 1)) dashed var(--accent); outline-offset: calc(4px * var(--inv-zoom, 1)); filter: drop-shadow(0 0 6px rgba(157, 78, 223, 0.5)); }
 
   #contextMenu { position: fixed; z-index: 60000; background: var(--panel); border: 1px solid var(--panel-border);
     border-radius: 12px; padding: 8px; display: none; min-width: 210px; box-shadow: 0 10px 30px rgba(0,0,0,0.6);
@@ -179,31 +192,15 @@
   #contextMenu .stateThumb:hover { transform: scale(1.08); }
   #contextMenu .stateThumb.active { border-color: var(--accent); box-shadow: 0 0 8px rgba(157, 78, 223, 0.6); }
 
-
-  #boardContextMenu {
-    position: fixed;
-    z-index: 60001;
-    display: none;
-    min-width: 190px;
-    padding: 8px;
-    background: var(--panel);
-    border: 1px solid var(--panel-border);
-    border-radius: 12px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
-    backdrop-filter: blur(10px);
-  }
+  #boardContextMenu { position: fixed; z-index: 60001; display: none; min-width: 190px; padding: 8px;
+    background: var(--panel); border: 1px solid var(--panel-border); border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6); backdrop-filter: blur(10px); }
   #boardContextMenu.open { display: block; }
-  #boardContextMenu button {
-    width: 100%;
-    justify-content: flex-start;
-    background: transparent;
-    border: none;
-    margin: 2px 0;
-  }
+  #boardContextMenu button { width: 100%; justify-content: flex-start; background: transparent; border: none; margin: 2px 0; }
   #boardContextMenu button:hover { background: var(--panel-border); color: #fff; }
   #boardContextMenu hr { border: none; border-top: 1px solid var(--panel-border); margin: 6px 0; }
 
-  #setupOverlay, #loginOverlay, #createRoomOverlay, #joinRoomOverlay, #cropOverlay, #playersOverlay, #scenesOverlay, #gridOverlay {
+  #setupOverlay, #loginOverlay, #createRoomOverlay, #joinRoomOverlay, #cropOverlay, #playersOverlay, #scenesOverlay, #gridOverlay, #lightModal {
     position: fixed; inset: 0; background: rgba(10, 11, 15, 0.8); backdrop-filter: blur(8px); display: flex;
     align-items: center; justify-content: center; z-index: 100000; padding: 16px; }
 
@@ -211,7 +208,7 @@
     padding: 24px; max-width: 480px; width: 100%; max-height: 85vh; overflow-y: auto; box-shadow: 0 12px 40px rgba(0,0,0,0.6); }
   .card h2 { margin-top: 0; font-size: 18px; font-weight: 700; color: #fff; }
   .card p { font-size: 13px; color: var(--text-dim); line-height: 1.5; }
-  .card input[type="text"], .card input[type="password"], .card select { width: 100%; padding: 10px 12px; margin: 6px 0 14px; border-radius: 10px;
+  .card input[type="text"], .card input[type="password"], .card input[type="number"], .card select { width: 100%; padding: 10px 12px; margin: 6px 0 14px; border-radius: 10px;
     border: 1px solid var(--panel-border); background: var(--bg); color: var(--text); font-size: 13px; transition: border-color .2s; }
   .card input[type="text"]:focus, .card input[type="password"]:focus, .card select:focus { outline: none; border-color: var(--accent); }
   .card label { font-size: 12px; font-weight: 600; color: var(--text-dim); display: block; margin-top: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
@@ -219,7 +216,7 @@
   
   .row { display: flex; gap: 10px; margin-top: 12px; }
   .row button { flex: 1; justify-content: center; }
-  #roleBadge { font-size: 11px; color: #e0aaff; padding: 3px 8px; background: rgba(157, 78, 223, 0.15); border: 1px solid rgba(157, 78, 223, 0.3); border-radius: 20px; font-weight: 600; }
+  #roleBadge { font-size: 11px; color: #e0aaff; padding: 3px 8px; background: rgba(157, 78, 223, 0.15); border: 1px solid rgba(157, 78, 223, 0.3); border-radius: 20px; font-weight: 600; white-space: nowrap; }
   body.jogador .mestre-only { display: none !important; }
 
   #cropContainer { width: 100%; max-height: 350px; min-height: 200px; margin: 12px 0; background: #000;
@@ -233,187 +230,35 @@
     background-color: var(--bg); flex-shrink: 0; border: 1px solid var(--panel-border); }
   .sceneRow .activeTag { font-size: 11px; color: var(--accent); font-weight: 600; }
 
+  /* Barra superior compacta */
+  #topBar { flex-wrap: nowrap; gap: 8px; padding: 7px 10px; background: rgba(18, 19, 24, 0.88); border-color: rgba(255, 255, 255, 0.09); box-shadow: 0 8px 28px rgba(0, 0, 0, 0.42); }
+  .brandTitle { gap: 8px; margin-right: 2px; padding-right: 12px; border-color: rgba(255, 255, 255, 0.12); }
+  .brandTitle h1 { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #normalNav { position: relative; display: flex; align-items: center; gap: 5px; flex-wrap: nowrap; }
+  #normalNav button, #normalNav label.btn { min-height: 34px; padding: 6px 10px; border-radius: 8px; }
+  #normalNav .primary { box-shadow: 0 2px 10px rgba(123, 44, 191, 0.24); }
+  #zoomOut, #zoomIn { min-width: 34px; padding-inline: 8px; font-size: 15px; }
 
-  /* Barra superior: visual compacto e ações organizadas */
-  #topBar {
-    flex-wrap: nowrap;
-    gap: 8px;
-    padding: 7px 10px;
-    background: rgba(18, 19, 24, 0.88);
-    border-color: rgba(255, 255, 255, 0.09);
-    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.42);
-  }
+  #moreActionsBtn { width: 36px; min-width: 36px; padding: 0; justify-content: center; font-size: 20px; line-height: 1; color: var(--text-dim); background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.08); }
+  #moreActionsBtn:hover, #moreActionsBtn[aria-expanded="true"] { color: #fff; background: rgba(157, 78, 223, 0.22); border-color: rgba(157, 78, 223, 0.4); }
 
-  .brandTitle {
-    gap: 8px;
-    margin-right: 2px;
-    padding-right: 12px;
-    border-color: rgba(255, 255, 255, 0.12);
-  }
-
-  .brandTitle h1 {
-    max-width: 180px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  #roleBadge {
-    white-space: nowrap;
-  }
-
-  #normalNav {
-    position: relative;
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    flex-wrap: nowrap;
-  }
-
-  #normalNav button,
-  #normalNav label.btn {
-    min-height: 34px;
-    padding: 6px 10px;
-    border-radius: 8px;
-  }
-
-  #normalNav .primary {
-    box-shadow: 0 2px 10px rgba(123, 44, 191, 0.24);
-  }
-
-  #zoomOut,
-  #zoomIn {
-    min-width: 34px;
-    padding-inline: 8px;
-    font-size: 15px;
-  }
-
-  #moreActionsBtn {
-    width: 36px;
-    min-width: 36px;
-    padding: 0;
-    justify-content: center;
-    font-size: 20px;
-    line-height: 1;
-    color: var(--text-dim);
-    background: rgba(255, 255, 255, 0.06);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-  }
-
-  #moreActionsBtn:hover,
-  #moreActionsBtn[aria-expanded="true"] {
-    color: #fff;
-    background: rgba(157, 78, 223, 0.22);
-    border-color: rgba(157, 78, 223, 0.4);
-  }
-
-  #moreActionsMenu {
-    position: absolute;
-    top: calc(100% + 9px);
-    right: 0;
-    z-index: 60;
-    display: none;
-    flex-direction: column;
-    gap: 5px;
-    min-width: 190px;
-    padding: 8px;
-    background: rgba(26, 28, 36, 0.97);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 14px;
-    box-shadow: 0 14px 36px rgba(0, 0, 0, 0.48);
-    backdrop-filter: blur(16px);
-  }
-
-  #moreActionsMenu.open {
-    display: flex;
-  }
-
-  #moreActionsMenu button,
-  #moreActionsMenu label.btn {
-    width: 100%;
-    justify-content: flex-start;
-    border-radius: 8px;
-    background: transparent;
-  }
+  #moreActionsMenu { position: absolute; top: calc(100% + 9px); right: 0; z-index: 60; display: none; flex-direction: column; gap: 5px; min-width: 190px; padding: 8px; background: rgba(26, 28, 36, 0.97); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 14px; box-shadow: 0 14px 36px rgba(0, 0, 0, 0.48); backdrop-filter: blur(16px); }
+  #moreActionsMenu.open { display: flex; }
+  #moreActionsMenu button, #moreActionsMenu label.btn { width: 100%; justify-content: flex-start; border-radius: 8px; background: transparent; }
 
   @media (max-width: 700px) {
-    #topBar {
-      max-width: calc(100vw - 20px);
-      gap: 6px;
-      padding: 6px 8px;
-    }
-
-    .brandTitle h1 {
-      max-width: 100px;
-      font-size: 12px;
-    }
-
-    #roleBadge {
-      display: none;
-    }
-
-    #normalNav {
-      gap: 4px;
-    }
-
-    #normalNav button,
-    #normalNav label.btn {
-      min-height: 32px;
-      padding: 5px 8px;
-      font-size: 11px;
-    }
-
-    #moreActionsMenu {
-      position: absolute;
-      top: calc(100% + 8px);
-      right: 0;
-      left: auto;
-      width: min(220px, calc(100vw - 20px));
-      max-height: calc(100vh - 100px);
-      max-height: calc(
-        100dvh
-        - env(safe-area-inset-top, 0px)
-        - env(safe-area-inset-bottom, 0px)
-        - 80px
-      );
-      overflow-y: auto;
-      overscroll-behavior: contain;
-      box-sizing: border-box;
-      padding-bottom: max(8px, env(safe-area-inset-bottom, 8px));
-    }
-  }
-
-
-  /* Correção mobile (vertical): a barra ocupa a largura da tela e quebra em linhas
-     em vez de estourar para fora e ser cortada */
-  @media (max-width: 700px) {
-    #topBar {
-      left: 10px;
-      right: 10px;
-      width: auto;
-      max-width: none;
-      transform: none;
-      flex-wrap: wrap;
-      justify-content: center;
-      row-gap: 6px;
-    }
+    #topBar { left: 10px; right: 10px; width: auto; max-width: none; transform: none; flex-wrap: wrap; justify-content: center; row-gap: 6px; }
     #topBar.collapsed { transform: translateY(calc(-100% - 20px)); }
-
-    #normalNav {
-      flex-wrap: wrap;
-      justify-content: center;
-      max-width: 100%;
-    }
-
+    #normalNav { flex-wrap: wrap; justify-content: center; max-width: 100%; }
     .brandTitle { padding-right: 8px; }
-    .brandTitle h1 { max-width: 90px; }
+    .brandTitle h1 { max-width: 90px; font-size: 12px; }
+    #roleBadge { display: none; }
   }
 
   /* Régua */
   #rulerLayer { position: absolute; left: 0; top: 0; width: 40000px; height: 40000px; pointer-events: none; z-index: 30000; overflow: visible; }
   body.tool-ruler #boardWrap, body.tool-ruler .token { cursor: crosshair; }
 
-  /* Aviso de câmera controlada pelo mestre */
   #camLockBadge { position: fixed; left: 50%; bottom: max(14px, env(safe-area-inset-bottom, 14px)); transform: translateX(-50%);
     z-index: 35; padding: 6px 14px; border-radius: 999px; font-size: 12px; font-weight: 600; color: #fff; pointer-events: none;
     background: rgba(123, 44, 191, 0.85); border: 1px solid rgba(255,255,255,0.15); box-shadow: 0 4px 16px rgba(0,0,0,0.5); }
@@ -502,7 +347,7 @@
     </div>
   </div>
 
-  <!-- Modal de Recorte (Cropper) -->
+  <!-- Modal de Recorte (Cropper para imagens estáticas) -->
   <div id="cropOverlay" class="hidden">
     <div class="card">
       <h2>Recortar Imagem</h2>
@@ -517,6 +362,25 @@
     </div>
   </div>
 
+  <!-- Modal de Propriedades da Luz -->
+  <div id="lightModal" class="hidden">
+    <div class="card">
+      <h2>Configurar Luz</h2>
+      <p>Ajuste o alcance e a cor da fonte de luz.</p>
+      <label>Alcance (Raio em pixels)</label>
+      <input type="range" id="lightRadiusRange" min="50" max="1500" step="25" value="350">
+      <span id="lightRadiusVal" style="font-size:11px; color:var(--text-dim);">350px</span>
+
+      <label>Cor da Luz</label>
+      <input type="color" id="lightColorInp" value="#ffaa44">
+
+      <div class="row" style="margin-top:16px;">
+        <button id="btnDeleteLight" class="danger">Apagar Luz</button>
+        <button id="btnCloseLightModal" class="primary">Concluir</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Painel de Cenas -->
   <div id="scenesOverlay" class="hidden">
     <div class="card">
@@ -525,7 +389,7 @@
       <div id="scenesList"></div>
       <div class="row" style="margin-top:12px;">
         <button class="primary" id="newSceneBtn">Nova cena</button>
-        <input type="file" id="newSceneInput" accept="image/png,image/jpeg,image/webp" class="hidden">
+        <input type="file" id="newSceneInput" accept="image/png,image/jpeg,image/webp,image/gif,image/webp,video/webm,video/mp4" class="hidden">
       </div>
       <button id="closeScenesBtn" style="width:100%; margin-top:12px;">Fechar</button>
     </div>
@@ -595,18 +459,18 @@
       <button class="mestre-only primary" id="openMapEditorBtn" title="Editor de Mapa">Editor</button>
       <button class="mestre-only primary" id="openFogEditorBtn" title="Editor de Névoa">Névoa</button>
       <button class="mestre-only primary" id="openWallEditorBtn" title="Editor de Paredes">Paredes</button>
+      <button class="mestre-only primary" id="openLightEditorBtn" title="Editor de Luzes">Luzes</button>
 
       <button id="zoomOut" title="Menos Zoom" aria-label="Diminuir zoom">−</button>
       <button id="zoomIn" title="Mais Zoom" aria-label="Aumentar zoom">+</button>
       <button id="btnReturnLobby" title="Trocar Mesa">Mesas</button>
 
-      <button id="moreActionsBtn" type="button" title="Mais ações"
-        aria-label="Mais ações" aria-expanded="false">⋯</button>
+      <button id="moreActionsBtn" type="button" title="Mais ações" aria-label="Mais ações" aria-expanded="false">⋯</button>
 
       <div id="moreActionsMenu" aria-label="Mais ações">
-        <label class="btn mestre-only primary" title="Adicionar Token">
+        <label class="btn mestre-only primary" title="Adicionar Token (Imagens ou GIFs transparentes)">
           + Token
-          <input type="file" id="tokenInput" accept="image/png,image/jpeg,image/webp">
+          <input type="file" id="tokenInput" accept="image/png,image/jpeg,image/webp,image/gif">
         </label>
         <button id="gridBtn" class="mestre-only" title="Configurar Grid">Grid</button>
         <button id="scenesBtn" class="mestre-only">Cenas</button>
@@ -620,10 +484,10 @@
 
     <!-- Interface Alternada (Modo Editor de Mapa) -->
     <div id="editorNav" class="hidden" style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
-      <span style="color:var(--accent); font-weight:600; font-size:12px;">Modo Editor de Mapa</span>
+      <span style="color:var(--accent); font-weight:600; font-size:12px;">Modo Editor de Mapa (Suporta Imagens, GIFs e Vídeos WebM transparentes)</span>
       <label class="btn primary">
         + Peça de Mapa
-        <input type="file" id="mapPieceInput" accept="image/png,image/jpeg,image/webp">
+        <input type="file" id="mapPieceInput" accept="image/png,image/jpeg,image/webp,image/gif,video/webm,video/mp4">
       </label>
       <button class="danger" id="closeMapEditorBtn">Sair</button>
     </div>
@@ -657,6 +521,13 @@
       <button class="danger" id="btnClearWallScene">Limpar Tudo</button>
       <button id="closeWallEditorBtn">Sair</button>
     </div>
+
+    <!-- Interface Alternada (Modo Editor de Luzes) -->
+    <div id="lightEditorNav" class="hidden" style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+      <span style="color:var(--accent); font-weight:600; font-size:12px;">Editor de Luzes: Clique para adicionar tocha/luz</span>
+      <button class="danger" id="btnClearLightsScene">Limpar Luzes</button>
+      <button id="closeLightEditorBtn">Sair</button>
+    </div>
   </header>
   <button id="topBarToggle" title="Esconder/mostrar barra">▲</button>
   <div id="camLockBadge" class="hidden">📷 Câmera controlada pelo mestre</div>
@@ -676,8 +547,10 @@
       <div id="mapPiecesLayer"></div>
       <div id="gridLayer"></div>
       <div id="tokensLayer"></div>
+      <svg id="lightingLayer"></svg>
       <svg id="fogLayer"></svg>
       <svg id="wallsLayer"></svg>
+      <div id="lightsEditLayer"></div>
       <svg id="rulerLayer"></svg>
     </div>
   </div>
@@ -686,7 +559,7 @@
   <div id="contextMenu">
     <div id="tokenStatesRow" class="statesRow"></div>
     <button id="menuAddState" class="mestre-only">Adicionar estado</button>
-    <input type="file" id="stateInput" accept="image/png,image/jpeg,image/webp" class="hidden">
+    <input type="file" id="stateInput" accept="image/png,image/jpeg,image/webp,image/gif" class="hidden">
     <hr id="statesHr">
     <button id="menuFront">Trazer para frente</button>
     <button id="menuBack">Mandar para trás</button>
@@ -740,6 +613,8 @@
   const gridLayer = document.getElementById('gridLayer');
   const fogLayer = document.getElementById('fogLayer');
   const wallsLayer = document.getElementById('wallsLayer');
+  const lightingLayer = document.getElementById('lightingLayer');
+  const lightsEditLayer = document.getElementById('lightsEditLayer');
   const mapPiecesLayer = document.getElementById('mapPiecesLayer');
   const tokensLayer = document.getElementById('tokensLayer');
   const placeholder = document.getElementById('placeholder');
@@ -749,6 +624,7 @@
   const editorNav = document.getElementById('editorNav');
   const fogEditorNav = document.getElementById('fogEditorNav');
   const wallEditorNav = document.getElementById('wallEditorNav');
+  const lightEditorNav = document.getElementById('lightEditorNav');
 
   const openMapEditorBtn = document.getElementById('openMapEditorBtn');
   const closeMapEditorBtn = document.getElementById('closeMapEditorBtn');
@@ -775,15 +651,28 @@
   const clearWallBtn = document.getElementById('btnClearWallScene');
   const wallStatusText = document.getElementById('wallStatusText');
 
+  // Controles do Editor de Luzes
+  const openLightEditorBtn = document.getElementById('openLightEditorBtn');
+  const closeLightEditorBtn = document.getElementById('closeLightEditorBtn');
+  const clearLightsBtn = document.getElementById('btnClearLightsScene');
+  const lightModal = document.getElementById('lightModal');
+  const lightRadiusRange = document.getElementById('lightRadiusRange');
+  const lightRadiusVal = document.getElementById('lightRadiusVal');
+  const lightColorInp = document.getElementById('lightColorInp');
+  const btnDeleteLight = document.getElementById('btnDeleteLight');
+  const btnCloseLightModal = document.getElementById('btnCloseLightModal');
+  let activeEditingLightId = null;
+
   let editingFogObj = null;
   let editingFogPoints = [];
 
   // Estado do Editor de Paredes
-  let wallToolMode = 'wall'; // 'wall', 'door', 'erase'
+  let wallToolMode = 'wall';
   let wallStartPoint = null;
   let wallDraftLine = null;
   let snapIndicatorCircle = null;
   let cachedWalls = [];
+  let cachedLights = [];
 
   const mapPieceInput = document.getElementById('mapPieceInput');
   const tokenInput = document.getElementById('tokenInput');
@@ -903,6 +792,7 @@
   let mapElementsChannel = null;
   let fogElementsChannel = null;
   let wallsChannel = null;
+  let lightsChannel = null;
   let roomSyncChannel = null;
   let cameraChannel = null;
   let cameraLocked = false;
@@ -974,7 +864,6 @@
     });
   });
 
-  /* ===== Grid salva por cena (Supabase: scenes.grid_config + cópia local) ===== */
   let gridSaveTimer = null, gridLastBroadcast = 0;
 
   function normalizeGrid(raw) {
@@ -996,7 +885,7 @@
     try {
       const { data, error } = await sb.from('scenes').select('grid_config').eq('id', sceneId).maybeSingle();
       if (!error && data && data.grid_config) cfg = data.grid_config;
-    } catch (e) { /* coluna ainda não existe: usa a cópia local */ }
+    } catch (e) {}
     if (!cfg) {
       try { const raw = localStorage.getItem(gridStorageKey(sceneId)); if (raw) cfg = JSON.parse(raw); } catch (e) {}
     }
@@ -1019,8 +908,7 @@
     clearTimeout(gridSaveTimer);
     gridSaveTimer = setTimeout(async () => {
       broadcastGrid(sceneId, cfg);
-      const { error } = await sb.from('scenes').update({ grid_config: cfg }).eq('id', sceneId);
-      if (error) console.warn('Grid não salva no Supabase (rode o SQL da coluna grid_config):', error.message);
+      await sb.from('scenes').update({ grid_config: cfg }).eq('id', sceneId);
     }, 600);
   }
 
@@ -1059,9 +947,8 @@
     return new Blob([arr], { type: mime });
   }
 
-  async function uploadImage(dataURL, prefix) {
-    const blob = dataURLToBlob(dataURL);
-    const ext = blob.type.includes('png') ? 'png' : 'jpg';
+  async function uploadFileBlob(blob, prefix) {
+    const ext = blob.type.includes('webm') ? 'webm' : (blob.type.includes('gif') ? 'gif' : (blob.type.includes('png') ? 'png' : 'jpg'));
     const path = `${prefix}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
     const { error } = await sb.storage.from('tabletop').upload(path, blob, { contentType: blob.type });
     if (error) throw error;
@@ -1162,7 +1049,7 @@
     updateDraftPolygon();
   });
 
-  // --- EDITOR DE PAREDES E PORTAS REFORMULADO ---
+  // --- EDITOR DE PAREDES E PORTAS ---
   function setWallToolMode(mode) {
     wallToolMode = mode;
     document.body.classList.toggle('wall-eraser-mode', mode === 'erase');
@@ -1255,6 +1142,7 @@
     const { data: walls } = await sb.from('walls').select('*').eq('scene_id', currentSceneId);
     cachedWalls = walls || [];
     cachedWalls.forEach(w => renderWallSegment(w));
+    computeLighting();
   }
 
   function renderWallSegment(wallData) {
@@ -1262,7 +1150,6 @@
     g.classList.add('wall-group');
     g.dataset.id = wallData.id;
 
-    // Área invisível mais larga para facilitar o clique/toque no celular
     const hitLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
     hitLine.setAttribute('x1', wallData.x1);
     hitLine.setAttribute('y1', wallData.y1);
@@ -1284,7 +1171,6 @@
       line.classList.add('wall-segment');
     }
 
-    // Nós visuais nas pontas
     const n1 = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
     n1.setAttribute('cx', wallData.x1);
     n1.setAttribute('cy', wallData.y1);
@@ -1299,7 +1185,6 @@
     n2.classList.add('wall-node');
     if (isDoor) n2.classList.add('door-node');
 
-    // Evento único unificado no hitLine para evitar conflito com o boardWrap
     hitLine.addEventListener('pointerdown', async (e) => {
       if (!document.body.classList.contains('wall-editor-active') || currentRole !== 'mestre') return;
       if (currentTool === 'move') return;
@@ -1310,6 +1195,7 @@
         g.remove();
         cachedWalls = cachedWalls.filter(item => item.id !== wallData.id);
         await sb.from('walls').delete().eq('id', wallData.id);
+        computeLighting();
         return;
       }
 
@@ -1319,10 +1205,10 @@
         line.classList.toggle('door-open', newOpen);
         wallStatusText.textContent = newOpen ? '🚪 Porta ABERTA' : '🚪 Porta FECHADA';
         await sb.from('walls').update({ is_open: newOpen }).eq('id', wallData.id);
+        computeLighting();
       }
     });
 
-    // Clicar diretamente em um nó faz snap e começa/termina a parede nele
     [n1, n2].forEach((nodeEl, idx) => {
       nodeEl.addEventListener('pointerdown', (e) => {
         if (!document.body.classList.contains('wall-editor-active') || currentRole !== 'mestre') return;
@@ -1368,12 +1254,10 @@
       const x2 = x;
       const y2 = y;
 
-      // Evita segmentos de tamanho zero
       if (Math.hypot(x2 - x1, y2 - y1) < 3) return;
 
       const typeToInsert = wallToolMode === 'door' ? 'door' : 'wall';
       
-      // Atualiza imediatamente o início da próxima linha na cadeia
       wallStartPoint = { x: x2, y: y2 };
       if (wallDraftLine) {
         wallDraftLine.setAttribute('x1', x2);
@@ -1397,11 +1281,31 @@
       if (!error && data && data.length) {
         cachedWalls.push(data[0]);
         renderWallSegment(data[0]);
+        computeLighting();
       }
     }
   }
 
-  boardWrap.addEventListener('pointerdown', (e) => {
+  boardWrap.addEventListener('pointerdown', async (e) => {
+    if (document.body.classList.contains('light-editor-active') && currentRole === 'mestre') {
+      if (currentTool === 'move') return;
+      const rect = boardWrap.getBoundingClientRect();
+      const x = (e.clientX - rect.left - boardX) / scale;
+      const y = (e.clientY - rect.top - boardY) / scale;
+      const { data, error } = await sb.from('lights').insert({
+        scene_id: currentSceneId,
+        x, y,
+        radius: 350,
+        color: '#ffaa44',
+        intensity: 0.9,
+        z: Date.now()
+      }).select();
+      if (!error && data && data.length) {
+        openLightModal(data[0]);
+      }
+      return;
+    }
+
     if (!document.body.classList.contains('wall-editor-active') || currentRole !== 'mestre') return;
     if (currentTool === 'move' || e.button === 2) return;
     if (wallToolMode === 'erase') return;
@@ -1421,7 +1325,6 @@
     const rawY = (e.clientY - rect.top - boardY) / scale;
     const snapped = getSnapPoint(rawX, rawY);
 
-    // Indicador visual de snap (ímã)
     if (snapped.x !== rawX || snapped.y !== rawY) {
       if (!snapIndicatorCircle) {
         snapIndicatorCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
@@ -1441,6 +1344,160 @@
       wallDraftLine.setAttribute('y2', snapped.y);
     }
   });
+
+  // --- EDITOR DE LUZES & MOTOR DE RAYCASTING DINÂMICO ---
+  openLightEditorBtn.addEventListener('click', () => {
+    document.body.classList.add('light-editor-active');
+    normalNav.classList.add('hidden');
+    lightEditorNav.classList.remove('hidden');
+    loadLights();
+  });
+
+  closeLightEditorBtn.addEventListener('click', () => {
+    document.body.classList.remove('light-editor-active');
+    lightEditorNav.classList.add('hidden');
+    normalNav.classList.remove('hidden');
+    loadLights();
+  });
+
+  clearLightsBtn.addEventListener('click', async () => {
+    if (!confirm('Deseja apagar todas as luzes desta cena?')) return;
+    await sb.from('lights').delete().eq('scene_id', currentSceneId);
+    loadLights();
+  });
+
+  function openLightModal(light) {
+    activeEditingLightId = light.id;
+    lightRadiusRange.value = light.radius;
+    lightRadiusVal.textContent = light.radius + 'px';
+    lightColorInp.value = light.color;
+    lightModal.classList.remove('hidden');
+  }
+
+  lightRadiusRange.addEventListener('input', () => {
+    lightRadiusVal.textContent = lightRadiusRange.value + 'px';
+  });
+
+  btnCloseLightModal.addEventListener('click', async () => {
+    if (!activeEditingLightId) { lightModal.classList.add('hidden'); return; }
+    const radius = parseFloat(lightRadiusRange.value);
+    const color = lightColorInp.value;
+    lightModal.classList.add('hidden');
+    await sb.from('lights').update({ radius, color }).eq('id', activeEditingLightId);
+    loadLights();
+  });
+
+  btnDeleteLight.addEventListener('click', async () => {
+    if (!activeEditingLightId) return;
+    const id = activeEditingLightId;
+    lightModal.classList.add('hidden');
+    activeEditingLightId = null;
+    await sb.from('lights').delete().eq('id', id);
+    loadLights();
+  });
+
+  async function loadLights() {
+    lightsEditLayer.innerHTML = '';
+    if (!currentSceneId) return;
+    const { data: lights } = await sb.from('lights').select('*').eq('scene_id', currentSceneId);
+    cachedLights = lights || [];
+    cachedLights.forEach(l => {
+      const marker = document.createElement('div');
+      marker.className = 'light-marker';
+      marker.style.left = l.x + 'px';
+      marker.style.top = l.y + 'px';
+      marker.style.setProperty('--light-color', l.color);
+      marker.textContent = '💡';
+      marker.addEventListener('pointerdown', (e) => {
+        e.stopPropagation();
+        openLightModal(l);
+      });
+      lightsEditLayer.appendChild(marker);
+    });
+    computeLighting();
+  }
+
+  // Interseção de segmento de raio com segmento de parede
+  function getRayIntersection(rx1, ry1, rx2, ry2, x1, y1, x2, y2) {
+    const denom = (y2 - y1) * (rx2 - rx1) - (x2 - x1) * (ry2 - ry1);
+    if (denom === 0) return null;
+    const ua = ((x2 - x1) * (ry1 - y1) - (y2 - y1) * (rx1 - x1)) / denom;
+    const ub = ((rx2 - rx1) * (ry1 - y1) - (ry2 - ry1) * (rx1 - x1)) / denom;
+    if (ua >= 0 && ua <= 1 && ub >= 0 && ub <= 1) {
+      return { x: rx1 + ua * (rx2 - rx1), y: ry1 + ua * (ry2 - ry1), param: ua };
+    }
+    return null;
+  }
+
+  // Motor de Raycasting para gerar os fachos de luz bloqueados pelas paredes
+  function computeLighting() {
+    lightingLayer.innerHTML = '';
+    if (!cachedLights || cachedLights.length === 0) return;
+
+    // Coleta todos os vértices relevantes que bloqueiam luz (paredes sólidas e portas fechadas)
+    const blockers = [];
+    cachedWalls.forEach(w => {
+      const isSolid = (w.wall_type === 'wall') || (w.wall_type === 'door' && !w.is_open);
+      if (isSolid) {
+        blockers.push({ x1: w.x1, y1: w.y1, x2: w.x2, y2: w.y2 });
+      }
+    });
+
+    cachedLights.forEach(light => {
+      const lx = light.x;
+      const ly = light.y;
+      const radius = light.radius || 350;
+
+      // Recolhe ângulos para disparar raios em direção às pontas de cada parede (+ margens para suavizar)
+      const angles = [];
+      angles.push(0, Math.PI * 2);
+      blockers.forEach(b => {
+        [ { x: b.x1, y: b.y1 }, { x: b.x2, y: b.y2 } ].forEach(pt => {
+          const baseAngle = Math.atan2(pt.y - ly, pt.x - lx);
+          angles.push(baseAngle);
+          angles.push(baseAngle - 0.0001);
+          angles.push(baseAngle + 0.0001);
+        });
+      });
+
+      // Ordena ângulos para formar um polígono contínuo
+      angles.sort((a, b) => a - b);
+
+      const points = [];
+      angles.forEach(angle => {
+        const dx = Math.cos(angle);
+        const dy = Math.sin(angle);
+        const rx2 = lx + dx * radius;
+        const ry2 = ly + dy * radius;
+
+        let closestDist = radius;
+        let hitPoint = { x: rx2, y: ry2 };
+
+        blockers.forEach(b => {
+          const inter = getRayIntersection(lx, ly, rx2, ry2, b.x1, b.y1, b.x2, b.y2);
+          if (inter) {
+            const dist = Math.hypot(inter.x - lx, inter.y - ly);
+            if (dist < closestDist) {
+              closestDist = dist;
+              hitPoint = inter;
+            }
+          }
+        });
+
+        points.push(`${hitPoint.x},${hitPoint.y}`);
+      });
+
+      if (points.length >= 3) {
+        const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+        poly.setAttribute('points', points.join(' '));
+        poly.setAttribute('fill', light.color || '#ffaa44');
+        poly.setAttribute('fill-opacity', '0.35');
+        poly.setAttribute('stroke', light.color || '#ffaa44');
+        poly.setAttribute('stroke-width', '1');
+        lightingLayer.appendChild(poly);
+      }
+    });
+  }
 
   function applyZoom() { board.style.transform = `scale(${scale})`; board.style.setProperty('--inv-zoom', String(1 / scale)); if (typeof renderRuler === 'function') renderRuler(); }
 
@@ -1477,11 +1534,6 @@
     selectedEl = null;
   }
 
-  // ---------- CAMADAS (frente / trás) ----------
-  // O banco guarda "z" como número livre, mas o navegador só aceita z-index até 2147483647:
-  // valores maiores (como Date.now(), ~1,7 trilhão) viram TODOS o mesmo valor, e aí a ordem
-  // dependia da ordem dos elementos na página (por isso "às vezes funcionava, às vezes não").
-  // Agora a ordem visual é calculada por posição (ranking dos z); o valor bruto só decide a fila.
   function reorderLayers(dataMap, elMap) {
     const items = Array.from(dataMap.values()).sort((a, b) =>
       ((a.z || 0) - (b.z || 0)) || String(a.id).localeCompare(String(b.id)));
@@ -1491,21 +1543,18 @@
     });
   }
 
-  // Um z acima de todos os outros itens (ignora o próprio item).
   function topLayerZ(dataMap, exceptId) {
     let max = null;
     dataMap.forEach((i) => { if (i.id !== exceptId && (max === null || (i.z || 0) > max)) max = i.z || 0; });
     return max === null ? 1 : max + 1;
   }
 
-  // Um z abaixo de todos os outros itens (pode ser negativo: a coluna aceita).
   function bottomLayerZ(dataMap, exceptId) {
     let min = null;
     dataMap.forEach((i) => { if (i.id !== exceptId && (min === null || (i.z || 0) < min)) min = i.z || 0; });
     return min === null ? 0 : min - 1;
   }
 
-  // Aplica na hora (a interface responde sem esperar a rede) e desfaz se o servidor recusar.
   async function setLayer(type, id, newZ) {
     const dataMap = type === 'token' ? tokenData : mapPieceData;
     const elMap = type === 'token' ? tokenEls : mapPieceEls;
@@ -1535,6 +1584,29 @@
     return tok.src_url;
   }
 
+  // Suporte a mídias animadas ou estáticas (Imagens, GIFs, WebM transparentes)
+  function renderPieceContent(container, url) {
+    container.innerHTML = '';
+    const cleanUrl = url ? url.replace(/^http:\/\//, 'https://') : '';
+    const isVideo = cleanUrl.endsWith('.webm') || cleanUrl.endsWith('.mp4');
+
+    if (isVideo) {
+      const vid = document.createElement('video');
+      vid.className = 'pieceVideo';
+      vid.src = cleanUrl;
+      vid.autoplay = true;
+      vid.loop = true;
+      vid.muted = true;
+      vid.playsInline = true;
+      container.appendChild(vid);
+    } else {
+      const div = document.createElement('div');
+      div.className = 'pieceImg';
+      div.style.backgroundImage = `url("${cleanUrl}")`;
+      container.appendChild(div);
+    }
+  }
+
   function upsertTokenEl(tok) {
     tokenData.set(tok.id, tok);
     let el = tokenEls.get(tok.id);
@@ -1545,9 +1617,10 @@
       el.dataset.type = 'token';
       el.addEventListener('dragstart', (e) => e.preventDefault());
 
-      const img = document.createElement('div');
-      img.className = 'pieceImg';
-      el.appendChild(img);
+      const contentWrap = document.createElement('div');
+      contentWrap.className = 'pieceContent';
+      contentWrap.style.cssText = 'position:absolute; inset:0; pointer-events:none;';
+      el.appendChild(contentWrap);
 
       const handle = document.createElement('div');
       handle.className = 'resizeHandle';
@@ -1569,14 +1642,14 @@
         openContextMenu('token', tok.id, e.clientX, e.clientY);
       });
     }
-    const img = el.querySelector('.pieceImg');
+    const contentWrap = el.querySelector('.pieceContent');
     const url = imageForToken(tok);
-    let safeUrl = url ? url.replace(/^http:\/\//, 'https://') : '';
-    img.style.backgroundImage = `url("${safeUrl}")`;
-    img.style.transform = `rotate(${tok.rotation || 0}deg) scaleX(${tok.flip_x ? -1 : 1})`;
+    renderPieceContent(contentWrap, url);
+
+    el.style.transform = `rotate(${tok.rotation || 0}deg) scaleX(${tok.flip_x ? -1 : 1})`;
     if (el._layerZ !== (tok.z || 0)) { el._layerZ = tok.z || 0; reorderLayers(tokenData, tokenEls); }
 
-    if (!el.resizing && !el.dragging) updateDimensions(el, safeUrl, tok.size || 64);
+    if (!el.resizing && !el.dragging) updateDimensions(el, url, tok.size || 64);
     if (!el.dragging && !(el.lastDragEnd && Date.now() - el.lastDragEnd < 600)) { el.style.left = tok.x + 'px'; el.style.top = tok.y + 'px'; }
   }
 
@@ -1595,9 +1668,10 @@
       el.dataset.type = 'map';
       el.addEventListener('dragstart', (e) => e.preventDefault());
 
-      const img = document.createElement('div');
-      img.className = 'pieceImg';
-      el.appendChild(img);
+      const contentWrap = document.createElement('div');
+      contentWrap.className = 'pieceContent';
+      contentWrap.style.cssText = 'position:absolute; inset:0; pointer-events:none;';
+      el.appendChild(contentWrap);
 
       const handle = document.createElement('div');
       handle.className = 'resizeHandle';
@@ -1619,13 +1693,13 @@
         openContextMenu('map', piece.id, e.clientX, e.clientY);
       });
     }
-    const img = el.querySelector('.pieceImg');
-    let safeUrl = piece.src_url ? piece.src_url.replace(/^http:\/\//, 'https://') : '';
-    img.style.backgroundImage = `url("${safeUrl}")`;
-    img.style.transform = `rotate(${piece.rotation || 0}deg) scaleX(${piece.flip_x ? -1 : 1})`;
+    const contentWrap = el.querySelector('.pieceContent');
+    renderPieceContent(contentWrap, piece.src_url);
+
+    el.style.transform = `rotate(${piece.rotation || 0}deg) scaleX(${piece.flip_x ? -1 : 1})`;
     if (el._layerZ !== (piece.z || 0)) { el._layerZ = piece.z || 0; reorderLayers(mapPieceData, mapPieceEls); }
 
-    if (!el.resizing && !el.dragging) updateDimensions(el, safeUrl, piece.size || 1024);
+    if (!el.resizing && !el.dragging) updateDimensions(el, piece.src_url, piece.size || 1024);
     if (!el.dragging && !(el.lastDragEnd && Date.now() - el.lastDragEnd < 600)) { el.style.left = piece.x + 'px'; el.style.top = piece.y + 'px'; }
   }
 
@@ -1837,7 +1911,7 @@
 
     el.addEventListener('pointerdown', (e) => {
       if (currentTool !== 'select') return;
-      if (document.body.classList.contains('wall-editor-active') || document.body.classList.contains('fog-editor-active')) return;
+      if (document.body.classList.contains('wall-editor-active') || document.body.classList.contains('fog-editor-active') || document.body.classList.contains('light-editor-active')) return;
       if (type === 'map' && (!document.body.classList.contains('map-editor-active') || currentRole !== 'mestre')) return;
       if (e.target === handle || e.target.classList.contains('rotateHandle')) return;
 
@@ -1965,9 +2039,8 @@
       let deg = Math.round((rad * (180 / Math.PI)) + 90);
       if (deg < 0) deg += 360; deg = deg % 360;
 
-      const img = el.querySelector('.pieceImg');
       const item = (type === 'token' ? tokenData : mapPieceData).get(itemId);
-      img.style.transform = `rotate(${deg}deg) scaleX(${item ? (item.flip_x ? -1 : 1) : 1})`;
+      el.style.transform = `rotate(${deg}deg) scaleX(${item ? (item.flip_x ? -1 : 1) : 1})`;
 
       const now = Date.now();
       if (now - lastSent > 100) {
@@ -2082,12 +2155,18 @@
     stateInput.value = ''; closeContextMenu();
     if (!file || !tokenId) return;
     try {
-      const raw = await fileToDataURL(file);
-      openCropModal(raw, async (croppedDataURL) => {
-        const small = await resizeDataURL(croppedDataURL, 1024, 'image/png', 0.95);
-        const url = await uploadImage(small, 'tokens');
+      const rawDataUrl = await fileToDataURL(file);
+      const isGifOrWebp = file.type.includes('gif') || file.type.includes('webp');
+      if (isGifOrWebp) {
+        const url = await uploadFileBlob(file, 'tokens');
         await sb.rpc('add_token_state', { p_user_id: currentUserId, p_token_id: tokenId, p_url: url });
-      });
+      } else {
+        openCropModal(rawDataUrl, async (croppedDataURL) => {
+          const small = await resizeDataURL(croppedDataURL, 1024, 'image/png', 0.95);
+          const url = await uploadFileBlob(dataURLToBlob(small), 'tokens');
+          await sb.rpc('add_token_state', { p_user_id: currentUserId, p_token_id: tokenId, p_url: url });
+        });
+      }
     } catch (err) { alert(err.message); }
   });
 
@@ -2096,44 +2175,29 @@
     if (!file) return;
     if (!currentSceneId) { alert('Nenhuma cena ativa selecionada.'); return; }
     try {
-      const raw = await fileToDataURL(file);
-      openCropModal(raw, async (croppedDataURL) => {
-        try {
+      const isAnimatedOrVideo = file.type.includes('gif') || file.type.includes('webm') || file.type.includes('mp4');
+      if (isAnimatedOrVideo) {
+        const url = await uploadFileBlob(file, 'map_pieces');
+        const newZ = topLayerZ(mapPieceData);
+        const { data, error } = await sb.from('map_elements').insert({
+          scene_id: currentSceneId, src_url: url, x: 40, y: 40, size: 512, z: newZ, rotation: 0, flip_x: false
+        }).select();
+        if (error) throw error;
+        if (data && data.length) upsertMapPieceEl(data[0]);
+      } else {
+        const rawDataUrl = await fileToDataURL(file);
+        openCropModal(rawDataUrl, async (croppedDataURL) => {
           const small = await resizeDataURL(croppedDataURL, 2048, 'image/png', 0.95);
-          const url = await uploadImage(small, 'map_pieces');
-          
+          const url = await uploadFileBlob(dataURLToBlob(small), 'map_pieces');
           const newZ = topLayerZ(mapPieceData);
-          const tempId = 'temp-' + Date.now();
-          const optimisticPiece = {
-            id: tempId,
-            scene_id: currentSceneId,
-            src_url: url,
-            x: 40,
-            y: 40,
-            size: 256,
-            z: newZ,
-            rotation: 0,
-            flip_x: false
-          };
-          upsertMapPieceEl(optimisticPiece);
-
           const { data, error } = await sb.from('map_elements').insert({
-            scene_id: currentSceneId,
-            src_url: url,
-            x: 40,
-            y: 40,
-            size: 256,
-            z: newZ,
-            rotation: 0,
-            flip_x: false
+            scene_id: currentSceneId, src_url: url, x: 40, y: 40, size: 512, z: newZ, rotation: 0, flip_x: false
           }).select();
           if (error) throw error;
-
-          removeMapPieceEl(tempId);
           if (data && data.length) upsertMapPieceEl(data[0]);
-        } catch (err) { alert('Erro ao adicionar peça de mapa: ' + err.message); }
-      });
-    } catch (err) { alert(err.message); }
+        });
+      }
+    } catch (err) { alert('Erro ao adicionar peça de mapa: ' + err.message); }
   });
 
   tokenInput.addEventListener('change', async (e) => {
@@ -2141,48 +2205,29 @@
     if (!file) return;
     if (!currentSceneId) { alert('Nenhuma cena ativa selecionada.'); return; }
     try {
-      const raw = await fileToDataURL(file);
-      openCropModal(raw, async (croppedDataURL) => {
-        try {
+      const isGif = file.type.includes('gif');
+      if (isGif) {
+        const url = await uploadFileBlob(file, 'tokens');
+        const newZ = topLayerZ(tokenData);
+        const { data, error } = await sb.from('tokens').insert({
+          scene_id: currentSceneId, src_url: url, x: 40, y: 40, size: 96, z: newZ, rotation: 0, flip_x: false, active_state: 0, states: []
+        }).select();
+        if (error) throw error;
+        if (data && data.length) upsertTokenEl(data[0]);
+      } else {
+        const rawDataUrl = await fileToDataURL(file);
+        openCropModal(rawDataUrl, async (croppedDataURL) => {
           const small = await resizeDataURL(croppedDataURL, 1024, 'image/png', 0.95);
-          const url = await uploadImage(small, 'tokens');
-          
+          const url = await uploadFileBlob(dataURLToBlob(small), 'tokens');
           const newZ = topLayerZ(tokenData);
-          const tempId = 'temp-' + Date.now();
-          const optimisticToken = {
-            id: tempId,
-            scene_id: currentSceneId,
-            src_url: url,
-            x: 40,
-            y: 40,
-            size: 96,
-            z: newZ,
-            rotation: 0,
-            flip_x: false,
-            active_state: 0,
-            states: []
-          };
-          upsertTokenEl(optimisticToken);
-
           const { data, error } = await sb.from('tokens').insert({
-            scene_id: currentSceneId,
-            src_url: url,
-            x: 40,
-            y: 40,
-            size: 96,
-            z: newZ,
-            rotation: 0,
-            flip_x: false,
-            active_state: 0,
-            states: []
+            scene_id: currentSceneId, src_url: url, x: 40, y: 40, size: 96, z: newZ, rotation: 0, flip_x: false, active_state: 0, states: []
           }).select();
           if (error) throw error;
-
-          removeTokenEl(tempId);
           if (data && data.length) upsertTokenEl(data[0]);
-        } catch (err) { alert('Erro ao adicionar token: ' + err.message); }
-      });
-    } catch (err) { alert('Erro ao carregar imagem: ' + err.message); }
+        });
+      }
+    } catch (err) { alert('Erro ao carregar token: ' + err.message); }
   });
 
   clearBtn.addEventListener('click', async () => {
@@ -2239,9 +2284,15 @@
       newSceneInput.value = '';
       if (!file) return;
       try {
-        const raw = await fileToDataURL(file);
-        const resized = await resizeDataURL(raw, 4096, 'image/png', 0.92);
-        const url = await uploadImage(resized, 'maps');
+        let url = '';
+        const isVidOrAnim = file.type.includes('webm') || file.type.includes('mp4') || file.type.includes('gif');
+        if (isVidOrAnim) {
+          url = await uploadFileBlob(file, 'maps');
+        } else {
+          const raw = await fileToDataURL(file);
+          const resized = await resizeDataURL(raw, 4096, 'image/png', 0.92);
+          url = await uploadFileBlob(dataURLToBlob(resized), 'maps');
+        }
         const { data, error } = await sb.from('scenes').insert({ room_id: currentRoomId, name: name, map_url: url }).select().single();
         if (error) throw error;
         if (data) {
@@ -2309,7 +2360,7 @@
       return;
     }
 
-    const isEditorOpen = document.body.classList.contains('fog-editor-active') || document.body.classList.contains('wall-editor-active');
+    const isEditorOpen = document.body.classList.contains('fog-editor-active') || document.body.classList.contains('wall-editor-active') || document.body.classList.contains('light-editor-active');
     if (isEditorOpen && currentTool !== 'move') return;
     if (currentTool === 'select' && (e.target.closest('.token') || (e.target.closest('.mapPiece') && document.body.classList.contains('map-editor-active')))) return;
     if (currentTool === 'ruler') return;
@@ -2326,7 +2377,7 @@
   }, true);
 
   boardWrap.addEventListener('pointermove', (e) => {
-    const isEditorOpen = document.body.classList.contains('fog-editor-active') || document.body.classList.contains('wall-editor-active');
+    const isEditorOpen = document.body.classList.contains('fog-editor-active') || document.body.classList.contains('wall-editor-active') || document.body.classList.contains('light-editor-active');
 
     const middlePan = middlePanPointers.get(e.pointerId);
     if (middlePan) {
@@ -2380,7 +2431,87 @@
     applyZoom(); boardLocalStyle();
   }, { passive: false });
 
-  /* ===== Câmera do mestre (broadcast em tempo real, sem usar o banco) ===== */
+  function applyBarState() {
+    const topHidden = localStorage.getItem('tabletop_topbar_hidden') === '1';
+    const sideHidden = localStorage.getItem('tabletop_sidebar_hidden') === '1';
+    topBar.classList.toggle('collapsed', topHidden); topBarToggle.textContent = topHidden ? '▼' : '▲';
+    sideToolbar.classList.toggle('collapsed', sideHidden); sideToolbarToggle.textContent = sideHidden ? '◀' : '▶';
+  }
+  topBarToggle.addEventListener('click', () => {
+    const h = topBar.classList.toggle('collapsed'); localStorage.setItem('tabletop_topbar_hidden', h ? '1' : '0'); topBarToggle.textContent = h ? '▼' : '▲';
+  });
+  sideToolbarToggle.addEventListener('click', () => {
+    const h = sideToolbar.classList.toggle('collapsed'); localStorage.setItem('tabletop_sidebar_hidden', h ? '1' : '0'); sideToolbarToggle.textContent = h ? '◀' : '▶';
+  });
+  applyBarState();
+
+  async function loadSceneContent(sceneId) {
+    tokenEls.forEach(el => el.remove()); tokenEls.clear(); tokenData.clear();
+    mapPieceEls.forEach(el => el.remove()); mapPieceEls.clear(); mapPieceData.clear();
+    if (!sceneId) return;
+
+    await loadGridForScene(sceneId);
+
+    const { data: toks } = await sb.from('tokens').select('*').eq('scene_id', sceneId);
+    (toks || []).forEach(upsertTokenEl);
+
+    const { data: pieces } = await sb.from('map_elements').select('*').eq('scene_id', sceneId).order('z');
+    (pieces || []).forEach(p => upsertMapPieceEl(p));
+
+    await loadFogElements();
+    await loadWallElements();
+    await loadLights();
+
+    if ((pieces && pieces.length > 0) || (toks && toks.length > 0)) {
+      placeholder.style.display = 'none';
+    } else {
+      placeholder.style.display = 'flex';
+      placeholder.textContent = 'Adicione peças de mapa para começar.';
+    }
+  }
+
+  function subscribeRealtimeChannels(sceneId) {
+    if (tokensChannel) sb.removeChannel(tokensChannel);
+    if (mapElementsChannel) sb.removeChannel(mapElementsChannel);
+    if (fogElementsChannel) sb.removeChannel(fogElementsChannel);
+    if (wallsChannel) sb.removeChannel(wallsChannel);
+    if (lightsChannel) sb.removeChannel(lightsChannel);
+    if (!sceneId) return;
+
+    tokensChannel = sb.channel('tokens-' + sceneId)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tokens', filter: `scene_id=eq.${sceneId}` }, (p) => {
+        if (p.eventType === 'DELETE') {
+          if (p.old && tokenData.has(p.old.id)) removeTokenEl(p.old.id);
+        } else if (p.new) {
+          upsertTokenEl(p.new);
+        }
+      }).subscribe();
+
+    mapElementsChannel = sb.channel('map-elements-' + sceneId)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'map_elements', filter: `scene_id=eq.${sceneId}` }, (p) => {
+        if (p.eventType === 'DELETE') {
+          if (p.old && mapPieceData.has(p.old.id)) removeMapPieceEl(p.old.id);
+        } else if (p.new) {
+          upsertMapPieceEl(p.new);
+        }
+      }).subscribe();
+
+    fogElementsChannel = sb.channel('fog-elements-' + sceneId)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'fog_elements', filter: `scene_id=eq.${sceneId}` }, () => {
+        loadFogElements();
+      }).subscribe();
+
+    wallsChannel = sb.channel('walls-' + sceneId)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'walls', filter: `scene_id=eq.${sceneId}` }, () => {
+        loadWallElements();
+      }).subscribe();
+
+    lightsChannel = sb.channel('lights-' + sceneId)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'lights', filter: `scene_id=eq.${sceneId}` }, () => {
+        loadLights();
+      }).subscribe();
+  }
+
   const camPullBtn = document.getElementById('camPullBtn');
   const camLiveBtn = document.getElementById('camLiveBtn');
   const camLockBadge = document.getElementById('camLockBadge');
@@ -2472,22 +2603,16 @@
   camPullBtn.addEventListener('click', () => sendCamera(false, 'pull'));
   camLiveBtn.addEventListener('click', () => { camLive ? stopCameraLive(false) : startCameraLive(); });
 
-
-  // Menu contextual do fundo do tabuleiro
   const boardContextMenu = document.getElementById('boardContextMenu');
   const boardContextPullPlayers = document.getElementById('boardContextPullPlayers');
   const boardContextToggleLive = document.getElementById('boardContextToggleLive');
   const boardContextZoomIn = document.getElementById('boardContextZoomIn');
   const boardContextZoomOut = document.getElementById('boardContextZoomOut');
 
-  // Desativa o menu nativo do navegador; o menu de peças continua funcionando.
   document.addEventListener('contextmenu', (e) => e.preventDefault(), true);
 
   boardWrap.addEventListener('contextmenu', (e) => {
-    // Tokens e peças mantêm o menu contextual que já possuem.
     if (e.target.closest('.token, .mapPiece')) return;
-
-    // No editor de paredes, o botão direito apenas encerra a cadeia atual.
     if (document.body.classList.contains('wall-editor-active') && wallStartPoint) {
       e.preventDefault();
       breakWallChain();
@@ -2504,9 +2629,7 @@
     boardContextMenu.style.left = `${Math.max(8, Math.min(e.clientX, maxLeft))}px`;
     boardContextMenu.style.top = `${Math.max(8, Math.min(e.clientY, maxTop))}px`;
 
-    boardContextToggleLive.textContent = camLive
-      ? '📡 Desativar câmera ao vivo'
-      : '📡 Ativar câmera ao vivo';
+    boardContextToggleLive.textContent = camLive ? '📡 Desativar câmera ao vivo' : '📡 Ativar câmera ao vivo';
   });
 
   boardContextPullPlayers.addEventListener('click', () => {
@@ -2520,18 +2643,12 @@
   });
 
   boardContextZoomIn.addEventListener('click', () => {
-    if (!cameraLocked) {
-      scale = Math.min(10, scale * 1.2);
-      applyZoom();
-    }
+    if (!cameraLocked) { scale = Math.min(10, scale * 1.2); applyZoom(); }
     boardContextMenu.classList.remove('open');
   });
 
   boardContextZoomOut.addEventListener('click', () => {
-    if (!cameraLocked) {
-      scale = Math.max(0.05, scale / 1.2);
-      applyZoom();
-    }
+    if (!cameraLocked) { scale = Math.max(0.05, scale / 1.2); applyZoom(); }
     boardContextMenu.classList.remove('open');
   });
 
@@ -2541,7 +2658,7 @@
     }
   });
 
-  /* ===== Régua: 1 quadrado da grid = metersPerSquare (padrão 1,5 m), ortogonal e isométrica ===== */
+  // Régua
   const rulerLayer = document.getElementById('rulerLayer');
   const SVGNS = 'http://www.w3.org/2000/svg';
   let rulerA = null, rulerB = null, rulerDragging = false, rulerPointerId = null;
@@ -2564,8 +2681,6 @@
     return best || pt;
   }
 
-  // Distância em "quadrados". Na isométrica o quadrado é o losango (largura = size, altura = size/2),
-  // então converte para coordenadas do quadrado antes de medir.
   function measureCells(a, b) {
     const size = gridConfig.size || 64;
     const dx = b.x - a.x, dy = b.y - a.y;
@@ -2613,8 +2728,8 @@
   boardWrap.addEventListener('pointerdown', (e) => {
     if (currentTool !== 'ruler') return;
     if (e.pointerType === 'mouse' && e.button !== 0) return;
-    if (document.body.classList.contains('wall-editor-active') || document.body.classList.contains('fog-editor-active')) return;
-    if (rulerDragging) { clearRuler(); return; } // segundo dedo cancela a medição
+    if (document.body.classList.contains('wall-editor-active') || document.body.classList.contains('fog-editor-active') || document.body.classList.contains('light-editor-active')) return;
+    if (rulerDragging) { clearRuler(); return; }
     e.preventDefault();
     boardWrap.setPointerCapture(e.pointerId);
     rulerPointerId = e.pointerId; rulerDragging = true;
@@ -2636,80 +2751,6 @@
   boardWrap.addEventListener('pointercancel', endRuler);
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') clearRuler(); });
 
-  function applyBarState() {
-    const topHidden = localStorage.getItem('tabletop_topbar_hidden') === '1';
-    const sideHidden = localStorage.getItem('tabletop_sidebar_hidden') === '1';
-    topBar.classList.toggle('collapsed', topHidden); topBarToggle.textContent = topHidden ? '▼' : '▲';
-    sideToolbar.classList.toggle('collapsed', sideHidden); sideToolbarToggle.textContent = sideHidden ? '◀' : '▶';
-  }
-  topBarToggle.addEventListener('click', () => {
-    const h = topBar.classList.toggle('collapsed'); localStorage.setItem('tabletop_topbar_hidden', h ? '1' : '0'); topBarToggle.textContent = h ? '▼' : '▲';
-  });
-  sideToolbarToggle.addEventListener('click', () => {
-    const h = sideToolbar.classList.toggle('collapsed'); localStorage.setItem('tabletop_sidebar_hidden', h ? '1' : '0'); sideToolbarToggle.textContent = h ? '◀' : '▶';
-  });
-  applyBarState();
-
-  async function loadSceneContent(sceneId) {
-    tokenEls.forEach(el => el.remove()); tokenEls.clear(); tokenData.clear();
-    mapPieceEls.forEach(el => el.remove()); mapPieceEls.clear(); mapPieceData.clear();
-    if (!sceneId) return;
-
-    await loadGridForScene(sceneId);
-
-    const { data: toks } = await sb.from('tokens').select('*').eq('scene_id', sceneId);
-    (toks || []).forEach(upsertTokenEl);
-
-    const { data: pieces } = await sb.from('map_elements').select('*').eq('scene_id', sceneId).order('z');
-    (pieces || []).forEach(p => upsertMapPieceEl(p));
-
-    await loadFogElements();
-    await loadWallElements();
-
-    if ((pieces && pieces.length > 0) || (toks && toks.length > 0)) {
-      placeholder.style.display = 'none';
-    } else {
-      placeholder.style.display = 'flex';
-      placeholder.textContent = 'Adicione peças de mapa para começar.';
-    }
-  }
-
-  function subscribeRealtimeChannels(sceneId) {
-    if (tokensChannel) sb.removeChannel(tokensChannel);
-    if (mapElementsChannel) sb.removeChannel(mapElementsChannel);
-    if (fogElementsChannel) sb.removeChannel(fogElementsChannel);
-    if (wallsChannel) sb.removeChannel(wallsChannel);
-    if (!sceneId) return;
-
-    tokensChannel = sb.channel('tokens-' + sceneId)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'tokens', filter: `scene_id=eq.${sceneId}` }, (p) => {
-        if (p.eventType === 'DELETE') {
-          if (p.old && tokenData.has(p.old.id)) removeTokenEl(p.old.id);
-        } else if (p.new) {
-          upsertTokenEl(p.new);
-        }
-      }).subscribe();
-
-    mapElementsChannel = sb.channel('map-elements-' + sceneId)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'map_elements', filter: `scene_id=eq.${sceneId}` }, (p) => {
-        if (p.eventType === 'DELETE') {
-          if (p.old && mapPieceData.has(p.old.id)) removeMapPieceEl(p.old.id);
-        } else if (p.new) {
-          upsertMapPieceEl(p.new);
-        }
-      }).subscribe();
-
-    fogElementsChannel = sb.channel('fog-elements-' + sceneId)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'fog_elements', filter: `scene_id=eq.${sceneId}` }, () => {
-        loadFogElements();
-      }).subscribe();
-
-    wallsChannel = sb.channel('walls-' + sceneId)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'walls', filter: `scene_id=eq.${sceneId}` }, () => {
-        loadWallElements();
-      }).subscribe();
-  }
-
   async function enterRoom(roomId) {
     currentRoomId = roomId;
     lobbyOverlay.classList.add('hidden');
@@ -2726,6 +2767,7 @@
     if (managePlayersBtn) managePlayersBtn.classList.toggle('hidden', currentRole !== 'mestre');
     if (openFogEditorBtn) openFogEditorBtn.classList.toggle('hidden', currentRole !== 'mestre');
     if (openWallEditorBtn) openWallEditorBtn.classList.toggle('hidden', currentRole !== 'mestre');
+    if (openLightEditorBtn) openLightEditorBtn.classList.toggle('hidden', currentRole !== 'mestre');
 
     currentSceneId = roomData ? roomData.active_scene_id : null;
 
@@ -2796,6 +2838,7 @@
     if (mapElementsChannel) sb.removeChannel(mapElementsChannel);
     if (fogElementsChannel) sb.removeChannel(fogElementsChannel);
     if (wallsChannel) sb.removeChannel(wallsChannel);
+    if (lightsChannel) sb.removeChannel(lightsChannel);
     lobbyOverlay.classList.remove('hidden');
     loadLobbyRooms();
   });
