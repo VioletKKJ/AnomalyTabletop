@@ -1477,6 +1477,57 @@
     selectedEl = null;
   }
 
+  // ---------- CAMADAS (frente / trás) ----------
+  // O banco guarda "z" como número livre, mas o navegador só aceita z-index até 2147483647:
+  // valores maiores (como Date.now(), ~1,7 trilhão) viram TODOS o mesmo valor, e aí a ordem
+  // dependia da ordem dos elementos na página (por isso "às vezes funcionava, às vezes não").
+  // Agora a ordem visual é calculada por posição (ranking dos z); o valor bruto só decide a fila.
+  function reorderLayers(dataMap, elMap) {
+    const items = Array.from(dataMap.values()).sort((a, b) =>
+      ((a.z || 0) - (b.z || 0)) || String(a.id).localeCompare(String(b.id)));
+    items.forEach((it, i) => {
+      const el = elMap.get(it.id);
+      if (el) el.style.zIndex = String(i + 1);
+    });
+  }
+
+  // Um z acima de todos os outros itens (ignora o próprio item).
+  function topLayerZ(dataMap, exceptId) {
+    let max = null;
+    dataMap.forEach((i) => { if (i.id !== exceptId && (max === null || (i.z || 0) > max)) max = i.z || 0; });
+    return max === null ? 1 : max + 1;
+  }
+
+  // Um z abaixo de todos os outros itens (pode ser negativo: a coluna aceita).
+  function bottomLayerZ(dataMap, exceptId) {
+    let min = null;
+    dataMap.forEach((i) => { if (i.id !== exceptId && (min === null || (i.z || 0) < min)) min = i.z || 0; });
+    return min === null ? 0 : min - 1;
+  }
+
+  // Aplica na hora (a interface responde sem esperar a rede) e desfaz se o servidor recusar.
+  async function setLayer(type, id, newZ) {
+    const dataMap = type === 'token' ? tokenData : mapPieceData;
+    const elMap = type === 'token' ? tokenEls : mapPieceEls;
+    const item = dataMap.get(id);
+    if (!item) return;
+    const oldZ = item.z || 0;
+    item.z = newZ;
+    reorderLayers(dataMap, elMap);
+
+    const rpcName = type === 'token' ? 'set_token_z' : 'set_map_element_z';
+    const { error } = await sb.rpc(rpcName, {
+      p_user_id: currentUserId,
+      [type === 'token' ? 'p_token_id' : 'p_element_id']: id,
+      p_z: newZ
+    });
+    if (error) {
+      const cur = dataMap.get(id);
+      if (cur) { cur.z = oldZ; reorderLayers(dataMap, elMap); }
+      alert('Não foi possível mudar a camada: ' + error.message);
+    }
+  }
+
   function imageForToken(tok) {
     if (tok.active_state && tok.states && tok.states[tok.active_state - 1]) {
       return tok.states[tok.active_state - 1];
@@ -1523,7 +1574,7 @@
     let safeUrl = url ? url.replace(/^http:\/\//, 'https://') : '';
     img.style.backgroundImage = `url("${safeUrl}")`;
     img.style.transform = `rotate(${tok.rotation || 0}deg) scaleX(${tok.flip_x ? -1 : 1})`;
-    el.style.zIndex = Math.round(10000 + (tok.z || 0));
+    if (el._layerZ !== (tok.z || 0)) { el._layerZ = tok.z || 0; reorderLayers(tokenData, tokenEls); }
 
     if (!el.resizing && !el.dragging) updateDimensions(el, safeUrl, tok.size || 64);
     if (!el.dragging && !(el.lastDragEnd && Date.now() - el.lastDragEnd < 600)) { el.style.left = tok.x + 'px'; el.style.top = tok.y + 'px'; }
@@ -1572,7 +1623,7 @@
     let safeUrl = piece.src_url ? piece.src_url.replace(/^http:\/\//, 'https://') : '';
     img.style.backgroundImage = `url("${safeUrl}")`;
     img.style.transform = `rotate(${piece.rotation || 0}deg) scaleX(${piece.flip_x ? -1 : 1})`;
-    el.style.zIndex = Math.round(piece.z || 1);
+    if (el._layerZ !== (piece.z || 0)) { el._layerZ = piece.z || 0; reorderLayers(mapPieceData, mapPieceEls); }
 
     if (!el.resizing && !el.dragging) updateDimensions(el, safeUrl, piece.size || 1024);
     if (!el.dragging && !(el.lastDragEnd && Date.now() - el.lastDragEnd < 600)) { el.style.left = piece.x + 'px'; el.style.top = piece.y + 'px'; }
@@ -1983,22 +2034,18 @@
   function closeContextMenu() { contextMenu.classList.remove('open'); contextTarget = null; }
   document.addEventListener('pointerdown', (e) => { if (contextMenu.classList.contains('open') && !contextMenu.contains(e.target)) closeContextMenu(); });
 
-  menuFront.addEventListener('click', async () => {
+  menuFront.addEventListener('click', () => {
     if (!contextTarget) return;
     const { type, id } = contextTarget;
-    const rpcName = type === 'token' ? 'set_token_z' : 'set_map_element_z';
-    await sb.rpc(rpcName, { p_user_id: currentUserId, [type === 'token' ? 'p_token_id' : 'p_element_id']: id, p_z: Date.now() });
     closeContextMenu();
+    setLayer(type, id, topLayerZ(type === 'token' ? tokenData : mapPieceData, id));
   });
 
-  menuBack.addEventListener('click', async () => {
+  menuBack.addEventListener('click', () => {
     if (!contextTarget) return;
     const { type, id } = contextTarget;
-    let minZ = 1;
-    (type === 'token' ? tokenData : mapPieceData).forEach(i => { if ((i.z || 0) < minZ) minZ = i.z || 0; });
-    const rpcName = type === 'token' ? 'set_token_z' : 'set_map_element_z';
-    await sb.rpc(rpcName, { p_user_id: currentUserId, [type === 'token' ? 'p_token_id' : 'p_element_id']: id, p_z: Math.max(1, minZ - 1) });
     closeContextMenu();
+    setLayer(type, id, bottomLayerZ(type === 'token' ? tokenData : mapPieceData, id));
   });
 
   menuRotate.addEventListener('click', async () => {
@@ -2055,6 +2102,7 @@
           const small = await resizeDataURL(croppedDataURL, 2048, 'image/png', 0.95);
           const url = await uploadImage(small, 'map_pieces');
           
+          const newZ = topLayerZ(mapPieceData);
           const tempId = 'temp-' + Date.now();
           const optimisticPiece = {
             id: tempId,
@@ -2063,7 +2111,7 @@
             x: 40,
             y: 40,
             size: 256,
-            z: Date.now(),
+            z: newZ,
             rotation: 0,
             flip_x: false
           };
@@ -2075,7 +2123,7 @@
             x: 40,
             y: 40,
             size: 256,
-            z: Date.now(),
+            z: newZ,
             rotation: 0,
             flip_x: false
           }).select();
@@ -2099,6 +2147,7 @@
           const small = await resizeDataURL(croppedDataURL, 1024, 'image/png', 0.95);
           const url = await uploadImage(small, 'tokens');
           
+          const newZ = topLayerZ(tokenData);
           const tempId = 'temp-' + Date.now();
           const optimisticToken = {
             id: tempId,
@@ -2107,7 +2156,7 @@
             x: 40,
             y: 40,
             size: 96,
-            z: Date.now(),
+            z: newZ,
             rotation: 0,
             flip_x: false,
             active_state: 0,
@@ -2121,7 +2170,7 @@
             x: 40,
             y: 40,
             size: 96,
-            z: Date.now(),
+            z: newZ,
             rotation: 0,
             flip_x: false,
             active_state: 0,
