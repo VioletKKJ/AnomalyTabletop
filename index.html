@@ -111,8 +111,13 @@
   #tokensLayer > * { pointer-events: auto; }
 
   /* Camada de Iluminação Dinâmica / Sombra */
-  #lightingLayer { position: absolute; left: 0; top: 0; width: 40000px; height: 40000px; pointer-events: none; z-index: 18000; overflow: visible; }
-  body:not(.jogador) #lightingLayer { opacity: 0.75; }
+  /* Escuridão ambiente (camada escura com "buracos" onde há luz) + brilho/bloom aditivo por cima.
+     Os dois são canvas do tamanho da tela, reposicionados a cada pan/zoom pelo motor de luz (JS). */
+  #shadowLayer, #lightingLayer { position: absolute; left: 0; top: 0; width: 1px; height: 1px; pointer-events: none; display: none; }
+  #shadowLayer { z-index: 17500; }
+  #lightingLayer { z-index: 18000; mix-blend-mode: screen; }
+  body:not(.jogador) #lightingLayer { opacity: 0.9; }
+  body:not(.jogador) #shadowLayer { opacity: 0.6; }
 
   /* Camada do Fog of War */
   #fogLayer { position: absolute; left: 0; top: 0; width: 40000px; height: 40000px; pointer-events: none; z-index: 20000; overflow: visible; }
@@ -203,6 +208,13 @@
   #setupOverlay, #loginOverlay, #createRoomOverlay, #joinRoomOverlay, #cropOverlay, #playersOverlay, #scenesOverlay, #gridOverlay, #lightModal {
     position: fixed; inset: 0; background: rgba(10, 11, 15, 0.8); backdrop-filter: blur(8px); display: flex;
     align-items: center; justify-content: center; z-index: 100000; padding: 16px; }
+
+  /* Painel de luz flutuante: não cobre o mapa, assim dá pra ver a luz mudando ao vivo */
+  #lightModal { inset: auto 0 14px 0; background: none; backdrop-filter: none; pointer-events: none; padding: 0 12px; }
+  #lightModal .card { pointer-events: auto; max-width: 340px; padding: 14px 18px; background: rgba(26, 28, 36, 0.95); }
+  #lightModal .card p { margin: 4px 0 8px; }
+  #lightModal .card input[type="range"], #lightModal .card input[type="color"] { margin: 4px 0 8px; }
+  .light-marker { touch-action: none; }
 
   .card { background: var(--panel); border: 1px solid var(--panel-border); border-radius: 16px;
     padding: 24px; max-width: 480px; width: 100%; max-height: 85vh; overflow-y: auto; box-shadow: 0 12px 40px rgba(0,0,0,0.6); }
@@ -371,6 +383,10 @@
       <input type="range" id="lightRadiusRange" min="50" max="1500" step="25" value="350">
       <span id="lightRadiusVal" style="font-size:11px; color:var(--text-dim);">350px</span>
 
+      <label>Intensidade</label>
+      <input type="range" id="lightIntensityRange" min="0.1" max="1.5" step="0.05" value="0.9">
+      <span id="lightIntensityVal" style="font-size:11px; color:var(--text-dim);">0.90</span>
+
       <label>Cor da Luz</label>
       <input type="color" id="lightColorInp" value="#ffaa44">
 
@@ -524,7 +540,12 @@
 
     <!-- Interface Alternada (Modo Editor de Luzes) -->
     <div id="lightEditorNav" class="hidden" style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
-      <span style="color:var(--accent); font-weight:600; font-size:12px;">Editor de Luzes: Clique para adicionar tocha/luz</span>
+      <span style="color:var(--accent); font-weight:600; font-size:12px;">Editor de Luzes: clique para criar · arraste para mover</span>
+      <label style="font-size:11px; color:var(--text-dim); display:flex; align-items:center; gap:6px;" title="Escuridão do ambiente: só as luzes iluminam">
+        🌑 Escuridão
+        <input type="range" id="ambientRange" min="0" max="0.95" step="0.05" value="0" style="width:90px; accent-color:var(--accent);">
+        <span id="ambientVal" style="min-width:30px;">0%</span>
+      </label>
       <button class="danger" id="btnClearLightsScene">Limpar Luzes</button>
       <button id="closeLightEditorBtn">Sair</button>
     </div>
@@ -547,7 +568,8 @@
       <div id="mapPiecesLayer"></div>
       <div id="gridLayer"></div>
       <div id="tokensLayer"></div>
-      <svg id="lightingLayer"></svg>
+      <canvas id="shadowLayer"></canvas>
+      <canvas id="lightingLayer"></canvas>
       <svg id="fogLayer"></svg>
       <svg id="wallsLayer"></svg>
       <div id="lightsEditLayer"></div>
@@ -875,6 +897,7 @@
     g.opacity = parseFloat(g.opacity) || 0.4;
     g.lineWidth = parseInt(g.lineWidth) || 1;
     g.metersPerSquare = parseFloat(g.metersPerSquare) || 1.5;
+    g.ambient = Math.min(0.95, Math.max(0, parseFloat(g.ambient) || 0)); // escuridão ambiente da cena (motor de luz)
     return g;
   }
 
@@ -891,6 +914,7 @@
     }
     gridConfig = normalizeGrid(cfg);
     drawGrid();
+    syncAmbientUI(); markLightingDirty();
   }
 
   function broadcastGrid(sceneId, cfg) {
@@ -1322,6 +1346,9 @@
         z: Date.now()
       }).select();
       if (!error && data && data.length) {
+        cachedLights.push(data[0]);
+        addLightMarker(data[0]);
+        computeLighting();
         openLightModal(data[0]);
       }
       return;
@@ -1387,24 +1414,59 @@
     loadLights();
   });
 
+  const lightIntensityRange = document.getElementById('lightIntensityRange');
+  const lightIntensityVal = document.getElementById('lightIntensityVal');
+  const ambientRange = document.getElementById('ambientRange');
+  const ambientVal = document.getElementById('ambientVal');
+
+  function lightIntensity(l) {
+    const v = parseFloat(l && l.intensity);
+    return isNaN(v) ? 0.9 : Math.min(1.5, Math.max(0.1, v));
+  }
+  function getActiveLight() {
+    return cachedLights.find(x => String(x.id) === String(activeEditingLightId));
+  }
+  async function saveActiveLight() {
+    const l = getActiveLight();
+    if (!l) return;
+    await sb.from('lights').update({ radius: l.radius, color: l.color, intensity: lightIntensity(l) }).eq('id', l.id);
+  }
+
   function openLightModal(light) {
+    // se já havia outra luz aberta, salva ela antes de trocar
+    if (activeEditingLightId && String(activeEditingLightId) !== String(light.id)) saveActiveLight();
     activeEditingLightId = light.id;
-    lightRadiusRange.value = light.radius;
-    lightRadiusVal.textContent = light.radius + 'px';
-    lightColorInp.value = light.color;
+    const I = lightIntensity(light);
+    lightRadiusRange.value = light.radius || 350;
+    lightRadiusVal.textContent = (light.radius || 350) + 'px';
+    lightIntensityRange.value = I;
+    lightIntensityVal.textContent = I.toFixed(2);
+    lightColorInp.value = light.color || '#ffaa44';
     lightModal.classList.remove('hidden');
   }
 
+  // Preview ao vivo: mexeu no controle, a luz muda na hora (salva ao clicar em Concluir)
   lightRadiusRange.addEventListener('input', () => {
-    lightRadiusVal.textContent = lightRadiusRange.value + 'px';
+    const v = parseFloat(lightRadiusRange.value);
+    lightRadiusVal.textContent = v + 'px';
+    const l = getActiveLight();
+    if (l) { l.radius = v; computeLighting(); }
+  });
+  lightIntensityRange.addEventListener('input', () => {
+    const v = parseFloat(lightIntensityRange.value);
+    lightIntensityVal.textContent = v.toFixed(2);
+    const l = getActiveLight();
+    if (l) { l.intensity = v; markLightingDirty(); }
+  });
+  lightColorInp.addEventListener('input', () => {
+    const l = getActiveLight();
+    if (l) { l.color = lightColorInp.value; markLightingDirty(); }
   });
 
   btnCloseLightModal.addEventListener('click', async () => {
-    if (!activeEditingLightId) { lightModal.classList.add('hidden'); return; }
-    const radius = parseFloat(lightRadiusRange.value);
-    const color = lightColorInp.value;
     lightModal.classList.add('hidden');
-    await sb.from('lights').update({ radius, color }).eq('id', activeEditingLightId);
+    await saveActiveLight();
+    activeEditingLightId = null;
     loadLights();
   });
 
@@ -1413,107 +1475,273 @@
     const id = activeEditingLightId;
     lightModal.classList.add('hidden');
     activeEditingLightId = null;
+    cachedLights = cachedLights.filter(x => String(x.id) !== String(id));
+    computeLighting();
     await sb.from('lights').delete().eq('id', id);
     loadLights();
   });
+
+  // Escuridão ambiente: fica salva junto com a grid da cena (scenes.grid_config) e é enviada aos jogadores pelo mesmo broadcast
+  function syncAmbientUI() {
+    const a = (gridConfig && gridConfig.ambient) || 0;
+    ambientRange.value = a;
+    ambientVal.textContent = Math.round(a * 100) + '%';
+  }
+  ambientRange.addEventListener('input', () => {
+    gridConfig.ambient = parseFloat(ambientRange.value) || 0;
+    ambientVal.textContent = Math.round(gridConfig.ambient * 100) + '%';
+    markLightingDirty();
+    saveGrid();
+  });
+
+  function addLightMarker(l) {
+    const marker = document.createElement('div');
+    marker.className = 'light-marker';
+    marker.dataset.lightId = l.id;
+    marker.style.left = l.x + 'px';
+    marker.style.top = l.y + 'px';
+    marker.style.setProperty('--light-color', l.color);
+    marker.textContent = '💡';
+    marker.addEventListener('pointerdown', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      if (currentRole !== 'mestre') return;
+      try { marker.setPointerCapture(e.pointerId); } catch (_) {}
+      const startX = e.clientX, startY = e.clientY;
+      let moved = false;
+      const onMove = (ev) => {
+        if (!moved && Math.hypot(ev.clientX - startX, ev.clientY - startY) < 5) return;
+        moved = true;
+        const rect = boardWrap.getBoundingClientRect();
+        const light = cachedLights.find(x => String(x.id) === String(l.id)) || l;
+        light.x = (ev.clientX - rect.left - boardX) / scale;
+        light.y = (ev.clientY - rect.top - boardY) / scale;
+        marker.style.left = light.x + 'px';
+        marker.style.top = light.y + 'px';
+        computeLighting(); // a luz refaz as sombras nas paredes enquanto arrasta
+      };
+      const onUp = async () => {
+        marker.removeEventListener('pointermove', onMove);
+        marker.removeEventListener('pointerup', onUp);
+        marker.removeEventListener('pointercancel', onUp);
+        const light = cachedLights.find(x => String(x.id) === String(l.id)) || l;
+        if (moved) await sb.from('lights').update({ x: light.x, y: light.y }).eq('id', light.id);
+        else openLightModal(light);
+      };
+      marker.addEventListener('pointermove', onMove);
+      marker.addEventListener('pointerup', onUp);
+      marker.addEventListener('pointercancel', onUp);
+    });
+    lightsEditLayer.appendChild(marker);
+  }
 
   async function loadLights() {
     lightsEditLayer.innerHTML = '';
     if (!currentSceneId) return;
     const { data: lights } = await sb.from('lights').select('*').eq('scene_id', currentSceneId);
     cachedLights = lights || [];
-    cachedLights.forEach(l => {
-      const marker = document.createElement('div');
-      marker.className = 'light-marker';
-      marker.style.left = l.x + 'px';
-      marker.style.top = l.y + 'px';
-      marker.style.setProperty('--light-color', l.color);
-      marker.textContent = '💡';
-      marker.addEventListener('pointerdown', (e) => {
-        e.stopPropagation();
-        openLightModal(l);
-      });
-      lightsEditLayer.appendChild(marker);
-    });
+    cachedLights.forEach(addLightMarker);
     computeLighting();
   }
 
-  function getRayIntersection(rx1, ry1, rx2, ry2, x1, y1, x2, y2) {
-    const denom = (y2 - y1) * (rx2 - rx1) - (x2 - x1) * (ry2 - ry1);
-    if (denom === 0) return null;
-    const ua = ((x2 - x1) * (ry1 - y1) - (y2 - y1) * (rx1 - x1)) / denom;
-    const ub = ((rx2 - rx1) * (ry1 - y1) - (ry2 - ry1) * (rx1 - x1)) / denom;
-    if (ua >= 0 && ua <= 1 && ub >= 0 && ub <= 1) {
-      return { x: rx1 + ua * (rx2 - rx1), y: ry1 + ua * (ry2 - ry1), param: ua };
+  // =====================================================================
+  //  MOTOR DE LUZ  —  visibilidade (paredes/portas) + bloom + escuridão
+  // =====================================================================
+  const LIGHT_RES = 0.5;     // resolução interna dos canvas (0.5 = metade; mais leve no celular, e já suaviza)
+  const LIGHT_MARGIN = 24;   // px de tela extra em volta (evita borda clara causada pelo blur)
+  const LIGHT_BLUR = 4;      // px de tela de suavização das bordas de sombra
+  const LIGHT_REACH = 1.3;   // o halo do bloom vai até raio × 1.3
+  const shadowCtx = shadowLayer.getContext('2d');
+  const lightCtx = lightingLayer.getContext('2d');
+  let lightPolys = [];       // [{ light, pts: [x0,y0,x1,y1,...] }]
+  let lightingDirty = true, lightingKey = '', lightingWasActive = false;
+
+  function markLightingDirty() { lightingDirty = true; }
+
+  function hexToRgb(hex) {
+    let h = String(hex || '#ffaa44').replace('#', '');
+    if (h.length === 3) h = h.split('').map(c => c + c).join('');
+    const n = parseInt(h, 16);
+    if (h.length !== 6 || isNaN(n)) return [255, 170, 68];
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  }
+
+  // Distância ao longo do raio (ox,oy)+t·(dx,dy) até o segmento; Infinity se não cruza.
+  function raySegment(ox, oy, dx, dy, x1, y1, x2, y2) {
+    const sx = x2 - x1, sy = y2 - y1;
+    const den = dx * sy - dy * sx;
+    if (Math.abs(den) < 1e-9) return Infinity;
+    const t = ((x1 - ox) * sy - (y1 - oy) * sx) / den;
+    const u = ((x1 - ox) * dy - (y1 - oy) * dx) / den;
+    return (t >= 0 && u >= -1e-6 && u <= 1 + 1e-6) ? t : Infinity;
+  }
+
+  // Polígono de visão da luz: lança raios nas pontas das paredes (±ε) e em um círculo base.
+  function visibilityPolygon(light, blockers) {
+    const lx = +light.x, ly = +light.y;
+    const R = (+light.radius || 350) * LIGHT_REACH;
+    const segs = [];
+    for (const b of blockers) {
+      if (Math.max(b.x1, b.x2) < lx - R || Math.min(b.x1, b.x2) > lx + R ||
+          Math.max(b.y1, b.y2) < ly - R || Math.min(b.y1, b.y2) > ly + R) continue;
+      segs.push(b);
     }
-    return null;
+    const angles = [];
+    const N = 90;
+    for (let i = 0; i < N; i++) angles.push(-Math.PI + (i * 2 * Math.PI) / N);
+    for (const b of segs) {
+      const a1 = Math.atan2(b.y1 - ly, b.x1 - lx), a2 = Math.atan2(b.y2 - ly, b.x2 - lx);
+      angles.push(a1 - 1e-4, a1, a1 + 1e-4, a2 - 1e-4, a2, a2 + 1e-4);
+    }
+    angles.sort((p, q) => p - q);
+    const pts = [];
+    for (const ang of angles) {
+      const dx = Math.cos(ang), dy = Math.sin(ang);
+      let best = R;
+      for (const b of segs) {
+        const t = raySegment(lx, ly, dx, dy, b.x1, b.y1, b.x2, b.y2);
+        if (t < best) best = t;
+      }
+      pts.push(lx + dx * best, ly + dy * best);
+    }
+    return pts;
   }
 
+  // Recalcula as sombras de todas as luzes (chamado sempre que luz/parede/porta muda)
   function computeLighting() {
-    lightingLayer.innerHTML = '';
-    if (!cachedLights || cachedLights.length === 0) return;
-
     const blockers = [];
-    cachedWalls.forEach(w => {
+    (cachedWalls || []).forEach(w => {
       const isSolid = (w.wall_type === 'wall') || (w.wall_type === 'door' && !w.is_open);
-      if (isSolid) {
-        blockers.push({ x1: w.x1, y1: w.y1, x2: w.x2, y2: w.y2 });
-      }
+      if (isSolid) blockers.push({ x1: +w.x1, y1: +w.y1, x2: +w.x2, y2: +w.y2 });
     });
-
-    cachedLights.forEach(light => {
-      const lx = light.x;
-      const ly = light.y;
-      const radius = light.radius || 350;
-
-      const angles = [];
-      angles.push(0, Math.PI * 2);
-      blockers.forEach(b => {
-        [ { x: b.x1, y: b.y1 }, { x: b.x2, y: b.y2 } ].forEach(pt => {
-          const baseAngle = Math.atan2(pt.y - ly, pt.x - lx);
-          angles.push(baseAngle);
-          angles.push(baseAngle - 0.0001);
-          angles.push(baseAngle + 0.0001);
-        });
-      });
-
-      angles.sort((a, b) => a - b);
-
-      const points = [];
-      angles.forEach(angle => {
-        const dx = Math.cos(angle);
-        const dy = Math.sin(angle);
-        const rx2 = lx + dx * radius;
-        const ry2 = ly + dy * radius;
-
-        let closestDist = radius;
-        let hitPoint = { x: rx2, y: ry2 };
-
-        blockers.forEach(b => {
-          const inter = getRayIntersection(lx, ly, rx2, ry2, b.x1, b.y1, b.x2, b.y2);
-          if (inter) {
-            const dist = Math.hypot(inter.x - lx, inter.y - ly);
-            if (dist < closestDist) {
-              closestDist = dist;
-              hitPoint = inter;
-            }
-          }
-        });
-
-        points.push(`${hitPoint.x},${hitPoint.y}`);
-      });
-
-      if (points.length >= 3) {
-        const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
-        poly.setAttribute('points', points.join(' '));
-        poly.setAttribute('fill', light.color || '#ffaa44');
-        poly.setAttribute('fill-opacity', '0.35');
-        poly.setAttribute('stroke', light.color || '#ffaa44');
-        poly.setAttribute('stroke-width', '1');
-        lightingLayer.appendChild(poly);
-      }
-    });
+    lightPolys = (cachedLights || []).map(l => ({ light: l, pts: visibilityPolygon(l, blockers) }));
+    markLightingDirty();
   }
+
+  function pathPoly(ctx, pts) {
+    ctx.beginPath();
+    ctx.moveTo(pts[0], pts[1]);
+    for (let i = 2; i < pts.length; i += 2) ctx.lineTo(pts[i], pts[i + 1]);
+    ctx.closePath();
+  }
+
+  // Degradê com queda suave: alpha = peak · (1 − t)^power, zerando na borda
+  function addFalloff(g, rgb, peak, power) {
+    const steps = 8;
+    for (let i = 0; i <= steps; i++) {
+      const t = i / steps;
+      const a = Math.max(0, Math.min(1, peak * Math.pow(1 - t, power)));
+      g.addColorStop(t, `rgba(${rgb[0]},${rgb[1]},${rgb[2]},${a.toFixed(3)})`);
+    }
+  }
+
+  // Brilho: iluminação principal + halo largo (bloom) + núcleo quente, tudo recortado pelas paredes
+  function drawLightGlow(ctx, p) {
+    const l = p.light, lx = +l.x, ly = +l.y, R = +l.radius || 350, I = lightIntensity(l);
+    const rgb = hexToRgb(l.color);
+    ctx.save();
+    pathPoly(ctx, p.pts);
+    ctx.clip();
+
+    let g = ctx.createRadialGradient(lx, ly, 0, lx, ly, R);
+    addFalloff(g, rgb, I * 0.85, 2.0);
+    ctx.fillStyle = g;
+    ctx.fillRect(lx - R, ly - R, 2 * R, 2 * R);
+
+    const RH = R * LIGHT_REACH;
+    g = ctx.createRadialGradient(lx, ly, 0, lx, ly, RH);
+    addFalloff(g, rgb, 0.22 * I, 2.6);
+    ctx.fillStyle = g;
+    ctx.fillRect(lx - RH, ly - RH, 2 * RH, 2 * RH);
+
+    const RC = R * 0.28;
+    const hot = rgb.map(c => Math.round(c + (255 - c) * 0.65));
+    g = ctx.createRadialGradient(lx, ly, 0, lx, ly, RC);
+    addFalloff(g, hot, Math.min(1, I * 0.75), 1.6);
+    ctx.fillStyle = g;
+    ctx.fillRect(lx - RC, ly - RC, 2 * RC, 2 * RC);
+    ctx.restore();
+  }
+
+  // "Buraco" na camada de escuridão (usa destination-out)
+  function drawLightReveal(ctx, p) {
+    const l = p.light, lx = +l.x, ly = +l.y, R = +l.radius || 350, I = lightIntensity(l);
+    ctx.save();
+    pathPoly(ctx, p.pts);
+    ctx.clip();
+    const g = ctx.createRadialGradient(lx, ly, 0, lx, ly, R);
+    addFalloff(g, [0, 0, 0], Math.min(1, I * 1.15), 1.3);
+    ctx.fillStyle = g;
+    ctx.fillRect(lx - R, ly - R, 2 * R, 2 * R);
+    ctx.restore();
+  }
+
+  function lightingTick() {
+    requestAnimationFrame(lightingTick);
+    const ambient = (gridConfig && gridConfig.ambient) || 0;
+    const active = lightPolys.length > 0 || ambient > 0.001;
+    if (!active) {
+      if (lightingWasActive) {
+        shadowLayer.style.display = 'none';
+        lightingLayer.style.display = 'none';
+        lightingWasActive = false;
+        lightingKey = '';
+      }
+      return;
+    }
+
+    // posição/zoom reais do tabuleiro (inclui animações de câmera do mestre)
+    const wr = boardWrap.getBoundingClientRect();
+    const br = board.getBoundingClientRect();
+    const s = br.width || scale;
+    if (!wr.width || !wr.height || !(s > 0)) return;
+    const ox = br.left - wr.left, oy = br.top - wr.top;
+    const key = [ox, oy, s, wr.width, wr.height, ambient].map(n => Math.round(n * 100) / 100).join('|');
+    if (!lightingDirty && key === lightingKey && lightingWasActive) return;
+    lightingDirty = false; lightingKey = key; lightingWasActive = true;
+
+    const M = LIGHT_MARGIN;
+    const cssW = wr.width + 2 * M, cssH = wr.height + 2 * M;
+    const pw = Math.max(1, Math.round(cssW * LIGHT_RES)), ph = Math.max(1, Math.round(cssH * LIGHT_RES));
+    const k = s * LIGHT_RES;
+    const tx = (ox + M) * LIGHT_RES, ty = (oy + M) * LIGHT_RES;
+
+    for (const cv of [shadowLayer, lightingLayer]) {
+      if (cv.width !== pw) cv.width = pw;
+      if (cv.height !== ph) cv.height = ph;
+      cv.style.display = 'block';
+      cv.style.left = ((-ox - M) / s) + 'px';
+      cv.style.top = ((-oy - M) / s) + 'px';
+      cv.style.width = (cssW / s) + 'px';
+      cv.style.height = (cssH / s) + 'px';
+      cv.style.filter = `blur(${(LIGHT_BLUR / s).toFixed(3)}px)`;
+    }
+
+    // 1) escuridão ambiente com buracos onde há luz
+    shadowCtx.setTransform(1, 0, 0, 1, 0, 0);
+    shadowCtx.globalCompositeOperation = 'source-over';
+    shadowCtx.clearRect(0, 0, pw, ph);
+    if (ambient > 0.001) {
+      shadowCtx.fillStyle = `rgba(4,5,12,${ambient})`;
+      shadowCtx.fillRect(0, 0, pw, ph);
+      shadowCtx.globalCompositeOperation = 'destination-out';
+      shadowCtx.setTransform(k, 0, 0, k, tx, ty);
+      lightPolys.forEach(p => drawLightReveal(shadowCtx, p));
+      shadowCtx.setTransform(1, 0, 0, 1, 0, 0);
+      shadowCtx.globalCompositeOperation = 'source-over';
+    }
+
+    // 2) brilho aditivo (vai com mix-blend-mode: screen por cima do mapa e dos tokens)
+    lightCtx.setTransform(1, 0, 0, 1, 0, 0);
+    lightCtx.globalCompositeOperation = 'source-over';
+    lightCtx.clearRect(0, 0, pw, ph);
+    lightCtx.globalCompositeOperation = 'lighter';
+    lightCtx.setTransform(k, 0, 0, k, tx, ty);
+    lightPolys.forEach(p => drawLightGlow(lightCtx, p));
+    lightCtx.setTransform(1, 0, 0, 1, 0, 0);
+    lightCtx.globalCompositeOperation = 'source-over';
+  }
+  requestAnimationFrame(lightingTick);
 
   function applyZoom() { board.style.transform = `scale(${scale})`; board.style.setProperty('--inv-zoom', String(1 / scale)); if (typeof renderRuler === 'function') renderRuler(); }
 
@@ -2613,6 +2841,7 @@
         if (currentRole === 'mestre' || !payload || payload.scene_id !== currentSceneId) return;
         gridConfig = normalizeGrid(payload.grid);
         drawGrid();
+        syncAmbientUI(); markLightingDirty();
       })
       .subscribe();
   }
