@@ -112,7 +112,7 @@
 
   /* Camada de Iluminação Dinâmica / Sombra */
   #lightingLayer { position: absolute; left: 0; top: 0; width: 40000px; height: 40000px; pointer-events: none; z-index: 18000; overflow: visible; }
-  body:not(.jogador) #lightingLayer { opacity: 0.75; } /* Mestre vê luzes translúcidas */
+  body:not(.jogador) #lightingLayer { opacity: 0.75; }
 
   /* Camada do Fog of War */
   #fogLayer { position: absolute; left: 0; top: 0; width: 40000px; height: 40000px; pointer-events: none; z-index: 20000; overflow: visible; }
@@ -126,7 +126,7 @@
   body:not(.jogador).fog-editor-active #fogLayer polygon { cursor: pointer; }
   body:not(.jogador).fog-editor-active #fogLayer polygon:hover { stroke: #ff5252 !important; stroke-width: 3px; }
 
-  /* Camada de Paredes, Portas e Luzes (Visível no Editor correspondente) */
+  /* Camada de Paredes, Portas e Luzes */
   #wallsLayer { position: absolute; left: 0; top: 0; width: 40000px; height: 40000px; pointer-events: none; z-index: 25000; overflow: visible; display: none; }
   body.wall-editor-active #wallsLayer { display: block; pointer-events: auto; cursor: crosshair; }
   body.wall-editor-active.wall-eraser-mode #wallsLayer { cursor: not-allowed; }
@@ -146,7 +146,6 @@
   #wallsLayer circle.wall-node.door-node { fill: #ffc107; }
   #wallsLayer circle.snap-indicator { fill: none; stroke: #ffffff; stroke-width: 2px; pointer-events: none; }
 
-  /* Marcadores de luzes no editor */
   .light-marker { position: absolute; width: 28px; height: 28px; transform: translate(-50%, -50%); border-radius: 50%;
     background: var(--light-color); border: 2px solid #fff; cursor: pointer; z-index: 26500;
     box-shadow: 0 0 12px var(--light-color); display: flex; align-items: center; justify-content: center; font-size: 14px; }
@@ -187,8 +186,9 @@
   #contextMenu button:hover { background: var(--panel-border); color: #fff; }
   #contextMenu hr { border: none; border-top: 1px solid var(--panel-border); margin: 6px 0; }
   #contextMenu .statesRow { display: flex; flex-wrap: wrap; gap: 6px; padding: 4px 2px; }
-  #contextMenu .stateThumb { width: 38px; height: 38px; border-radius: 8px; background-size: contain;
-    background-position: center; background-repeat: no-repeat; border: 2px solid var(--panel-border); cursor: pointer; transition: transform .15s; }
+  #contextMenu .stateThumb { width: 38px; height: 38px; border-radius: 8px; background-size: contain; overflow: hidden;
+    background-position: center; background-repeat: no-repeat; border: 2px solid var(--panel-border); cursor: pointer; transition: transform .15s; position: relative; }
+  #contextMenu .stateThumb video { width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
   #contextMenu .stateThumb:hover { transform: scale(1.08); }
   #contextMenu .stateThumb.active { border-color: var(--accent); box-shadow: 0 0 8px rgba(157, 78, 223, 0.6); }
 
@@ -389,7 +389,7 @@
       <div id="scenesList"></div>
       <div class="row" style="margin-top:12px;">
         <button class="primary" id="newSceneBtn">Nova cena</button>
-        <input type="file" id="newSceneInput" accept="image/png,image/jpeg,image/webp,image/gif,image/webp,video/webm,video/mp4" class="hidden">
+        <input type="file" id="newSceneInput" accept="image/png,image/jpeg,image/webp,image/gif,video/webm,video/mp4" class="hidden">
       </div>
       <button id="closeScenesBtn" style="width:100%; margin-top:12px;">Fechar</button>
     </div>
@@ -468,9 +468,9 @@
       <button id="moreActionsBtn" type="button" title="Mais ações" aria-label="Mais ações" aria-expanded="false">⋯</button>
 
       <div id="moreActionsMenu" aria-label="Mais ações">
-        <label class="btn mestre-only primary" title="Adicionar Token (Imagens ou GIFs transparentes)">
+        <label class="btn mestre-only primary" title="Adicionar Token (Imagens, GIFs ou Vídeos WebM transparentes)">
           + Token
-          <input type="file" id="tokenInput" accept="image/png,image/jpeg,image/webp,image/gif">
+          <input type="file" id="tokenInput" accept="image/png,image/jpeg,image/webp,image/gif,video/webm,video/mp4">
         </label>
         <button id="gridBtn" class="mestre-only" title="Configurar Grid">Grid</button>
         <button id="scenesBtn" class="mestre-only">Cenas</button>
@@ -559,7 +559,7 @@
   <div id="contextMenu">
     <div id="tokenStatesRow" class="statesRow"></div>
     <button id="menuAddState" class="mestre-only">Adicionar estado</button>
-    <input type="file" id="stateInput" accept="image/png,image/jpeg,image/webp,image/gif" class="hidden">
+    <input type="file" id="stateInput" accept="image/png,image/jpeg,image/webp,image/gif,video/webm,video/mp4" class="hidden">
     <hr id="statesHr">
     <button id="menuFront">Trazer para frente</button>
     <button id="menuBack">Mandar para trás</button>
@@ -947,10 +947,31 @@
     return new Blob([arr], { type: mime });
   }
 
-  async function uploadFileBlob(blob, prefix) {
-    const ext = blob.type.includes('webm') ? 'webm' : (blob.type.includes('gif') ? 'gif' : (blob.type.includes('png') ? 'png' : 'jpg'));
+  function isAnimatedOrVideoFile(file) {
+    const t = (file.type || '').toLowerCase();
+    const n = (file.name || '').toLowerCase();
+    return t.includes('webm') || t.includes('mp4') || t.includes('gif') || t.includes('webp') ||
+           n.endsWith('.webm') || n.endsWith('.mp4') || n.endsWith('.gif') || n.endsWith('.webp');
+  }
+
+  function isVideoUrl(url) {
+    if (!url) return false;
+    const clean = url.split('?')[0].toLowerCase();
+    return clean.endsWith('.webm') || clean.endsWith('.mp4');
+  }
+
+  async function uploadFileBlob(blob, prefix, fileName = '') {
+    const t = (blob.type || '').toLowerCase();
+    const n = fileName.toLowerCase();
+    let ext = 'png';
+    if (t.includes('webm') || n.endsWith('.webm')) ext = 'webm';
+    else if (t.includes('mp4') || n.endsWith('.mp4')) ext = 'mp4';
+    else if (t.includes('gif') || n.endsWith('.gif')) ext = 'gif';
+    else if (t.includes('webp') || n.endsWith('.webp')) ext = 'webp';
+    else if (t.includes('jpeg') || t.includes('jpg') || n.endsWith('.jpg') || n.endsWith('.jpeg')) ext = 'jpg';
+
     const path = `${prefix}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-    const { error } = await sb.storage.from('tabletop').upload(path, blob, { contentType: blob.type });
+    const { error } = await sb.storage.from('tabletop').upload(path, blob, { contentType: blob.type || `application/octet-stream` });
     if (error) throw error;
     const { data } = sb.storage.from('tabletop').getPublicUrl(path);
     return data.publicUrl;
@@ -1417,7 +1438,6 @@
     computeLighting();
   }
 
-  // Interseção de segmento de raio com segmento de parede
   function getRayIntersection(rx1, ry1, rx2, ry2, x1, y1, x2, y2) {
     const denom = (y2 - y1) * (rx2 - rx1) - (x2 - x1) * (ry2 - ry1);
     if (denom === 0) return null;
@@ -1429,12 +1449,10 @@
     return null;
   }
 
-  // Motor de Raycasting para gerar os fachos de luz bloqueados pelas paredes
   function computeLighting() {
     lightingLayer.innerHTML = '';
     if (!cachedLights || cachedLights.length === 0) return;
 
-    // Coleta todos os vértices relevantes que bloqueiam luz (paredes sólidas e portas fechadas)
     const blockers = [];
     cachedWalls.forEach(w => {
       const isSolid = (w.wall_type === 'wall') || (w.wall_type === 'door' && !w.is_open);
@@ -1448,7 +1466,6 @@
       const ly = light.y;
       const radius = light.radius || 350;
 
-      // Recolhe ângulos para disparar raios em direção às pontas de cada parede (+ margens para suavizar)
       const angles = [];
       angles.push(0, Math.PI * 2);
       blockers.forEach(b => {
@@ -1460,7 +1477,6 @@
         });
       });
 
-      // Ordena ângulos para formar um polígono contínuo
       angles.sort((a, b) => a - b);
 
       const points = [];
@@ -1511,6 +1527,17 @@
   function updateDimensions(el, url, size) {
     if (aspectRatios.has(url)) {
       applyElementSize(el, size, aspectRatios.get(url));
+    } else if (isVideoUrl(url)) {
+      const tempVid = document.createElement('video');
+      tempVid.preload = 'metadata';
+      tempVid.muted = true;
+      tempVid.src = url;
+      tempVid.onloadedmetadata = () => {
+        const ar = (tempVid.videoWidth && tempVid.videoHeight) ? (tempVid.videoWidth / tempVid.videoHeight) : 1;
+        aspectRatios.set(url, ar);
+        applyElementSize(el, size, ar);
+      };
+      tempVid.onerror = () => applyElementSize(el, size, 1);
     } else {
       const tempImg = new Image();
       tempImg.src = url;
@@ -1584,13 +1611,14 @@
     return tok.src_url;
   }
 
-  // Suporte a mídias animadas ou estáticas (Imagens, GIFs, WebM transparentes)
+  // Suporte unificado a mídias animadas ou estáticas (Imagens, GIFs, WebP, WebM, MP4)
   function renderPieceContent(container, url) {
-    container.innerHTML = '';
     const cleanUrl = url ? url.replace(/^http:\/\//, 'https://') : '';
-    const isVideo = cleanUrl.endsWith('.webm') || cleanUrl.endsWith('.mp4');
+    if (container.dataset.renderedUrl === cleanUrl) return;
+    container.dataset.renderedUrl = cleanUrl;
+    container.innerHTML = '';
 
-    if (isVideo) {
+    if (isVideoUrl(cleanUrl)) {
       const vid = document.createElement('video');
       vid.className = 'pieceVideo';
       vid.src = cleanUrl;
@@ -1598,7 +1626,11 @@
       vid.loop = true;
       vid.muted = true;
       vid.playsInline = true;
+      vid.setAttribute('playsinline', '');
+      vid.setAttribute('muted', '');
+      vid.setAttribute('loop', '');
       container.appendChild(vid);
+      vid.play().catch(() => {});
     } else {
       const div = document.createElement('div');
       div.className = 'pieceImg';
@@ -2085,7 +2117,18 @@
         [tok.src_url, ...(tok.states || [])].forEach((url, idx) => {
           const thumb = document.createElement('div');
           thumb.className = 'stateThumb' + (((tok.active_state || 0) === idx) ? ' active' : '');
-          thumb.style.backgroundImage = `url("${url ? url.replace(/^http:\/\//, 'https://') : ''}")`;
+          const cleanUrl = url ? url.replace(/^http:\/\//, 'https://') : '';
+          if (isVideoUrl(cleanUrl)) {
+            const vid = document.createElement('video');
+            vid.src = cleanUrl;
+            vid.muted = true;
+            vid.loop = true;
+            vid.autoplay = true;
+            vid.playsInline = true;
+            thumb.appendChild(vid);
+          } else {
+            thumb.style.backgroundImage = `url("${cleanUrl}")`;
+          }
           thumb.addEventListener('click', async () => {
             await sb.rpc('set_active_state', { p_user_id: currentUserId, p_token_id: id, p_state: idx });
             closeContextMenu();
@@ -2155,12 +2198,11 @@
     stateInput.value = ''; closeContextMenu();
     if (!file || !tokenId) return;
     try {
-      const rawDataUrl = await fileToDataURL(file);
-      const isGifOrWebp = file.type.includes('gif') || file.type.includes('webp');
-      if (isGifOrWebp) {
-        const url = await uploadFileBlob(file, 'tokens');
+      if (isAnimatedOrVideoFile(file)) {
+        const url = await uploadFileBlob(file, 'tokens', file.name);
         await sb.rpc('add_token_state', { p_user_id: currentUserId, p_token_id: tokenId, p_url: url });
       } else {
+        const rawDataUrl = await fileToDataURL(file);
         openCropModal(rawDataUrl, async (croppedDataURL) => {
           const small = await resizeDataURL(croppedDataURL, 1024, 'image/png', 0.95);
           const url = await uploadFileBlob(dataURLToBlob(small), 'tokens');
@@ -2175,9 +2217,8 @@
     if (!file) return;
     if (!currentSceneId) { alert('Nenhuma cena ativa selecionada.'); return; }
     try {
-      const isAnimatedOrVideo = file.type.includes('gif') || file.type.includes('webm') || file.type.includes('mp4');
-      if (isAnimatedOrVideo) {
-        const url = await uploadFileBlob(file, 'map_pieces');
+      if (isAnimatedOrVideoFile(file)) {
+        const url = await uploadFileBlob(file, 'map_pieces', file.name);
         const newZ = topLayerZ(mapPieceData);
         const { data, error } = await sb.from('map_elements').insert({
           scene_id: currentSceneId, src_url: url, x: 40, y: 40, size: 512, z: newZ, rotation: 0, flip_x: false
@@ -2205,9 +2246,8 @@
     if (!file) return;
     if (!currentSceneId) { alert('Nenhuma cena ativa selecionada.'); return; }
     try {
-      const isGif = file.type.includes('gif');
-      if (isGif) {
-        const url = await uploadFileBlob(file, 'tokens');
+      if (isAnimatedOrVideoFile(file)) {
+        const url = await uploadFileBlob(file, 'tokens', file.name);
         const newZ = topLayerZ(tokenData);
         const { data, error } = await sb.from('tokens').insert({
           scene_id: currentSceneId, src_url: url, x: 40, y: 40, size: 96, z: newZ, rotation: 0, flip_x: false, active_state: 0, states: []
@@ -2285,9 +2325,8 @@
       if (!file) return;
       try {
         let url = '';
-        const isVidOrAnim = file.type.includes('webm') || file.type.includes('mp4') || file.type.includes('gif');
-        if (isVidOrAnim) {
-          url = await uploadFileBlob(file, 'maps');
+        if (isAnimatedOrVideoFile(file)) {
+          url = await uploadFileBlob(file, 'maps', file.name);
         } else {
           const raw = await fileToDataURL(file);
           const resized = await resizeDataURL(raw, 4096, 'image/png', 0.92);
