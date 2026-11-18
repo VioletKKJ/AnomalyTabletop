@@ -155,6 +155,15 @@
     background: var(--light-color); border: 2px solid #fff; cursor: pointer; z-index: 26500;
     box-shadow: 0 0 12px var(--light-color); display: flex; align-items: center; justify-content: center; font-size: 14px; }
   body:not(.light-editor-active) .light-marker { display: none; }
+  .light-marker.selected-light { outline: 3px solid var(--accent); outline-offset: 3px; box-shadow: 0 0 16px var(--accent), 0 0 12px var(--light-color); }
+
+  #lightContextMenu { position: fixed; z-index: 60002; background: var(--panel); border: 1px solid var(--panel-border);
+    border-radius: 12px; padding: 8px; display: none; min-width: 195px; max-width: calc(100vw - 16px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6); backdrop-filter: blur(10px); }
+  #lightContextMenu.open { display: block; }
+  #lightContextMenu button { width: 100%; justify-content: flex-start; background: transparent; border: none; border-radius: 8px; margin: 2px 0; }
+  #lightContextMenu button:hover { background: var(--panel-border); color: #fff; }
+  #lightContextMenu hr { border: none; border-top: 1px solid var(--panel-border); margin: 6px 0; }
 
   #placeholder { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
     color: var(--text-dim); font-size: 13px; text-align: center; padding: 20px; z-index: 0; gap: 10px; }
@@ -592,6 +601,17 @@
     <button id="menuDelete" class="mestre-only danger">Apagar</button>
   </div>
 
+  <div id="lightContextMenu" role="menu" aria-label="Ações da luz">
+    <button id="lightMenuDuplicate" type="button">Duplicar luz</button>
+    <button id="lightMenuSelect" type="button">Selecionar luz</button>
+    <button id="lightMenuSelectAll" type="button">Selecionar todas</button>
+    <button id="lightMenuClearSel" type="button">Limpar seleção</button>
+    <hr>
+    <button id="lightMenuEditSel" type="button">Editar selecionadas</button>
+    <button id="lightMenuDuplicateSel" type="button">Duplicar selecionadas</button>
+    <button id="lightMenuDeleteSel" class="danger" type="button">Apagar selecionadas</button>
+  </div>
+
   <div id="boardContextMenu" role="menu" aria-label="Ações do tabuleiro">
     <button id="boardContextZoomIn" type="button">＋ Aumentar zoom</button>
     <button id="boardContextZoomOut" type="button">− Diminuir zoom</button>
@@ -684,6 +704,16 @@
   const btnDeleteLight = document.getElementById('btnDeleteLight');
   const btnCloseLightModal = document.getElementById('btnCloseLightModal');
   let activeEditingLightId = null;
+  let selectedLightIds = new Set();
+  let lightContextTargetId = null;
+  const lightContextMenu = document.getElementById('lightContextMenu');
+  const lightMenuDuplicate = document.getElementById('lightMenuDuplicate');
+  const lightMenuSelect = document.getElementById('lightMenuSelect');
+  const lightMenuSelectAll = document.getElementById('lightMenuSelectAll');
+  const lightMenuClearSel = document.getElementById('lightMenuClearSel');
+  const lightMenuEditSel = document.getElementById('lightMenuEditSel');
+  const lightMenuDuplicateSel = document.getElementById('lightMenuDuplicateSel');
+  const lightMenuDeleteSel = document.getElementById('lightMenuDeleteSel');
 
   let editingFogObj = null;
   let editingFogPoints = [];
@@ -1333,7 +1363,8 @@
 
   boardWrap.addEventListener('pointerdown', async (e) => {
     if (document.body.classList.contains('light-editor-active') && currentRole === 'mestre') {
-      if (currentTool === 'move') return;
+      if (currentTool === 'move' || e.button === 2) return;
+      if (e.target.closest('.light-marker')) return;
       const rect = boardWrap.getBoundingClientRect();
       const x = (e.clientX - rect.left - boardX) / scale;
       const y = (e.clientY - rect.top - boardY) / scale;
@@ -1347,6 +1378,7 @@
       }).select();
       if (!error && data && data.length) {
         cachedLights.push(data[0]);
+        selectOnlyLight(data[0].id);
         addLightMarker(data[0]);
         computeLighting();
         openLightModal(data[0]);
@@ -1405,6 +1437,8 @@
     document.body.classList.remove('light-editor-active');
     lightEditorNav.classList.add('hidden');
     normalNav.classList.remove('hidden');
+    closeLightContextMenu();
+    clearLightSelection();
     loadLights();
   });
 
@@ -1423,13 +1457,232 @@
     const v = parseFloat(l && l.intensity);
     return isNaN(v) ? 0.9 : Math.min(1.5, Math.max(0.1, v));
   }
+  function normalizeLightId(id) {
+    const found = cachedLights.find(x => String(x.id) === String(id));
+    return found ? found.id : id;
+  }
+
+  function updateLightSelectionVisuals() {
+    if (!lightsEditLayer) return;
+    const selectedStrSet = new Set(Array.from(selectedLightIds).map(String));
+    lightsEditLayer.querySelectorAll('.light-marker').forEach(marker => {
+      marker.classList.toggle('selected-light', selectedStrSet.has(String(marker.dataset.lightId)));
+    });
+  }
+
+  function selectOnlyLight(id) {
+    selectedLightIds.clear();
+    if (id !== null && id !== undefined) selectedLightIds.add(normalizeLightId(id));
+    updateLightSelectionVisuals();
+  }
+
+  function toggleLightSelection(id) {
+    const norm = normalizeLightId(id);
+    const existing = Array.from(selectedLightIds).find(x => String(x) === String(norm));
+    if (existing !== undefined) selectedLightIds.delete(existing);
+    else selectedLightIds.add(norm);
+    updateLightSelectionVisuals();
+  }
+
+  function selectAllLights() {
+    selectedLightIds.clear();
+    cachedLights.forEach(l => selectedLightIds.add(l.id));
+    updateLightSelectionVisuals();
+  }
+
+  function clearLightSelection() {
+    selectedLightIds.clear();
+    updateLightSelectionVisuals();
+  }
+
+  function getTargetLightsForBatch() {
+    const selectedStrSet = new Set(Array.from(selectedLightIds).map(String));
+    if (selectedStrSet.size > 1 && activeEditingLightId && selectedStrSet.has(String(activeEditingLightId))) {
+      return cachedLights.filter(x => selectedStrSet.has(String(x.id)));
+    }
+    const single = getActiveLight();
+    return single ? [single] : [];
+  }
+
+  function openLightContextMenu(lightId, clientX, clientY) {
+    if (currentRole !== 'mestre' || !lightContextMenu) return;
+    lightContextTargetId = normalizeLightId(lightId);
+    const isAlreadySelected = Array.from(selectedLightIds).some(x => String(x) === String(lightContextTargetId));
+    if (!isAlreadySelected) {
+      selectedLightIds.add(lightContextTargetId);
+      updateLightSelectionVisuals();
+    }
+    lightContextMenu.classList.add('open');
+    const menuWidth = lightContextMenu.offsetWidth || 200;
+    const menuHeight = lightContextMenu.offsetHeight || 250;
+    const maxLeft = Math.max(8, window.innerWidth - menuWidth - 8);
+    const maxTop = Math.max(8, window.innerHeight - menuHeight - 8);
+    lightContextMenu.style.left = Math.max(8, Math.min(clientX, maxLeft)) + 'px';
+    lightContextMenu.style.top = Math.max(8, Math.min(clientY, maxTop)) + 'px';
+  }
+
+  function closeLightContextMenu() {
+    if (lightContextMenu) lightContextMenu.classList.remove('open');
+    lightContextTargetId = null;
+  }
+
+  document.addEventListener('pointerdown', (e) => {
+    if (lightContextMenu && lightContextMenu.classList.contains('open') && !lightContextMenu.contains(e.target)) {
+      closeLightContextMenu();
+    }
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && lightContextMenu && lightContextMenu.classList.contains('open')) {
+      closeLightContextMenu();
+    }
+  });
+
+  async function duplicateLight(lightId, offsetX = 24, offsetY = 24) {
+    if (currentRole !== 'mestre' || !currentSceneId) return null;
+    const source = cachedLights.find(x => String(x.id) === String(lightId));
+    if (!source) return null;
+    const { data, error } = await sb.from('lights').insert({
+      scene_id: currentSceneId,
+      x: (+source.x || 0) + offsetX,
+      y: (+source.y || 0) + offsetY,
+      radius: source.radius || 350,
+      color: source.color || '#ffaa44',
+      intensity: lightIntensity(source),
+      z: source.z || Date.now()
+    }).select();
+    if (error || !data || !data.length) return null;
+    selectOnlyLight(data[0].id);
+    await loadLights();
+    return data[0];
+  }
+
+  async function duplicateSelectedLights() {
+    if (currentRole !== 'mestre' || !currentSceneId) return;
+    const selectedStrSet = new Set(Array.from(selectedLightIds).map(String));
+    const toDuplicate = cachedLights.filter(x => selectedStrSet.has(String(x.id)));
+    if (!toDuplicate.length) return;
+    const newIds = [];
+    for (let i = 0; i < toDuplicate.length; i++) {
+      const source = toDuplicate[i];
+      const offset = 24 * (i + 1);
+      const { data, error } = await sb.from('lights').insert({
+        scene_id: currentSceneId,
+        x: (+source.x || 0) + offset,
+        y: (+source.y || 0) + offset,
+        radius: source.radius || 350,
+        color: source.color || '#ffaa44',
+        intensity: lightIntensity(source),
+        z: source.z || Date.now()
+      }).select();
+      if (!error && data && data.length) {
+        newIds.push(data[0].id);
+      }
+    }
+    if (newIds.length) {
+      selectedLightIds = new Set(newIds);
+      await loadLights();
+    }
+  }
+
+  async function deleteSelectedLights() {
+    if (currentRole !== 'mestre') return;
+    const ids = Array.from(selectedLightIds);
+    if (!ids.length) return;
+    const idStrSet = new Set(ids.map(String));
+    if (activeEditingLightId && idStrSet.has(String(activeEditingLightId))) {
+      lightModal.classList.add('hidden');
+      activeEditingLightId = null;
+    }
+    cachedLights = cachedLights.filter(x => !idStrSet.has(String(x.id)));
+    clearLightSelection();
+    computeLighting();
+    await sb.from('lights').delete().in('id', ids);
+    await loadLights();
+  }
+
+  if (lightMenuDuplicate) {
+    lightMenuDuplicate.addEventListener('click', async () => {
+      const targetId = lightContextTargetId;
+      closeLightContextMenu();
+      if (targetId !== null && targetId !== undefined) await duplicateLight(targetId, 24, 24);
+    });
+  }
+
+  if (lightMenuSelect) {
+    lightMenuSelect.addEventListener('click', () => {
+      const targetId = lightContextTargetId;
+      closeLightContextMenu();
+      if (targetId !== null && targetId !== undefined) {
+        selectedLightIds.add(targetId);
+        updateLightSelectionVisuals();
+      }
+    });
+  }
+
+  if (lightMenuSelectAll) {
+    lightMenuSelectAll.addEventListener('click', () => {
+      closeLightContextMenu();
+      selectAllLights();
+    });
+  }
+
+  if (lightMenuClearSel) {
+    lightMenuClearSel.addEventListener('click', () => {
+      closeLightContextMenu();
+      clearLightSelection();
+    });
+  }
+
+  if (lightMenuEditSel) {
+    lightMenuEditSel.addEventListener('click', () => {
+      const targetId = lightContextTargetId;
+      closeLightContextMenu();
+      if (currentRole !== 'mestre') return;
+      if (targetId !== null && targetId !== undefined && !Array.from(selectedLightIds).some(x => String(x) === String(targetId))) {
+        selectedLightIds.add(targetId);
+      }
+      updateLightSelectionVisuals();
+      const selectedStrSet = new Set(Array.from(selectedLightIds).map(String));
+      const refLight = cachedLights.find(x => String(x.id) === String(targetId)) ||
+                       cachedLights.find(x => selectedStrSet.has(String(x.id)));
+      if (refLight) openLightModal(refLight);
+    });
+  }
+
+  if (lightMenuDuplicateSel) {
+    lightMenuDuplicateSel.addEventListener('click', async () => {
+      closeLightContextMenu();
+      await duplicateSelectedLights();
+    });
+  }
+
+  if (lightMenuDeleteSel) {
+    lightMenuDeleteSel.addEventListener('click', async () => {
+      closeLightContextMenu();
+      await deleteSelectedLights();
+    });
+  }
+
   function getActiveLight() {
     return cachedLights.find(x => String(x.id) === String(activeEditingLightId));
   }
   async function saveActiveLight() {
-    const l = getActiveLight();
-    if (!l) return;
-    await sb.from('lights').update({ radius: l.radius, color: l.color, intensity: lightIntensity(l) }).eq('id', l.id);
+    if (currentRole !== 'mestre') return;
+    const targets = getTargetLightsForBatch();
+    if (!targets.length) return;
+    if (targets.length === 1) {
+      const l = targets[0];
+      await sb.from('lights').update({ radius: l.radius, color: l.color, intensity: lightIntensity(l) }).eq('id', l.id);
+    } else {
+      const ref = getActiveLight() || targets[0];
+      const ids = targets.map(t => t.id);
+      await sb.from('lights').update({
+        radius: ref.radius,
+        color: ref.color,
+        intensity: lightIntensity(ref)
+      }).in('id', ids);
+    }
   }
 
   function openLightModal(light) {
@@ -1449,18 +1702,27 @@
   lightRadiusRange.addEventListener('input', () => {
     const v = parseFloat(lightRadiusRange.value);
     lightRadiusVal.textContent = v + 'px';
-    const l = getActiveLight();
-    if (l) { l.radius = v; computeLighting(); }
+    const targets = getTargetLightsForBatch();
+    if (targets.length) {
+      targets.forEach(t => { t.radius = v; });
+      computeLighting();
+    }
   });
   lightIntensityRange.addEventListener('input', () => {
     const v = parseFloat(lightIntensityRange.value);
     lightIntensityVal.textContent = v.toFixed(2);
-    const l = getActiveLight();
-    if (l) { l.intensity = v; markLightingDirty(); }
+    const targets = getTargetLightsForBatch();
+    if (targets.length) {
+      targets.forEach(t => { t.intensity = v; });
+      markLightingDirty();
+    }
   });
   lightColorInp.addEventListener('input', () => {
-    const l = getActiveLight();
-    if (l) { l.color = lightColorInp.value; markLightingDirty(); }
+    const targets = getTargetLightsForBatch();
+    if (targets.length) {
+      targets.forEach(t => { t.color = lightColorInp.value; });
+      markLightingDirty();
+    }
   });
 
   btnCloseLightModal.addEventListener('click', async () => {
@@ -1472,12 +1734,24 @@
 
   btnDeleteLight.addEventListener('click', async () => {
     if (!activeEditingLightId) return;
-    const id = activeEditingLightId;
+    const targets = getTargetLightsForBatch();
+    const ids = targets.length ? targets.map(t => t.id) : [activeEditingLightId];
+    const idStrSet = new Set(ids.map(String));
     lightModal.classList.add('hidden');
     activeEditingLightId = null;
-    cachedLights = cachedLights.filter(x => String(x.id) !== String(id));
+    cachedLights = cachedLights.filter(x => !idStrSet.has(String(x.id)));
+    ids.forEach(id => {
+      for (const sId of Array.from(selectedLightIds)) {
+        if (String(sId) === String(id)) selectedLightIds.delete(sId);
+      }
+    });
+    updateLightSelectionVisuals();
     computeLighting();
-    await sb.from('lights').delete().eq('id', id);
+    if (ids.length === 1) {
+      await sb.from('lights').delete().eq('id', ids[0]);
+    } else {
+      await sb.from('lights').delete().in('id', ids);
+    }
     loadLights();
   });
 
@@ -1498,14 +1772,34 @@
     const marker = document.createElement('div');
     marker.className = 'light-marker';
     marker.dataset.lightId = l.id;
+    const isSelected = Array.from(selectedLightIds).some(x => String(x) === String(l.id));
+    marker.classList.toggle('selected-light', isSelected);
     marker.style.left = l.x + 'px';
     marker.style.top = l.y + 'px';
     marker.style.setProperty('--light-color', l.color);
     marker.textContent = '💡';
+
+    marker.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (currentRole !== 'mestre') return;
+      openLightContextMenu(l.id, e.clientX, e.clientY);
+    });
+
     marker.addEventListener('pointerdown', (e) => {
+      if (e.button === 2) return;
       e.stopPropagation();
       e.preventDefault();
       if (currentRole !== 'mestre') return;
+      closeLightContextMenu();
+
+      const multiKey = e.ctrlKey || e.metaKey || e.shiftKey;
+      if (multiKey) {
+        toggleLightSelection(l.id);
+      } else {
+        selectOnlyLight(l.id);
+      }
+
       try { marker.setPointerCapture(e.pointerId); } catch (_) {}
       const startX = e.clientX, startY = e.clientY;
       let moved = false;
@@ -1526,7 +1820,7 @@
         marker.removeEventListener('pointercancel', onUp);
         const light = cachedLights.find(x => String(x.id) === String(l.id)) || l;
         if (moved) await sb.from('lights').update({ x: light.x, y: light.y }).eq('id', light.id);
-        else openLightModal(light);
+        else if (!multiKey) openLightModal(light);
       };
       marker.addEventListener('pointermove', onMove);
       marker.addEventListener('pointerup', onUp);
@@ -2715,6 +3009,8 @@
   async function loadSceneContent(sceneId) {
     tokenEls.forEach(el => el.remove()); tokenEls.clear(); tokenData.clear();
     mapPieceEls.forEach(el => el.remove()); mapPieceEls.clear(); mapPieceData.clear();
+    closeLightContextMenu();
+    clearLightSelection();
     if (!sceneId) return;
 
     await loadGridForScene(sceneId);
