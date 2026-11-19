@@ -33,21 +33,59 @@
     overscroll-behavior: none; touch-action: none; overflow: hidden; }
   body { position: relative; }
 
-  /* Lobby / Seleção de Mesas */
-  #lobbyOverlay { position: fixed; inset: 0; z-index: 90000; background: radial-gradient(circle at center, #1e202d 0%, #0c0d12 100%);
-    display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; overflow-y: auto; }
-  .lobbyCard { background: rgba(26, 28, 36, 0.95); border: 1px solid var(--panel-border); border-radius: 20px;
-    padding: 28px; max-width: 500px; width: 100%; box-shadow: 0 20px 50px rgba(0,0,0,0.7); backdrop-filter: blur(12px); }
-  .lobbyCard h1 { font-size: 26px; margin: 0 0 4px; font-weight: 800; letter-spacing: 1px; text-align: center;
-    background: linear-gradient(135deg, #e0aaff, #9d4edf); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-  .lobbyCard .subtitle { color: var(--text-dim); font-size: 12px; margin-bottom: 20px; text-align: center; }
-  
-  .roomList { max-height: 220px; overflow-y: auto; margin: 12px 0; display: flex; flex-direction: column; gap: 8px; }
-  .roomRow { background: var(--bg); border: 1px solid var(--panel-border); border-radius: 10px; padding: 10px 14px;
-    display: flex; align-items: center; justify-content: space-between; transition: border-color .2s; }
-  .roomRow:hover { border-color: var(--accent); }
-  .roomInfo .roomName { font-weight: 600; font-size: 13px; }
-  .roomInfo .roomMeta { font-size: 11px; color: var(--text-dim); }
+  /* Lobby renovado */
+  #lobbyOverlay { position: fixed; inset: 0; z-index: 90000; display: flex; align-items: center; justify-content: center;
+    padding: clamp(14px, 3vw, 36px); overflow-y: auto; background:
+    radial-gradient(ellipse at 12% 12%, rgba(125, 54, 178, .22), transparent 42%),
+    radial-gradient(ellipse at 88% 82%, rgba(54, 76, 130, .18), transparent 40%), #0b0c12; }
+  .lobbyCard { width: min(1040px, 100%); max-width: none; padding: clamp(20px, 3vw, 38px); border-radius: 26px;
+    border: 1px solid rgba(170, 133, 210, .22); background: linear-gradient(145deg, rgba(28, 29, 42, .97), rgba(17, 18, 27, .98));
+    box-shadow: 0 28px 90px rgba(0,0,0,.55), inset 0 1px rgba(255,255,255,.04); backdrop-filter: blur(18px); }
+  .lobbyHeader { display:flex; align-items:center; justify-content:space-between; gap:18px; padding-bottom:24px; border-bottom:1px solid rgba(255,255,255,.07); }
+  .lobbyBrand { display:flex; align-items:center; gap:14px; min-width:0; }
+  .lobbyBrandMark { width:52px; height:52px; display:grid; place-items:center; flex:none; border-radius:16px; color:#fff; font-size:25px;
+    background:linear-gradient(145deg,#8d45c7,#45256e); box-shadow:0 8px 28px rgba(130,65,190,.3); }
+  .lobbyBrand h1 { font-size:clamp(23px,3vw,32px); margin:0; font-weight:850; letter-spacing:1.5px;
+    background:linear-gradient(120deg,#f0d9ff,#ad70df 65%,#8f9fe8); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+  .lobbyBrand .subtitle { color:var(--text-dim); font-size:13px; margin:5px 0 0; text-align:left; }
+  .lobbyWelcome { color:#d7c7e8; font-size:13px; text-align:right; }
+  .lobbyMain { display:grid; grid-template-columns:minmax(0,1fr) 270px; gap:24px; padding-top:26px; }
+  .lobbySectionTitle { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px; }
+  .lobbySectionTitle h2 { margin:0; font-size:17px; color:#f2edf8; }
+  .lobbySectionTitle span { color:var(--text-dim); font-size:11px; }
+  .roomList { max-height:min(52vh, 440px); overflow-y:auto; margin:0; padding:2px 5px 2px 0; display:flex; flex-direction:column; gap:10px; }
+  .roomRow { display:flex; align-items:center; gap:14px; padding:15px 16px; border:1px solid rgba(255,255,255,.075);
+    border-radius:15px; background:linear-gradient(120deg,rgba(39,40,56,.85),rgba(27,28,40,.8)); transition:transform .18s,border-color .18s,background .18s; }
+  .roomRow:hover { transform:translateY(-2px); border-color:rgba(174,112,226,.55); background:linear-gradient(120deg,rgba(53,43,70,.9),rgba(29,30,44,.9)); }
+  .roomIcon { width:42px; height:42px; display:grid; place-items:center; flex:none; border-radius:12px; color:#d8b7f2; background:rgba(157,78,223,.14); font-size:19px; }
+  .roomInfo { min-width:0; flex:1; }
+  .roomInfo .roomName { font-weight:700; font-size:14px; color:#f4eff8; overflow-wrap:anywhere; }
+  .roomInfo .roomMeta { font-size:11px; color:var(--text-dim); margin-top:5px; }
+  .roomActions { display:flex; align-items:center; gap:7px; flex:none; }
+  .roomActions button { min-height:36px; }
+  .roomRole { display:inline-flex; align-items:center; border-radius:30px; padding:3px 8px; margin-left:5px; font-size:10px; color:#d9c2ef; background:rgba(157,78,223,.15); }
+  .lobbyActions { display:flex; flex-direction:column; gap:10px; padding:17px; border:1px solid rgba(255,255,255,.07); border-radius:17px; background:rgba(10,11,18,.32); }
+  .lobbyActions .lobbyActionHint { color:var(--text-dim); font-size:11px; line-height:1.5; margin:2px 0 5px; }
+  .lobbyActions button { width:100%; justify-content:center; min-height:42px; }
+  .lobbyLogout { display:flex; justify-content:flex-end; margin-top:22px; }
+  .lobbyEmpty { text-align:center; color:var(--text-dim); padding:42px 18px; border:1px dashed rgba(255,255,255,.12); border-radius:16px; background:rgba(8,9,15,.2); }
+  .lobbyEmpty .emptyIcon { font-size:30px; margin-bottom:10px; opacity:.8; }
+  #deleteRoomOverlay { position:fixed; inset:0; z-index:100100; display:flex; align-items:center; justify-content:center; padding:16px;
+    background:rgba(5,6,10,.86); backdrop-filter:blur(10px); }
+  #deleteRoomOverlay .card { border-color:rgba(255,82,82,.3); box-shadow:0 20px 70px rgba(0,0,0,.65); }
+  #deleteRoomOverlay h2 { color:#ffb2b2; }
+  #deleteRoomError { min-height:18px; color:var(--danger); font-size:12px; margin:0 0 8px; }
+  @media (max-width:760px) {
+    #lobbyOverlay { align-items:flex-start; }
+    .lobbyCard { margin:auto 0; }
+    .lobbyHeader { align-items:flex-start; flex-direction:column; }
+    .lobbyWelcome { text-align:left; }
+    .lobbyMain { grid-template-columns:1fr; gap:18px; }
+    .roomRow { align-items:flex-start; flex-wrap:wrap; }
+    .roomActions { width:100%; justify-content:flex-end; }
+    .lobbyLogout { justify-content:stretch; }
+    .lobbyLogout button { width:100%; }
+  }
 
   /* Barra Superior Flutuante Minimalista */
   #topBar { position: fixed; top: max(12px, env(safe-area-inset-top, 12px)); left: 50%; transform: translateX(-50%) translateY(0); z-index: 30;
@@ -335,22 +373,51 @@
     </div>
   </div>
 
-  <!-- Menu Principal / Seleção de Mesas (Lobby) -->
+  <!-- Lobby principal -->
   <div id="lobbyOverlay" class="hidden">
     <div class="lobbyCard">
-      <h1>ANOMALY VTT</h1>
-      <div class="subtitle" id="lobbyUserWelcome">Suas Mesas de Jogo</div>
-      
-      <div style="font-size:12px; font-weight:600; color:var(--text-dim); text-transform:uppercase; margin-bottom:6px;">Mesas disponíveis:</div>
-      <div class="roomList" id="roomListContainer">
-        <div style="text-align:center; color:var(--text-dim); padding:20px;">Carregando mesas...</div>
-      </div>
+      <header class="lobbyHeader">
+        <div class="lobbyBrand">
+          <div class="lobbyBrandMark">✦</div>
+          <div>
+            <h1>ANOMALY VTT</h1>
+            <div class="subtitle">Seu espaço para criar histórias.</div>
+          </div>
+        </div>
+        <div class="lobbyWelcome" id="lobbyUserWelcome">Olá, Aventureiro</div>
+      </header>
+      <main class="lobbyMain">
+        <section>
+          <div class="lobbySectionTitle"><h2>Suas mesas</h2><span>Campanhas e sessões</span></div>
+          <div class="roomList" id="roomListContainer">
+            <div class="lobbyEmpty"><div class="emptyIcon">◌</div>Carregando suas mesas...</div>
+          </div>
+        </section>
+        <aside class="lobbyActions">
+          <div class="lobbySectionTitle"><h2>Começar a jogar</h2></div>
+          <p class="lobbyActionHint">Crie uma nova campanha ou entre em uma mesa usando o código compartilhado pelo mestre.</p>
+          <button class="primary" id="btnOpenCreateRoom">＋ Criar nova mesa</button>
+          <button id="btnOpenJoinRoom">↗ Entrar com código</button>
+        </aside>
+      </main>
+      <div class="lobbyLogout"><button id="btnLobbyLogout" class="danger">Sair da conta</button></div>
+    </div>
+  </div>
 
-      <div class="row" style="margin-top:16px;">
-        <button class="primary" id="btnOpenCreateRoom">➕ Criar Nova Mesa</button>
-        <button id="btnOpenJoinRoom">🔗 Entrar com Código</button>
+  <!-- Confirmação reforçada de exclusão de mesa -->
+  <div id="deleteRoomOverlay" class="hidden">
+    <div class="card">
+      <h2>Excluir mesa permanentemente</h2>
+      <p id="deleteRoomDescription">Esta ação remove a mesa e os dados de suas cenas, incluindo tokens, mapas, paredes, luzes e desenhos. Não pode ser desfeita.</p>
+      <label>Digite o nome exato da mesa</label>
+      <input id="deleteRoomNameConfirm" type="text" autocomplete="off" placeholder="Nome da mesa">
+      <label>Confirme sua senha</label>
+      <input id="deleteRoomPassword" type="password" autocomplete="current-password" placeholder="Sua senha da conta">
+      <div id="deleteRoomError"></div>
+      <div class="row">
+        <button id="btnCancelDeleteRoom">Cancelar</button>
+        <button id="btnConfirmDeleteRoom" class="danger">Excluir permanentemente</button>
       </div>
-      <button id="btnLobbyLogout" class="danger" style="width:100%; margin-top:10px;">Sair da Conta</button>
     </div>
   </div>
 
@@ -3784,33 +3851,138 @@
   }
 
   async function loadLobbyRooms() {
-    roomListContainer.innerHTML = '<div style="text-align:center; color:var(--text-dim); padding:10px;">Carregando...</div>';
+    roomListContainer.innerHTML = '<div class="lobbyEmpty"><div class="emptyIcon">◌</div>Carregando suas mesas...</div>';
     const { data: rooms, error } = await sb.rpc('get_user_rooms', { p_user_id: currentUserId });
-    if (error) { roomListContainer.innerHTML = `<div style="color:var(--danger); font-size:12px;">${error.message}</div>`; return; }
-    
+    if (error) {
+      roomListContainer.textContent = 'Não foi possível carregar suas mesas: ' + error.message;
+      roomListContainer.className = 'roomList';
+      return;
+    }
+
     roomListContainer.innerHTML = '';
     if (!rooms || rooms.length === 0) {
-      roomListContainer.innerHTML = '<div style="text-align:center; color:var(--text-dim); font-size:12px; padding:15px;">Você ainda não participa de nenhuma mesa. Crie uma ou entre com um código!</div>';
+      roomListContainer.innerHTML = '<div class="lobbyEmpty"><div class="emptyIcon">✧</div><strong>Nenhuma mesa por aqui ainda.</strong><br>Crie sua primeira campanha ou entre usando um código.</div>';
       return;
     }
 
     rooms.forEach(r => {
       const row = document.createElement('div');
       row.className = 'roomRow';
-      row.innerHTML = `
-        <div class="roomInfo">
-          <div class="roomName">${r.room_name}</div>
-          <div class="roomMeta">Código: <code>${r.room_code}</code> • Papel: <strong>${r.user_role}</strong></div>
-        </div>
-      `;
+
+      const icon = document.createElement('div');
+      icon.className = 'roomIcon';
+      icon.textContent = '✦';
+
+      const info = document.createElement('div');
+      info.className = 'roomInfo';
+      const title = document.createElement('div');
+      title.className = 'roomName';
+      title.textContent = r.room_name || 'Mesa sem nome';
+      const meta = document.createElement('div');
+      meta.className = 'roomMeta';
+      meta.textContent = 'Código: ' + (r.room_code || '—');
+      const role = document.createElement('span');
+      role.className = 'roomRole';
+      role.textContent = r.user_role === 'mestre' ? 'Mestre' : 'Jogador';
+      meta.appendChild(role);
+      info.append(title, meta);
+
+      const actions = document.createElement('div');
+      actions.className = 'roomActions';
       const playBtn = document.createElement('button');
       playBtn.className = 'primary';
-      playBtn.textContent = 'Jogar';
+      playBtn.textContent = 'Entrar na mesa';
       playBtn.addEventListener('click', () => enterRoom(r.room_id));
-      row.appendChild(playBtn);
+      actions.appendChild(playBtn);
+
+      if (r.user_role === 'mestre') {
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'danger';
+        deleteBtn.textContent = 'Excluir';
+        deleteBtn.title = 'Excluir permanentemente esta mesa';
+        deleteBtn.addEventListener('click', () => openDeleteRoomDialog(r));
+        actions.appendChild(deleteBtn);
+      }
+
+      row.append(icon, info, actions);
       roomListContainer.appendChild(row);
     });
   }
+
+  const deleteRoomOverlay = document.getElementById('deleteRoomOverlay');
+  const deleteRoomNameConfirm = document.getElementById('deleteRoomNameConfirm');
+  const deleteRoomPassword = document.getElementById('deleteRoomPassword');
+  const deleteRoomError = document.getElementById('deleteRoomError');
+  const btnCancelDeleteRoom = document.getElementById('btnCancelDeleteRoom');
+  const btnConfirmDeleteRoom = document.getElementById('btnConfirmDeleteRoom');
+  let roomPendingDeletion = null;
+
+  function openDeleteRoomDialog(room) {
+    roomPendingDeletion = room;
+    deleteRoomNameConfirm.value = '';
+    deleteRoomPassword.value = '';
+    deleteRoomError.textContent = '';
+    document.getElementById('deleteRoomDescription').textContent =
+      'Você está prestes a excluir "' + room.room_name + '". Todas as cenas, tokens, mapas, paredes, luzes, desenhos e membros vinculados serão removidos. Esta ação não pode ser desfeita.';
+    btnConfirmDeleteRoom.disabled = false;
+    btnConfirmDeleteRoom.textContent = 'Excluir permanentemente';
+    deleteRoomOverlay.classList.remove('hidden');
+    setTimeout(() => deleteRoomNameConfirm.focus(), 30);
+  }
+
+  function closeDeleteRoomDialog() {
+    deleteRoomOverlay.classList.add('hidden');
+    roomPendingDeletion = null;
+    deleteRoomNameConfirm.value = '';
+    deleteRoomPassword.value = '';
+    deleteRoomError.textContent = '';
+    btnConfirmDeleteRoom.disabled = false;
+    btnConfirmDeleteRoom.textContent = 'Excluir permanentemente';
+  }
+
+  btnCancelDeleteRoom.addEventListener('click', closeDeleteRoomDialog);
+  deleteRoomOverlay.addEventListener('click', e => {
+    if (e.target === deleteRoomOverlay) closeDeleteRoomDialog();
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && !deleteRoomOverlay.classList.contains('hidden')) closeDeleteRoomDialog();
+  });
+
+  btnConfirmDeleteRoom.addEventListener('click', async () => {
+    if (!roomPendingDeletion || btnConfirmDeleteRoom.disabled) return;
+    const room = roomPendingDeletion;
+    const typedName = deleteRoomNameConfirm.value.trim();
+    const password = deleteRoomPassword.value;
+    if (!typedName || !password) {
+      deleteRoomError.textContent = 'Digite o nome da mesa e sua senha para continuar.';
+      return;
+    }
+    if (typedName.toLocaleLowerCase('pt-BR') !== String(room.room_name || '').trim().toLocaleLowerCase('pt-BR')) {
+      deleteRoomError.textContent = 'O nome digitado não corresponde ao nome desta mesa.';
+      return;
+    }
+
+    btnConfirmDeleteRoom.disabled = true;
+    btnConfirmDeleteRoom.textContent = 'Excluindo...';
+    deleteRoomError.textContent = '';
+
+    const { error } = await sb.rpc('delete_room', {
+      p_user_id: currentUserId,
+      p_room_id: room.room_id,
+      p_password: password,
+      p_confirm_name: typedName
+    });
+
+    if (error) {
+      deleteRoomError.textContent = error.message || 'Não foi possível excluir a mesa.';
+      btnConfirmDeleteRoom.disabled = false;
+      btnConfirmDeleteRoom.textContent = 'Excluir permanentemente';
+      return;
+    }
+
+    closeDeleteRoomDialog();
+    await loadLobbyRooms();
+  });
 
   btnReturnLobby.addEventListener('click', () => {
     stopCameraLive(false); setCameraLocked(false);
