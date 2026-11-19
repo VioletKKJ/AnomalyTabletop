@@ -115,6 +115,21 @@
      Os dois são canvas do tamanho da tela, reposicionados a cada pan/zoom pelo motor de luz (JS). */
   #shadowLayer, #lightingLayer { position: absolute; left: 0; top: 0; width: 1px; height: 1px; pointer-events: none; display: none; }
   #shadowLayer { z-index: 17500; }
+  #visionLayer { position: absolute; left: 0; top: 0; width: 1px; height: 1px; pointer-events: none; display: none; z-index: 19000; }
+  #drawLayer { position: absolute; left: 0; top: 0; width: 40000px; height: 40000px; pointer-events: none; z-index: 12000; overflow: visible; }
+  body.tool-draw #boardWrap { cursor: crosshair; }
+  #drawPanel { position: fixed; left: 50%; bottom: max(14px, env(safe-area-inset-bottom, 14px)); transform: translateX(-50%); z-index: 60001;
+    display: none; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: center; max-width: 96vw; padding: 8px 10px;
+    background: rgba(26, 28, 36, 0.92); border: 1px solid var(--panel-border); border-radius: 14px; backdrop-filter: blur(12px); box-shadow: 0 8px 30px rgba(0,0,0,0.5); }
+  body.tool-draw #drawPanel { display: flex; }
+  #drawPanel button { min-width: 34px; height: 34px; padding: 0 8px; justify-content: center; }
+  #drawPanel button.active { background: var(--accent-gradient); color: #fff; }
+  #drawPanel input[type=color] { width: 34px; height: 34px; padding: 0; border: none; background: none; cursor: pointer; }
+  #drawPanel input[type=range] { width: 80px; accent-color: var(--accent); }
+  #drawPanel label.opt { font-size: 11px; color: var(--text-dim); display: flex; align-items: center; gap: 4px; }
+  #tokenVisionModal { position: fixed; inset: 0; background: rgba(10, 11, 15, 0.8); backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: center; z-index: 100000; padding: 16px; }
+  #visionBadge { position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%); z-index: 60000; padding: 6px 12px; font-size: 12px; color: var(--text-dim);
+    background: rgba(26, 28, 36, 0.9); border: 1px solid var(--panel-border); border-radius: 20px; pointer-events: none; }
   #lightingLayer { z-index: 18000; mix-blend-mode: screen; }
   body:not(.jogador) #lightingLayer { opacity: 0.9; }
   body:not(.jogador) #shadowLayer { opacity: 0.6; }
@@ -498,6 +513,7 @@
           <input type="file" id="tokenInput" accept="image/png,image/jpeg,image/webp,image/gif,video/webm,video/mp4">
         </label>
         <button id="gridBtn" class="mestre-only" title="Configurar Grid">Grid</button>
+        <button id="dynFogBtn" class="mestre-only" title="Cada jogador só vê o que os tokens dele enxergam (paredes bloqueiam)">👁️ Fog dinâmico: OFF</button>
         <button id="scenesBtn" class="mestre-only">Cenas</button>
         <button id="camPullBtn" class="mestre-only" title="Centraliza a câmera de todos os jogadores na sua">📷 Puxar jogadores</button>
         <button id="camLiveBtn" class="mestre-only" title="Os jogadores seguem a sua câmera em tempo real">📡 Câmera ao vivo: OFF</button>
@@ -567,6 +583,7 @@
     <button class="toolBtn active" id="toolSelectBtn" data-tool="select" title="Selecionar e Mover">🖱️</button>
     <button class="toolBtn" id="toolMoveBtn" data-tool="move" title="Mover Câmera">✋</button>
     <button class="toolBtn" id="toolRulerBtn" data-tool="ruler" title="Régua (arraste para medir; Esc limpa)">📏</button>
+    <button class="toolBtn" id="toolDrawBtn" data-tool="draw" title="Desenhar (Ctrl+Z desfaz)">✏️</button>
   </div>
   <button id="sideToolbarToggle" title="Esconder/mostrar ferramentas">▶</button>
 
@@ -579,6 +596,8 @@
       <div id="tokensLayer"></div>
       <canvas id="shadowLayer"></canvas>
       <canvas id="lightingLayer"></canvas>
+      <canvas id="visionLayer"></canvas>
+      <svg id="drawLayer"></svg>
       <svg id="fogLayer"></svg>
       <svg id="wallsLayer"></svg>
       <div id="lightsEditLayer"></div>
@@ -598,10 +617,39 @@
     <button id="menuRotate">Girar 90°</button>
     <button id="menuFlip">Espelhar</button>
     <hr>
+    <button id="menuVision" class="mestre-only">👁️ Visão do token…</button>
     <button id="menuDelete" class="mestre-only danger">Apagar</button>
   </div>
 
-  <div id="lightContextMenu" role="menu" aria-label="Ações da luz">
+  <div id="drawPanel">
+    <button data-draw-mode="free" class="active" title="Lápis">✏️</button>
+    <button data-draw-mode="line" title="Linha">╱</button>
+    <button data-draw-mode="arrow" title="Seta">➚</button>
+    <button data-draw-mode="rect" title="Retângulo">▭</button>
+    <button data-draw-mode="ellipse" title="Elipse">◯</button>
+    <button data-draw-mode="erase" title="Borracha (apaga seus desenhos)">🧽</button>
+    <input type="color" id="drawColor" value="#ffd54f" title="Cor">
+    <input type="range" id="drawWidth" min="1" max="24" step="1" value="4" title="Espessura">
+    <label class="opt mestre-only" title="Só o mestre vê"><input type="checkbox" id="drawMasterOnly"> só mestre</label>
+    <button id="drawUndo" title="Desfazer (Ctrl+Z)">↩️</button>
+    <button id="drawClear" class="danger" title="Apagar desenhos">🗑️</button>
+  </div>
+  <div id="visionBadge" class="hidden">👁️ Nenhum token seu tem visão nesta cena</div>
+  <div id="tokenVisionModal" class="hidden">
+    <div class="card">
+      <h2>Visão do token</h2>
+      <p>Campo de visão com paredes e portas. O jogador vinculado só enxerga o que este token vê (com o Fog dinâmico ligado).</p>
+      <label style="display:flex; align-items:center; gap:8px; text-transform:none;"><input type="checkbox" id="tvEnabled" style="width:auto; margin:0;"> Visão ativada</label>
+      <label>Raio de visão</label>
+      <input type="range" id="tvRadius" min="50" max="2000" step="25" value="400">
+      <span id="tvRadiusVal" style="font-size:11px; color:var(--text-dim);">400px</span>
+      <label>Jogador dono do token</label>
+      <select id="tvOwner"><option value="">— ninguém —</option></select>
+      <div class="row"><button id="tvCancel">Cancelar</button><button id="tvSave" class="primary">Salvar</button></div>
+    </div>
+  </div>
+
+  <div id="lightContextMenu" role="menu aria-label="Ações da luz">
     <button id="lightMenuDuplicate" type="button">Duplicar luz</button>
     <button id="lightMenuSelect" type="button">Selecionar luz</button>
     <button id="lightMenuSelectAll" type="button">Selecionar todas</button>
@@ -826,11 +874,14 @@
   const toolMoveBtn = document.getElementById('toolMoveBtn');
   const toolRulerBtn = document.getElementById('toolRulerBtn');
   let currentTool = 'select';
-  [toolSelectBtn, toolMoveBtn, toolRulerBtn].forEach((btn) => {
+  const toolDrawBtn = document.getElementById('toolDrawBtn');
+  [toolSelectBtn, toolMoveBtn, toolRulerBtn, toolDrawBtn].forEach((btn) => {
     btn.addEventListener('click', () => {
       currentTool = btn.dataset.tool;
-      [toolSelectBtn, toolMoveBtn, toolRulerBtn].forEach((b) => b.classList.toggle('active', b === btn));
+      [toolSelectBtn, toolMoveBtn, toolRulerBtn, toolDrawBtn].forEach((b) => b.classList.toggle('active', b === btn));
       document.body.classList.toggle('tool-ruler', currentTool === 'ruler');
+      document.body.classList.toggle('tool-draw', currentTool === 'draw');
+      if (currentTool !== 'draw') cancelDraw();
       if (currentTool !== 'ruler') clearRuler();
     });
   });
@@ -927,6 +978,7 @@
     g.opacity = parseFloat(g.opacity) || 0.4;
     g.lineWidth = parseInt(g.lineWidth) || 1;
     g.metersPerSquare = parseFloat(g.metersPerSquare) || 1.5;
+    g.dynFog = g.dynFog === true || g.dynFog === 'true';
     g.ambient = Math.min(0.95, Math.max(0, parseFloat(g.ambient) || 0)); // escuridão ambiente da cena (motor de luz)
     return g;
   }
@@ -1760,6 +1812,7 @@
     const a = (gridConfig && gridConfig.ambient) || 0;
     ambientRange.value = a;
     ambientVal.textContent = Math.round(a * 100) + '%';
+    if (typeof syncDynFogUI === 'function') syncDynFogUI();
   }
   ambientRange.addEventListener('input', () => {
     gridConfig.ambient = parseFloat(ambientRange.value) || 0;
@@ -1848,6 +1901,7 @@
   const shadowCtx = shadowLayer.getContext('2d');
   const lightCtx = lightingLayer.getContext('2d');
   let lightPolys = [];       // [{ light, pts: [x0,y0,x1,y1,...] }]
+  let currentBlockers = [];
   let lightingDirty = true, lightingKey = '', lightingWasActive = false;
 
   function markLightingDirty() { lightingDirty = true; }
@@ -1871,9 +1925,9 @@
   }
 
   // Polígono de visão da luz: lança raios nas pontas das paredes (±ε) e em um círculo base.
-  function visibilityPolygon(light, blockers) {
+  function visibilityPolygon(light, blockers, reach = LIGHT_REACH) {
     const lx = +light.x, ly = +light.y;
-    const R = (+light.radius || 350) * LIGHT_REACH;
+    const R = (+light.radius || 350) * reach;
     const segs = [];
     for (const b of blockers) {
       if (Math.max(b.x1, b.x2) < lx - R || Math.min(b.x1, b.x2) > lx + R ||
@@ -1903,7 +1957,7 @@
 
   // Recalcula as sombras de todas as luzes (chamado sempre que luz/parede/porta muda)
   function computeLighting() {
-    const blockers = [];
+    const blockers = currentBlockers = [];
     (cachedWalls || []).forEach(w => {
       const isSolid = (w.wall_type === 'wall') || (w.wall_type === 'door' && !w.is_open);
       if (isSolid) blockers.push({ x1: +w.x1, y1: +w.y1, x2: +w.x2, y2: +w.y2 });
@@ -1970,16 +2024,69 @@
     ctx.restore();
   }
 
+  // ===== Fog of war dinâmico: visão por token =====
+  const visionLayer = document.getElementById('visionLayer');
+  const visionCtx = visionLayer.getContext('2d');
+  const visionBadge = document.getElementById('visionBadge');
+  let visionSigLast = '';
+
+  // Tokens que enxergam: o mestre vê todos (diagnóstico); o jogador só os tokens vinculados a ele
+  function getVisionSources() {
+    const out = [];
+    const isMaster = currentRole === 'mestre';
+    tokenData.forEach((tok, id) => {
+      if (!tok.vision_enabled) return;
+      if (!isMaster && String(tok.owner_id) !== String(currentUserId)) return;
+      const el = tokenEls.get(id);
+      if (!el) return;
+      const cs = getComputedStyle(el); // pega a posição animada, então a visão acompanha o token
+      const l = parseFloat(cs.left), t = parseFloat(cs.top);
+      if (isNaN(l) || isNaN(t)) return;
+      out.push({ id, x: l + el.offsetWidth / 2, y: t + el.offsetHeight / 2, radius: Math.max(20, +tok.vision_radius || 400) });
+    });
+    return out;
+  }
+
+  // Máscara: cobre tudo e "fura" a união dos campos de visão (paredes e portas fechadas bloqueiam)
+  function drawVisionMask(ctx, pw, ph, k, tx, ty, sources, isMaster) {
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.clearRect(0, 0, pw, ph);
+    ctx.fillStyle = isMaster ? 'rgba(12,13,18,0.5)' : 'rgba(12,13,18,1)';
+    ctx.fillRect(0, 0, pw, ph);
+    ctx.globalCompositeOperation = 'destination-out';
+    ctx.setTransform(k, 0, 0, k, tx, ty);
+    sources.forEach(src => {
+      const pts = visibilityPolygon(src, currentBlockers, 1);
+      if (pts.length < 6) return;
+      ctx.save();
+      pathPoly(ctx, pts);
+      ctx.clip();
+      const g = ctx.createRadialGradient(src.x, src.y, 0, src.x, src.y, src.radius);
+      g.addColorStop(0, 'rgba(0,0,0,1)');
+      g.addColorStop(0.8, 'rgba(0,0,0,1)');
+      g.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(src.x - src.radius, src.y - src.radius, 2 * src.radius, 2 * src.radius);
+      ctx.restore();
+    });
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.globalCompositeOperation = 'source-over';
+  }
+
   function lightingTick() {
     requestAnimationFrame(lightingTick);
     const ambient = (gridConfig && gridConfig.ambient) || 0;
-    const active = lightPolys.length > 0 || ambient > 0.001;
+    const dynFog = !!(gridConfig && gridConfig.dynFog);
+    const isMaster = currentRole === 'mestre';
+    const sources = dynFog ? getVisionSources() : [];
+    const visionActive = dynFog && (!isMaster || sources.length > 0);
+    if (visionBadge) visionBadge.classList.toggle('hidden', !(dynFog && !isMaster && sources.length === 0));
+    const active = lightPolys.length > 0 || ambient > 0.001 || visionActive;
     if (!active) {
       if (lightingWasActive) {
-        shadowLayer.style.display = 'none';
-        lightingLayer.style.display = 'none';
-        lightingWasActive = false;
-        lightingKey = '';
+        [shadowLayer, lightingLayer, visionLayer].forEach(c => { c.style.display = 'none'; });
+        lightingWasActive = false; lightingKey = ''; visionSigLast = '';
       }
       return;
     }
@@ -1991,8 +2098,14 @@
     if (!wr.width || !wr.height || !(s > 0)) return;
     const ox = br.left - wr.left, oy = br.top - wr.top;
     const key = [ox, oy, s, wr.width, wr.height, ambient].map(n => Math.round(n * 100) / 100).join('|');
-    if (!lightingDirty && key === lightingKey && lightingWasActive) return;
-    lightingDirty = false; lightingKey = key; lightingWasActive = true;
+    const geomChanged = key !== lightingKey || !lightingWasActive;
+    const visionSig = visionActive
+      ? sources.map(v => `${v.id}:${v.x.toFixed(1)},${v.y.toFixed(1)},${v.radius}`).join(';') + (isMaster ? '|m' : '|p')
+      : 'off';
+    const needLights = lightingDirty || geomChanged;
+    const needVision = geomChanged || lightingDirty || visionSig !== visionSigLast;
+    if (!needLights && !needVision) return;
+    lightingDirty = false; lightingKey = key; lightingWasActive = true; visionSigLast = visionSig;
 
     const M = LIGHT_MARGIN;
     const cssW = wr.width + 2 * M, cssH = wr.height + 2 * M;
@@ -2000,40 +2113,52 @@
     const k = s * LIGHT_RES;
     const tx = (ox + M) * LIGHT_RES, ty = (oy + M) * LIGHT_RES;
 
-    for (const cv of [shadowLayer, lightingLayer]) {
-      if (cv.width !== pw) cv.width = pw;
-      if (cv.height !== ph) cv.height = ph;
-      cv.style.display = 'block';
-      cv.style.left = ((-ox - M) / s) + 'px';
-      cv.style.top = ((-oy - M) / s) + 'px';
-      cv.style.width = (cssW / s) + 'px';
-      cv.style.height = (cssH / s) + 'px';
-      cv.style.filter = `blur(${(LIGHT_BLUR / s).toFixed(3)}px)`;
+    if (geomChanged) {
+      for (const cv of [shadowLayer, lightingLayer, visionLayer]) {
+        if (cv.width !== pw) cv.width = pw;
+        if (cv.height !== ph) cv.height = ph;
+        cv.style.display = 'block';
+        cv.style.left = ((-ox - M) / s) + 'px';
+        cv.style.top = ((-oy - M) / s) + 'px';
+        cv.style.width = (cssW / s) + 'px';
+        cv.style.height = (cssH / s) + 'px';
+        cv.style.filter = `blur(${(LIGHT_BLUR / s).toFixed(3)}px)`;
+      }
     }
 
-    // 1) escuridão ambiente com buracos onde há luz
-    shadowCtx.setTransform(1, 0, 0, 1, 0, 0);
-    shadowCtx.globalCompositeOperation = 'source-over';
-    shadowCtx.clearRect(0, 0, pw, ph);
-    if (ambient > 0.001) {
-      shadowCtx.fillStyle = `rgba(4,5,12,${ambient})`;
-      shadowCtx.fillRect(0, 0, pw, ph);
-      shadowCtx.globalCompositeOperation = 'destination-out';
-      shadowCtx.setTransform(k, 0, 0, k, tx, ty);
-      lightPolys.forEach(p => drawLightReveal(shadowCtx, p));
+    if (needLights) {
+      // 1) escuridão ambiente com buracos onde há luz
       shadowCtx.setTransform(1, 0, 0, 1, 0, 0);
       shadowCtx.globalCompositeOperation = 'source-over';
+      shadowCtx.clearRect(0, 0, pw, ph);
+      if (ambient > 0.001) {
+        shadowCtx.fillStyle = `rgba(4,5,12,${ambient})`;
+        shadowCtx.fillRect(0, 0, pw, ph);
+        shadowCtx.globalCompositeOperation = 'destination-out';
+        shadowCtx.setTransform(k, 0, 0, k, tx, ty);
+        lightPolys.forEach(p => drawLightReveal(shadowCtx, p));
+        shadowCtx.setTransform(1, 0, 0, 1, 0, 0);
+        shadowCtx.globalCompositeOperation = 'source-over';
+      }
+      // 2) brilho aditivo (mix-blend-mode: screen por cima do mapa e dos tokens)
+      lightCtx.setTransform(1, 0, 0, 1, 0, 0);
+      lightCtx.globalCompositeOperation = 'source-over';
+      lightCtx.clearRect(0, 0, pw, ph);
+      lightCtx.globalCompositeOperation = 'lighter';
+      lightCtx.setTransform(k, 0, 0, k, tx, ty);
+      lightPolys.forEach(p => drawLightGlow(lightCtx, p));
+      lightCtx.setTransform(1, 0, 0, 1, 0, 0);
+      lightCtx.globalCompositeOperation = 'source-over';
     }
 
-    // 2) brilho aditivo (vai com mix-blend-mode: screen por cima do mapa e dos tokens)
-    lightCtx.setTransform(1, 0, 0, 1, 0, 0);
-    lightCtx.globalCompositeOperation = 'source-over';
-    lightCtx.clearRect(0, 0, pw, ph);
-    lightCtx.globalCompositeOperation = 'lighter';
-    lightCtx.setTransform(k, 0, 0, k, tx, ty);
-    lightPolys.forEach(p => drawLightGlow(lightCtx, p));
-    lightCtx.setTransform(1, 0, 0, 1, 0, 0);
-    lightCtx.globalCompositeOperation = 'source-over';
+    if (needVision) {
+      if (visionActive) {
+        visionLayer.style.display = 'block';
+        drawVisionMask(visionCtx, pw, ph, k, tx, ty, sources, isMaster);
+      } else {
+        visionLayer.style.display = 'none';
+      }
+    }
   }
   requestAnimationFrame(lightingTick);
 
@@ -2664,6 +2789,7 @@
       statesHr.style.display = 'none';
     }
     menuDelete.style.display = 'block';
+    menuVision.style.display = type === 'token' ? 'block' : 'none';
     contextMenu.classList.add('open');
     contextMenu.style.left = Math.max(8, Math.min(clientX, window.innerWidth - 220)) + 'px';
     contextMenu.style.top = Math.max(8, Math.min(clientY, window.innerHeight - 240)) + 'px';
@@ -2924,7 +3050,7 @@
     const isEditorOpen = document.body.classList.contains('fog-editor-active') || document.body.classList.contains('wall-editor-active') || document.body.classList.contains('light-editor-active');
     if (isEditorOpen && currentTool !== 'move') return;
     if (currentTool === 'select' && (e.target.closest('.token') || (e.target.closest('.mapPiece') && document.body.classList.contains('map-editor-active')))) return;
-    if (currentTool === 'ruler') return;
+    if (currentTool === 'ruler' || currentTool === 'draw') return;
     deselectAll();
     if (cameraLocked) return;
     boardWrap.setPointerCapture(e.pointerId);
@@ -3011,6 +3137,7 @@
     mapPieceEls.forEach(el => el.remove()); mapPieceEls.clear(); mapPieceData.clear();
     closeLightContextMenu();
     clearLightSelection();
+    cachedDrawings = []; drawLayer.innerHTML = '';
     if (!sceneId) return;
 
     await loadGridForScene(sceneId);
@@ -3024,6 +3151,7 @@
     await loadFogElements();
     await loadWallElements();
     await loadLights();
+    await loadDrawings();
 
     if ((pieces && pieces.length > 0) || (toks && toks.length > 0)) {
       placeholder.style.display = 'none';
@@ -3039,6 +3167,7 @@
     if (fogElementsChannel) sb.removeChannel(fogElementsChannel);
     if (wallsChannel) sb.removeChannel(wallsChannel);
     if (lightsChannel) sb.removeChannel(lightsChannel);
+    if (drawingsChannel) sb.removeChannel(drawingsChannel);
     if (!sceneId) return;
 
     tokensChannel = sb.channel('tokens-' + sceneId)
@@ -3072,6 +3201,11 @@
     lightsChannel = sb.channel('lights-' + sceneId)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'lights', filter: `scene_id=eq.${sceneId}` }, () => {
         loadLights();
+      }).subscribe();
+
+    drawingsChannel = sb.channel('drawings-' + sceneId)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'drawings' }, () => {
+        if (!drawState) loadDrawings();
       }).subscribe();
   }
 
@@ -3315,6 +3449,290 @@
   boardWrap.addEventListener('pointercancel', endRuler);
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') clearRuler(); });
 
+  // =====================================================================
+  //  VISÃO DO TOKEN (modal do mestre)
+  // =====================================================================
+  const tokenVisionModal = document.getElementById('tokenVisionModal');
+  const tvEnabled = document.getElementById('tvEnabled');
+  const tvRadius = document.getElementById('tvRadius');
+  const tvRadiusVal = document.getElementById('tvRadiusVal');
+  const tvOwner = document.getElementById('tvOwner');
+  const tvSave = document.getElementById('tvSave');
+  const tvCancel = document.getElementById('tvCancel');
+  const menuVision = document.getElementById('menuVision');
+  let visionEditTokenId = null;
+
+  async function openTokenVisionModal(id) {
+    const tok = tokenData.get(id);
+    if (!tok || currentRole !== 'mestre') return;
+    visionEditTokenId = id;
+    tvEnabled.checked = !!tok.vision_enabled;
+    tvRadius.value = tok.vision_radius || 400;
+    tvRadiusVal.textContent = (tok.vision_radius || 400) + 'px';
+    tvOwner.innerHTML = '<option value="">— ninguém —</option>';
+    const { data: members } = await sb.from('room_members').select('user_id, role, profiles(display_name)').eq('room_id', currentRoomId);
+    (members || []).forEach(m => {
+      const o = document.createElement('option');
+      o.value = m.user_id;
+      o.textContent = ((m.profiles && m.profiles.display_name) || 'Jogador') + (m.role === 'mestre' ? ' (mestre)' : '');
+      tvOwner.appendChild(o);
+    });
+    tvOwner.value = tok.owner_id || '';
+    tokenVisionModal.classList.remove('hidden');
+  }
+  tvRadius.addEventListener('input', () => { tvRadiusVal.textContent = tvRadius.value + 'px'; });
+  tvCancel.addEventListener('click', () => { tokenVisionModal.classList.add('hidden'); visionEditTokenId = null; });
+  tvSave.addEventListener('click', async () => {
+    const id = visionEditTokenId;
+    if (!id) return;
+    const enabled = tvEnabled.checked, radius = parseFloat(tvRadius.value) || 400, owner = tvOwner.value || null;
+    tokenVisionModal.classList.add('hidden');
+    visionEditTokenId = null;
+    const { error } = await sb.rpc('set_token_vision', { p_user_id: currentUserId, p_token_id: id, p_enabled: enabled, p_radius: radius, p_owner: owner });
+    if (error) { alert(error.message); return; }
+    const tok = tokenData.get(id);
+    if (tok) { tok.vision_enabled = enabled; tok.vision_radius = radius; tok.owner_id = owner; }
+  });
+  menuVision.addEventListener('click', () => {
+    const t = contextTarget;
+    closeContextMenu();
+    if (t && t.type === 'token') openTokenVisionModal(t.id);
+  });
+
+  const dynFogBtn = document.getElementById('dynFogBtn');
+  function syncDynFogUI() {
+    dynFogBtn.textContent = '👁️ Fog dinâmico: ' + ((gridConfig && gridConfig.dynFog) ? 'ON' : 'OFF');
+    dynFogBtn.classList.toggle('active', !!(gridConfig && gridConfig.dynFog));
+  }
+  dynFogBtn.addEventListener('click', () => {
+    gridConfig.dynFog = !gridConfig.dynFog;
+    syncDynFogUI();
+    saveGrid();
+  });
+
+  // =====================================================================
+  //  FERRAMENTA DE DESENHO
+  // =====================================================================
+  const drawLayer = document.getElementById('drawLayer');
+  const drawPanel = document.getElementById('drawPanel');
+  const drawColorInp = document.getElementById('drawColor');
+  const drawWidthRange = document.getElementById('drawWidth');
+  const drawMasterOnlyInp = document.getElementById('drawMasterOnly');
+  let drawingsChannel = null;
+  let cachedDrawings = [];
+  let drawMode = 'free';          // free | line | arrow | rect | ellipse | erase
+  let drawState = null;           // { kind, pts, pointerId }
+  let drawPreviewEl = null;
+  let eraseDragging = false, erasePointerId = null;
+  const myDrawStack = [];
+
+  drawPanel.querySelectorAll('[data-draw-mode]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      drawMode = btn.dataset.drawMode;
+      drawPanel.querySelectorAll('[data-draw-mode]').forEach(b => b.classList.toggle('active', b === btn));
+    });
+  });
+
+  function svgEl(tag, attrs) {
+    const n = document.createElementNS(SVGNS, tag);
+    for (const k in attrs) n.setAttribute(k, attrs[k]);
+    return n;
+  }
+
+  function drawingNode(d) {
+    const pts = d.points || [];
+    const base = { stroke: d.color || '#ffd54f', 'stroke-width': d.width || 4, fill: 'none', 'stroke-linecap': 'round', 'stroke-linejoin': 'round' };
+    if (d.master_only) { base['stroke-dasharray'] = `${(d.width || 4) * 2},${(d.width || 4) * 1.5}`; base['stroke-opacity'] = 0.8; }
+    if (d.kind === 'free') {
+      if (pts.length < 2) return svgEl('circle', { cx: pts[0][0], cy: pts[0][1], r: (d.width || 4) / 2, fill: d.color || '#ffd54f' });
+      return svgEl('path', Object.assign({ d: 'M' + pts.map(p => p[0] + ' ' + p[1]).join(' L') }, base));
+    }
+    const a = pts[0], b = pts[1] || pts[0];
+    if (d.kind === 'line') return svgEl('line', Object.assign({ x1: a[0], y1: a[1], x2: b[0], y2: b[1] }, base));
+    if (d.kind === 'rect') return svgEl('rect', Object.assign({ x: Math.min(a[0], b[0]), y: Math.min(a[1], b[1]), width: Math.abs(b[0] - a[0]), height: Math.abs(b[1] - a[1]) }, base));
+    if (d.kind === 'ellipse') return svgEl('ellipse', Object.assign({ cx: (a[0] + b[0]) / 2, cy: (a[1] + b[1]) / 2, rx: Math.abs(b[0] - a[0]) / 2, ry: Math.abs(b[1] - a[1]) / 2 }, base));
+    // seta
+    const g = svgEl('g', {});
+    g.appendChild(svgEl('line', Object.assign({ x1: a[0], y1: a[1], x2: b[0], y2: b[1] }, base)));
+    const ang = Math.atan2(b[1] - a[1], b[0] - a[0]), hs = Math.max(12, (d.width || 4) * 3.5);
+    const p1 = [b[0] - hs * Math.cos(ang - 0.45), b[1] - hs * Math.sin(ang - 0.45)];
+    const p2 = [b[0] - hs * Math.cos(ang + 0.45), b[1] - hs * Math.sin(ang + 0.45)];
+    g.appendChild(svgEl('polyline', Object.assign({ points: `${p1[0]},${p1[1]} ${b[0]},${b[1]} ${p2[0]},${p2[1]}` }, base)));
+    return g;
+  }
+
+  function renderDrawings() {
+    drawLayer.innerHTML = '';
+    drawPreviewEl = null;
+    cachedDrawings.forEach(d => {
+      if (d.master_only && currentRole !== 'mestre') return;
+      drawLayer.appendChild(drawingNode(d));
+    });
+  }
+
+  async function loadDrawings() {
+    if (!currentSceneId) { cachedDrawings = []; renderDrawings(); return; }
+    const { data } = await sb.from('drawings').select('*').eq('scene_id', currentSceneId).order('created_at');
+    cachedDrawings = data || [];
+    renderDrawings();
+  }
+
+  function simplifyPts(pts, eps) {
+    if (pts.length < 3) return pts;
+    const keep = new Array(pts.length).fill(false);
+    keep[0] = keep[pts.length - 1] = true;
+    const stack = [[0, pts.length - 1]];
+    while (stack.length) {
+      const [s, e] = stack.pop();
+      let maxD = 0, idx = -1;
+      for (let i = s + 1; i < e; i++) {
+        const d = segDist(pts[i], pts[s], pts[e]);
+        if (d > maxD) { maxD = d; idx = i; }
+      }
+      if (maxD > eps && idx > -1) { keep[idx] = true; stack.push([s, idx], [idx, e]); }
+    }
+    return pts.filter((_, i) => keep[i]);
+  }
+
+  function segDist(p, a, b) {
+    const dx = b[0] - a[0], dy = b[1] - a[1];
+    const l2 = dx * dx + dy * dy;
+    let t = l2 ? ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / l2 : 0;
+    t = Math.max(0, Math.min(1, t));
+    return Math.hypot(p[0] - (a[0] + t * dx), p[1] - (a[1] + t * dy));
+  }
+
+  function drawingPolyline(d) {
+    const pts = d.points || [];
+    if (d.kind === 'rect' && pts.length > 1) {
+      const [a, b] = pts;
+      return [[a[0], a[1]], [b[0], a[1]], [b[0], b[1]], [a[0], b[1]], [a[0], a[1]]];
+    }
+    if (d.kind === 'ellipse' && pts.length > 1) {
+      const [a, b] = pts, cx = (a[0] + b[0]) / 2, cy = (a[1] + b[1]) / 2, rx = Math.abs(b[0] - a[0]) / 2, ry = Math.abs(b[1] - a[1]) / 2;
+      const out = [];
+      for (let i = 0; i <= 48; i++) { const t = (i / 48) * Math.PI * 2; out.push([cx + rx * Math.cos(t), cy + ry * Math.sin(t)]); }
+      return out;
+    }
+    return pts.length === 1 ? [pts[0], pts[0]] : pts;
+  }
+
+  function canEditDrawing(d) { return currentRole === 'mestre' || String(d.author_id) === String(currentUserId); }
+
+  async function deleteDrawingById(id) {
+    cachedDrawings = cachedDrawings.filter(x => x.id !== id);
+    renderDrawings();
+    await sb.from('drawings').delete().eq('id', id);
+  }
+
+  function eraseAt(pt) {
+    const p = [pt.x, pt.y];
+    const hit = cachedDrawings.filter(d => {
+      if (!canEditDrawing(d) || (d.master_only && currentRole !== 'mestre')) return false;
+      const line = drawingPolyline(d);
+      const r = (d.width || 4) / 2 + 8 / scale;
+      for (let i = 1; i < line.length; i++) if (segDist(p, line[i - 1], line[i]) <= r) return true;
+      return false;
+    });
+    hit.forEach(d => deleteDrawingById(d.id));
+  }
+
+  function cancelDraw() {
+    drawState = null; eraseDragging = false;
+    if (drawPreviewEl) { drawPreviewEl.remove(); drawPreviewEl = null; }
+  }
+
+  function renderDrawPreview() {
+    if (drawPreviewEl) drawPreviewEl.remove();
+    if (!drawState) return;
+    const d = { kind: drawState.kind, points: drawState.pts.map(p => [p.x, p.y]), color: drawColorInp.value, width: parseFloat(drawWidthRange.value) || 4, master_only: false };
+    if (!d.points.length) return;
+    drawPreviewEl = drawingNode(d);
+    drawPreviewEl.style.opacity = '0.85';
+    drawLayer.appendChild(drawPreviewEl);
+  }
+
+  async function commitDrawing() {
+    const st = drawState;
+    drawState = null;
+    if (drawPreviewEl) { drawPreviewEl.remove(); drawPreviewEl = null; }
+    if (!st || !currentSceneId) return;
+    let pts = st.pts.map(p => [Math.round(p.x * 10) / 10, Math.round(p.y * 10) / 10]);
+    if (st.kind === 'free') {
+      pts = simplifyPts(pts, 1.2 / scale);
+    } else {
+      if (pts.length < 2 || Math.hypot(pts[1][0] - pts[0][0], pts[1][1] - pts[0][1]) * scale < 4) return;
+      pts = [pts[0], pts[1]];
+    }
+    const row = {
+      scene_id: currentSceneId, kind: st.kind, points: pts,
+      color: drawColorInp.value, width: parseFloat(drawWidthRange.value) || 4,
+      author_id: currentUserId, master_only: currentRole === 'mestre' && drawMasterOnlyInp.checked, z: Date.now()
+    };
+    const { data, error } = await sb.from('drawings').insert(row).select();
+    if (error) { console.error(error); return; }
+    if (data && data.length) {
+      if (!cachedDrawings.some(x => x.id === data[0].id)) cachedDrawings.push(data[0]);
+      myDrawStack.push(data[0].id);
+      renderDrawings();
+    }
+  }
+
+  async function undoDrawing() {
+    while (myDrawStack.length) {
+      const id = myDrawStack.pop();
+      if (cachedDrawings.some(d => d.id === id)) { await deleteDrawingById(id); return; }
+    }
+  }
+
+  document.getElementById('drawUndo').addEventListener('click', undoDrawing);
+  document.getElementById('drawClear').addEventListener('click', async () => {
+    if (!currentSceneId) return;
+    const all = currentRole === 'mestre';
+    if (!confirm(all ? 'Apagar TODOS os desenhos desta cena?' : 'Apagar todos os seus desenhos desta cena?')) return;
+    let q = sb.from('drawings').delete().eq('scene_id', currentSceneId);
+    if (!all) q = q.eq('author_id', currentUserId);
+    await q;
+    loadDrawings();
+  });
+
+  boardWrap.addEventListener('pointerdown', (e) => {
+    if (currentTool !== 'draw' || !currentSceneId) return;
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    if (document.body.classList.contains('wall-editor-active') || document.body.classList.contains('fog-editor-active') || document.body.classList.contains('light-editor-active')) return;
+    e.preventDefault();
+    boardWrap.setPointerCapture(e.pointerId);
+    const pt = boardPointFromEvent(e);
+    if (drawMode === 'erase') { eraseDragging = true; erasePointerId = e.pointerId; eraseAt(pt); return; }
+    drawState = { kind: drawMode, pts: [pt], pointerId: e.pointerId };
+    renderDrawPreview();
+  });
+  boardWrap.addEventListener('pointermove', (e) => {
+    if (currentTool !== 'draw') return;
+    const pt = boardPointFromEvent(e);
+    if (eraseDragging && e.pointerId === erasePointerId) { eraseAt(pt); return; }
+    if (!drawState || e.pointerId !== drawState.pointerId) return;
+    if (drawState.kind === 'free') {
+      const last = drawState.pts[drawState.pts.length - 1];
+      if (Math.hypot(pt.x - last.x, pt.y - last.y) * scale < 3) return;
+      drawState.pts.push(pt);
+    } else {
+      drawState.pts[1] = pt;
+    }
+    renderDrawPreview();
+  });
+  function endDrawPointer(e) {
+    if (eraseDragging && e.pointerId === erasePointerId) { eraseDragging = false; return; }
+    if (drawState && e.pointerId === drawState.pointerId) commitDrawing();
+  }
+  boardWrap.addEventListener('pointerup', endDrawPointer);
+  boardWrap.addEventListener('pointercancel', endDrawPointer);
+  document.addEventListener('keydown', (e) => {
+    if (currentTool !== 'draw') return;
+    if (e.key === 'Escape') cancelDraw();
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); undoDrawing(); }
+  });
+
   async function enterRoom(roomId) {
     currentRoomId = roomId;
     lobbyOverlay.classList.add('hidden');
@@ -3403,6 +3821,7 @@
     if (fogElementsChannel) sb.removeChannel(fogElementsChannel);
     if (wallsChannel) sb.removeChannel(wallsChannel);
     if (lightsChannel) sb.removeChannel(lightsChannel);
+    if (drawingsChannel) sb.removeChannel(drawingsChannel);
     lobbyOverlay.classList.remove('hidden');
     loadLobbyRooms();
   });
