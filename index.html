@@ -337,6 +337,86 @@
     z-index: 35; padding: 6px 14px; border-radius: 999px; font-size: 12px; font-weight: 600; color: #fff; pointer-events: none;
     background: rgba(123, 44, 191, 0.85); border: 1px solid rgba(255,255,255,0.15); box-shadow: 0 4px 16px rgba(0,0,0,0.5); }
   #camLiveBtn.active { background: var(--accent-gradient); color: var(--accent-text); }
+
+  /* ===== Cor (tint), opacidade e nome dos tokens ===== */
+  .token .pieceContent { opacity: var(--tok-op, 1); }
+  .pieceTint { position: absolute; inset: 0; pointer-events: none; display: none; mix-blend-mode: color;
+    opacity: calc(var(--tint-amt, 0.5) * var(--tok-op, 1));
+    -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+    -webkit-mask-position: center; mask-position: center; }
+  .tokenNameWrap { position: absolute; inset: 0; pointer-events: none; }
+  .tokenName { position: absolute; left: 50%; top: 100%; transform: translate(-50%, calc(4px * var(--inv-zoom, 1)));
+    font-size: calc(13px * var(--inv-zoom, 1)); font-weight: 600; line-height: 1.25; color: #fff; white-space: nowrap;
+    padding: calc(1px * var(--inv-zoom, 1)) calc(7px * var(--inv-zoom, 1)); border-radius: calc(8px * var(--inv-zoom, 1));
+    background: rgba(10, 11, 15, 0.72); text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8); }
+
+  /* ===== Gaveta / biblioteca de tokens (lado esquerdo) ===== */
+  #libDrawer { position: fixed; left: 12px; top: 64px; bottom: 12px; width: min(320px, calc(100vw - 64px)); z-index: 36;
+    display: flex; flex-direction: column; gap: 8px; padding: 10px; background: rgba(26, 28, 36, 0.94);
+    border: 1px solid var(--panel-border); border-radius: 14px; backdrop-filter: blur(12px); box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+    transform: translateX(calc(-100% - 12px)); transition: transform .25s ease, box-shadow .15s, border-color .15s; }
+  #libDrawer.open { transform: none; }
+  #libDrawer.drop-hot { border-color: var(--ok); box-shadow: 0 0 0 2px var(--ok), 0 8px 30px rgba(0, 0, 0, 0.5); }
+  #libToggle { position: absolute; left: calc(100% + 12px); top: calc(50% - 40px); padding: 10px 6px; font-size: 14px; color: var(--accent);
+    background: var(--panel); border: 1px solid var(--panel-border); border-left: none; border-radius: 0 10px 10px 0; }
+  #libDrawer.open #libToggle { left: calc(100% + 0px); }
+  .libHead { display: flex; align-items: center; gap: 6px; }
+  .libHead strong { font-size: 14px; flex: 1; }
+  .libHead button, .libHead label.btn { min-height: 30px; padding: 4px 9px; }
+  #libSearch { width: 100%; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--panel-border); background: var(--bg); color: var(--text); font-size: 12px; }
+  #libSearch:focus { outline: none; border-color: var(--accent); }
+  #libCrumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; font-size: 11px; color: var(--text-dim); }
+  .libCrumb { padding: 3px 7px; min-height: 0; background: transparent; border-radius: 6px; font-size: 11px; max-width: 120px; overflow: hidden; text-overflow: ellipsis; }
+  .libCrumb:last-child { color: #fff; font-weight: 700; }
+  .libCrumb.dropTarget { background: rgba(0, 230, 118, 0.18); }
+  #libGrid { flex: 1; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 8px; align-content: start; padding: 2px; touch-action: pan-y; }
+  .libEmpty { grid-column: 1 / -1; text-align: center; color: var(--text-dim); font-size: 12px; padding: 22px 8px; line-height: 1.5; }
+  .libCard { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px; border-radius: 10px;
+    border: 1px solid var(--panel-border); background: rgba(255, 255, 255, 0.03); cursor: pointer; transition: border-color .15s, background .15s; }
+  .libCard:hover { border-color: rgba(157, 78, 223, 0.55); background: rgba(157, 78, 223, 0.08); }
+  .libCard.dropTarget { border-color: var(--ok); background: rgba(0, 230, 118, 0.1); }
+  .libThumb { width: 100%; aspect-ratio: 1; border-radius: 8px; background: #0d0e12 center / contain no-repeat; overflow: hidden; }
+  .libThumb video { width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
+  .libCard.folder .libThumb { display: grid; place-items: center; font-size: 36px; background: rgba(157, 78, 223, 0.1); }
+  .libName { font-size: 11px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .libCount { position: absolute; left: 8px; top: 8px; font-size: 10px; padding: 0 5px; border-radius: 8px; background: rgba(0, 0, 0, 0.6); color: #ddd; }
+  .libCardBtns { position: absolute; top: 8px; right: 8px; display: flex; gap: 3px; opacity: 0; transition: opacity .15s; }
+  .libCard:hover .libCardBtns { opacity: 1; }
+  @media (hover: none) { .libCardBtns { opacity: 1; } }
+  .libCardBtns button { min-height: 22px; padding: 1px 6px; font-size: 12px; background: rgba(10, 11, 15, 0.85); }
+  .libHint { font-size: 10.5px; line-height: 1.45; color: var(--text-dim); }
+  #libMenu { position: fixed; z-index: 60004; display: none; min-width: 190px; padding: 8px; background: var(--panel);
+    border: 1px solid var(--panel-border); border-radius: 12px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6); backdrop-filter: blur(10px); }
+  #libMenu.open { display: block; }
+  #libMenu button { width: 100%; justify-content: flex-start; background: transparent; border: none; margin: 2px 0; border-radius: 8px; }
+  #libMenu button:hover { background: var(--panel-border); color: #fff; }
+  #libMenu button.danger { color: var(--danger); }
+  #libMenu button.danger:hover { background: var(--danger); color: #fff; }
+  #libMenu hr { border: none; border-top: 1px solid var(--panel-border); margin: 6px 0; }
+  #libMoveModal { position: fixed; inset: 0; background: rgba(10, 11, 15, 0.8); backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: center; z-index: 100000; padding: 16px; }
+  #libToast { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); z-index: 60010; padding: 8px 14px; font-size: 12px; pointer-events: none;
+    background: rgba(26, 28, 36, 0.96); border: 1px solid var(--panel-border); border-radius: 20px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5); }
+
+  /* ===== Painel de propriedades do token ===== */
+  #tokenPropsPanel { position: fixed; right: 72px; top: 70px; width: 290px; max-height: calc(100vh - 90px); overflow-y: auto; z-index: 60003; padding: 12px 14px;
+    background: rgba(26, 28, 36, 0.96); border: 1px solid var(--panel-border); border-radius: 14px; backdrop-filter: blur(12px); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55); }
+  #tokenPropsPanel .tpHead { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  #tokenPropsPanel .tpHead strong { flex: 1; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #tokenPropsPanel .tpThumb { width: 34px; height: 34px; flex: none; border-radius: 8px; background: #0d0e12 center / contain no-repeat; border: 1px solid var(--panel-border); }
+  #tokenPropsPanel label.tpLabel { display: flex; justify-content: space-between; margin: 10px 0 4px; font-size: 11px; font-weight: 600; color: var(--text-dim); text-transform: uppercase; letter-spacing: .5px; }
+  #tokenPropsPanel input[type=text], #tokenPropsPanel input[type=number] { width: 100%; padding: 7px 9px; border-radius: 8px; border: 1px solid var(--panel-border); background: var(--bg); color: var(--text); font-size: 12px; }
+  #tokenPropsPanel input[type=text]:focus, #tokenPropsPanel input[type=number]:focus { outline: none; border-color: var(--accent); }
+  #tokenPropsPanel input[type=range] { flex: 1; min-width: 0; accent-color: var(--accent); }
+  #tokenPropsPanel input[type=color] { width: 40px; height: 30px; padding: 0; border: none; background: none; cursor: pointer; flex: none; }
+  #tokenPropsPanel input[type=number].tpNum { width: 64px; flex: none; }
+  #tokenPropsPanel .tpRow { display: flex; align-items: center; gap: 8px; }
+  #tokenPropsPanel .tpRow button { min-height: 30px; padding: 4px 9px; }
+  #tokenPropsPanel .tpCheck { display: flex; align-items: center; gap: 8px; margin-top: 12px; font-size: 12px; color: var(--text); }
+  #tokenPropsPanel .tpActions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--panel-border); }
+  #tokenPropsPanel .tpActions button { justify-content: center; }
+  @media (max-width: 700px) {
+    #tokenPropsPanel { left: 8px; right: 8px; top: auto; bottom: 8px; width: auto; max-height: 52vh; }
+  }
 </style>
 </head>
 <body>
@@ -678,6 +758,8 @@
     <button id="menuAddState" class="mestre-only">Adicionar estado</button>
     <input type="file" id="stateInput" accept="image/png,image/jpeg,image/webp,image/gif,video/webm,video/mp4" class="hidden">
     <hr id="statesHr">
+    <button id="menuProps" class="mestre-only">⚙️ Propriedades…</button>
+    <hr>
     <button id="menuFront">Trazer para frente</button>
     <button id="menuBack">Mandar para trás</button>
     <hr>
@@ -685,6 +767,8 @@
     <button id="menuFlip">Espelhar</button>
     <hr>
     <button id="menuVision" class="mestre-only">👁️ Visão do token…</button>
+    <button id="menuStore" class="mestre-only">📚 Guardar na biblioteca</button>
+    <button id="menuDuplicate" class="mestre-only">Duplicar</button>
     <button id="menuDelete" class="mestre-only danger">Apagar</button>
   </div>
 
@@ -716,7 +800,7 @@
     </div>
   </div>
 
-  <div id="lightContextMenu" role="menu aria-label="Ações da luz">
+  <div id="lightContextMenu" role="menu" aria-label="Ações da luz">
     <button id="lightMenuDuplicate" type="button">Duplicar luz</button>
     <button id="lightMenuSelect" type="button">Selecionar luz</button>
     <button id="lightMenuSelectAll" type="button">Selecionar todas</button>
@@ -733,6 +817,71 @@
     <hr>
     <button id="boardContextPullPlayers" class="mestre-only" type="button">📷 Puxar jogadores</button>
     <button id="boardContextToggleLive" class="mestre-only" type="button">📡 Câmera ao vivo</button>
+  </div>
+
+
+  <!-- Gaveta / biblioteca de tokens (só o mestre) -->
+  <aside id="libDrawer" class="mestre-only" aria-label="Biblioteca de tokens">
+    <button id="libToggle" type="button" title="Biblioteca de tokens">📚</button>
+    <div class="libHead">
+      <strong>📚 Biblioteca</strong>
+      <button id="libNewFolder" type="button" title="Nova pasta">＋ 📁</button>
+      <label class="btn primary" title="Criar um token direto na biblioteca (imagem, GIF ou vídeo WebM)">＋ Token
+        <input type="file" id="libFileInput" accept="image/png,image/jpeg,image/webp,image/gif,video/webm,video/mp4">
+      </label>
+    </div>
+    <input type="text" id="libSearch" placeholder="Buscar na biblioteca…" autocomplete="off">
+    <div id="libCrumbs"></div>
+    <div id="libGrid"></div>
+    <div class="libHint">Arraste um token do mapa até aqui para guardá-lo. Para usar: ↗, duplo clique ou arraste o card para o mapa.</div>
+  </aside>
+  <div id="libMenu" role="menu"></div>
+  <div id="libToast" class="hidden"></div>
+  <div id="libMoveModal" class="hidden">
+    <div class="card">
+      <h2>Mover para…</h2>
+      <select id="libMoveSelect"></select>
+      <div class="row"><button id="libMoveCancel" type="button">Cancelar</button><button id="libMoveOk" type="button" class="primary">Mover</button></div>
+    </div>
+  </div>
+
+  <!-- Propriedades do token (botão direito → Propriedades) -->
+  <div id="tokenPropsPanel" class="hidden mestre-only">
+    <div class="tpHead">
+      <span class="tpThumb" id="tpThumb"></span>
+      <strong id="tpTitle">Propriedades</strong>
+      <button id="tpClose" type="button" title="Fechar">✕</button>
+    </div>
+    <label class="tpLabel" for="tpName">Nome</label>
+    <input type="text" id="tpName" maxlength="60" placeholder="Sem nome" autocomplete="off">
+
+    <label class="tpLabel">Cor <span id="tpTintAmtVal"></span></label>
+    <div class="tpRow">
+      <input type="color" id="tpTint" value="#ff0000" title="Cor aplicada sobre o token">
+      <input type="range" id="tpTintAmt" min="0" max="100" step="5" title="Intensidade da cor">
+      <button id="tpTintClear" type="button" title="Remover a cor">Sem cor</button>
+    </div>
+
+    <label class="tpLabel" for="tpOpacity">Opacidade <span id="tpOpacityVal"></span></label>
+    <input type="range" id="tpOpacity" min="5" max="100" step="5" style="width:100%">
+
+    <label class="tpLabel" for="tpSize">Tamanho</label>
+    <div class="tpRow"><input type="range" id="tpSize" min="16" max="600" step="2"><input type="number" class="tpNum" id="tpSizeNum" min="8" max="4096"></div>
+
+    <label class="tpLabel" for="tpRot">Rotação</label>
+    <div class="tpRow"><input type="range" id="tpRot" min="0" max="359" step="1"><input type="number" class="tpNum" id="tpRotNum" min="0" max="359"></div>
+
+    <label class="tpLabel" for="tpZ">Camada (z-index)</label>
+    <div class="tpRow"><input type="number" class="tpNum" id="tpZ" step="1"><button id="tpZFront" type="button">Frente</button><button id="tpZBack" type="button">Trás</button></div>
+
+    <label class="tpCheck"><input type="checkbox" id="tpFlip"> Espelhar</label>
+
+    <div class="tpActions">
+      <button id="tpVision" type="button">👁️ Visão…</button>
+      <button id="tpStore" type="button">📚 Guardar</button>
+      <button id="tpDup" type="button">Duplicar</button>
+      <button id="tpDelete" type="button" class="danger">Apagar</button>
+    </div>
   </div>
 
 <script>
@@ -2353,7 +2502,13 @@
     }
   }
 
+  const TOKEN_PROP_KEYS = ['name', 'tint', 'tint_amount', 'opacity', 'size', 'rotation', 'flip_x'];
   function upsertTokenEl(tok) {
+    const prev = tokenData.get(tok.id);
+    if (prev && prev !== tok && prev._lockUntil && prev._lockUntil > Date.now()) {
+      TOKEN_PROP_KEYS.forEach((k) => { tok[k] = prev[k]; });
+      tok._lockUntil = prev._lockUntil;
+    }
     tokenData.set(tok.id, tok);
     let el = tokenEls.get(tok.id);
     if (!el) {
@@ -2392,16 +2547,48 @@
     const url = imageForToken(tok);
     renderPieceContent(contentWrap, url);
 
+    // cor aplicada sobre o token (não funciona em vídeo), opacidade e nome
+    const cleanTokUrl = url ? url.replace(/^http:\/\//, 'https://') : '';
+    let tintEl = el.querySelector(':scope > .pieceTint');
+    if (!tintEl) { tintEl = document.createElement('div'); tintEl.className = 'pieceTint'; el.insertBefore(tintEl, contentWrap.nextSibling); }
+    const showTint = !!tok.tint && !isVideoUrl(cleanTokUrl);
+    tintEl.style.display = showTint ? 'block' : 'none';
+    if (showTint) {
+      if (tintEl.dataset.maskUrl !== cleanTokUrl) {
+        tintEl.dataset.maskUrl = cleanTokUrl;
+        const m = `url("${cleanTokUrl}")`;
+        tintEl.style.webkitMaskImage = m; tintEl.style.maskImage = m;
+      }
+      tintEl.style.backgroundColor = tok.tint;
+    }
+    el.style.setProperty('--tok-op', String(tok.opacity == null ? 1 : tok.opacity));
+    el.style.setProperty('--tint-amt', String(tok.tint_amount == null ? 0.5 : tok.tint_amount));
+    let nameWrap = el.querySelector(':scope > .tokenNameWrap');
+    if (tok.name) {
+      if (!nameWrap) {
+        nameWrap = document.createElement('div'); nameWrap.className = 'tokenNameWrap';
+        const lb = document.createElement('div'); lb.className = 'tokenName';
+        nameWrap.appendChild(lb); el.appendChild(nameWrap);
+      }
+      nameWrap.firstChild.textContent = tok.name;
+      // desfaz a rotação/espelhamento do token para o texto ficar sempre em pé
+      nameWrap.style.transform = `scaleX(${tok.flip_x ? -1 : 1}) rotate(${-(tok.rotation || 0)}deg)`;
+    } else if (nameWrap) { nameWrap.remove(); }
+
     el.style.transform = `rotate(${tok.rotation || 0}deg) scaleX(${tok.flip_x ? -1 : 1})`;
     if (el._layerZ !== (tok.z || 0)) { el._layerZ = tok.z || 0; reorderLayers(tokenData, tokenEls); }
 
     if (!el.resizing && !el.dragging) updateDimensions(el, url, tok.size || 64);
     if (!el.dragging && !(el.lastDragEnd && Date.now() - el.lastDragEnd < 600)) { el.style.left = tok.x + 'px'; el.style.top = tok.y + 'px'; }
+
+    // mantém o painel de propriedades em dia se o token mudar por outro caminho (ex.: alça de resize)
+    if (propsTokenId === tok.id && !tokenPropsPanel.contains(document.activeElement)) fillTokenProps(tok);
   }
 
   function removeTokenEl(id) {
     const el = tokenEls.get(id);
     if (el) { el.remove(); tokenEls.delete(id); tokenData.delete(id); }
+    if (propsTokenId === id) closeTokenProps();
   }
 
   function upsertMapPieceEl(piece) {
@@ -2686,6 +2873,7 @@
       if (Math.abs(e.clientX - startX) > 6 || Math.abs(e.clientY - startY) > 6) { moved = true; clearTimeout(longPressTimer); }
       const x = origX + dx, y = origY + dy;
       el.style.left = x + 'px'; el.style.top = y + 'px';
+      if (type === 'token') libDragHover(e.clientX, e.clientY);
       
       const now = Date.now();
       if (now - lastSent > 100) {
@@ -2698,10 +2886,14 @@
       }
     });
 
-    function end() {
+    function end(e) {
       clearTimeout(longPressTimer);
       if (!dragging) return;
       dragging = false; el.dragging = false; el.classList.remove('dragging'); el.lastDragEnd = Date.now();
+      if (type === 'token') {
+        libDragHover(-1, -1);
+        if (e && e.type === 'pointerup' && moved && libHit(e.clientX, e.clientY)) { storeTokenInLibrary(itemId); return; }
+      }
       const x = parseFloat(el.style.left) || 0, y = parseFloat(el.style.top) || 0;
       if (type === 'token') {
         sb.rpc('move_token', { p_user_id: currentUserId, p_token_id: itemId, p_x: x, p_y: y }).then(({ error }) => { if (error) console.error(error); });
@@ -2857,9 +3049,12 @@
     }
     menuDelete.style.display = 'block';
     menuVision.style.display = type === 'token' ? 'block' : 'none';
+    menuProps.style.display = type === 'token' ? 'block' : 'none';
+    menuStore.style.display = type === 'token' ? 'block' : 'none';
+    menuDuplicate.style.display = type === 'token' ? 'block' : 'none';
     contextMenu.classList.add('open');
     contextMenu.style.left = Math.max(8, Math.min(clientX, window.innerWidth - 220)) + 'px';
-    contextMenu.style.top = Math.max(8, Math.min(clientY, window.innerHeight - 240)) + 'px';
+    contextMenu.style.top = Math.max(8, Math.min(clientY, window.innerHeight - contextMenu.offsetHeight - 8)) + 'px';
   }
 
   function closeContextMenu() { contextMenu.classList.remove('open'); contextTarget = null; }
@@ -2963,23 +3158,15 @@
     try {
       if (isAnimatedOrVideoFile(file)) {
         const url = await uploadFileBlob(file, 'tokens', file.name);
-        const newZ = topLayerZ(tokenData);
-        const { data, error } = await sb.from('tokens').insert({
-          scene_id: currentSceneId, src_url: url, x: 40, y: 40, size: 96, z: newZ, rotation: 0, flip_x: false, active_state: 0, states: []
-        }).select();
-        if (error) throw error;
-        if (data && data.length) upsertTokenEl(data[0]);
+        await createTokenFromUrl(url);
       } else {
         const rawDataUrl = await fileToDataURL(file);
         openCropModal(rawDataUrl, async (croppedDataURL) => {
-          const small = await resizeDataURL(croppedDataURL, 1024, 'image/png', 0.95);
-          const url = await uploadFileBlob(dataURLToBlob(small), 'tokens');
-          const newZ = topLayerZ(tokenData);
-          const { data, error } = await sb.from('tokens').insert({
-            scene_id: currentSceneId, src_url: url, x: 40, y: 40, size: 96, z: newZ, rotation: 0, flip_x: false, active_state: 0, states: []
-          }).select();
-          if (error) throw error;
-          if (data && data.length) upsertTokenEl(data[0]);
+          try {
+            const small = await resizeDataURL(croppedDataURL, 1024, 'image/png', 0.95);
+            const url = await uploadFileBlob(dataURLToBlob(small), 'tokens');
+            await createTokenFromUrl(url);
+          } catch (err) { alert('Erro ao carregar token: ' + err.message); }
         });
       }
     } catch (err) { alert('Erro ao carregar token: ' + err.message); }
@@ -3200,6 +3387,7 @@
   applyBarState();
 
   async function loadSceneContent(sceneId) {
+    closeTokenProps();
     tokenEls.forEach(el => el.remove()); tokenEls.clear(); tokenData.clear();
     mapPieceEls.forEach(el => el.remove()); mapPieceEls.clear(); mapPieceData.clear();
     closeLightContextMenu();
@@ -3800,6 +3988,629 @@
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); undoDrawing(); }
   });
 
+  // =====================================================================
+  //  SPAWN PELA CÂMERA · BIBLIOTECA DE TOKENS (gaveta) · PROPRIEDADES DO TOKEN
+  // =====================================================================
+  const libDrawer = document.getElementById('libDrawer');
+  const libToggle = document.getElementById('libToggle');
+  const libGrid = document.getElementById('libGrid');
+  const libCrumbs = document.getElementById('libCrumbs');
+  const libSearch = document.getElementById('libSearch');
+  const libNewFolder = document.getElementById('libNewFolder');
+  const libFileInput = document.getElementById('libFileInput');
+  const libMenu = document.getElementById('libMenu');
+  const libToast = document.getElementById('libToast');
+  const libMoveModal = document.getElementById('libMoveModal');
+  const libMoveSelect = document.getElementById('libMoveSelect');
+  const libMoveCancel = document.getElementById('libMoveCancel');
+  const libMoveOk = document.getElementById('libMoveOk');
+  const menuProps = document.getElementById('menuProps');
+  const menuStore = document.getElementById('menuStore');
+  const menuDuplicate = document.getElementById('menuDuplicate');
+
+  let libFolders = new Map();   // id -> pasta
+  let libItems = new Map();     // id -> item da biblioteca
+  let libFolderId = null;       // pasta aberta (null = raiz)
+  let libDrag = null;           // { kind: 'item' | 'folder', id } durante o arrastar
+  let libMoveCtx = null;
+  let libToastTimer = null;
+
+  // ---------- spawn onde a câmera está olhando ----------
+  function aspectFor(url) {
+    if (aspectRatios.has(url)) return Promise.resolve(aspectRatios.get(url));
+    const clean = url ? url.replace(/^http:\/\//, 'https://') : '';
+    return new Promise((resolve) => {
+      let settled = false;
+      const done = (ar) => { if (settled) return; settled = true; aspectRatios.set(url, ar); resolve(ar); };
+      const fail = () => { if (settled) return; settled = true; resolve(1); };
+      if (isVideoUrl(clean)) {
+        const v = document.createElement('video');
+        v.preload = 'metadata'; v.muted = true;
+        v.onloadedmetadata = () => done((v.videoWidth && v.videoHeight) ? v.videoWidth / v.videoHeight : 1);
+        v.onerror = fail;
+        v.src = clean;
+      } else {
+        const im = new Image();
+        im.onload = () => done((im.naturalWidth && im.naturalHeight) ? im.naturalWidth / im.naturalHeight : 1);
+        im.onerror = fail;
+        im.src = clean;
+      }
+      setTimeout(fail, 4000);
+    });
+  }
+
+  async function tokenBox(url, size) {
+    const ar = await aspectFor(url);
+    return ar >= 1 ? { w: size, h: size / ar } : { w: size * ar, h: size };
+  }
+
+  // Centro da área visível do mapa (descontando a gaveta, se estiver aberta), em coordenadas do mundo.
+  function cameraCenter() {
+    const r = boardWrap.getBoundingClientRect();
+    let left = 0;
+    if (libDrawer.classList.contains('open') && currentRole === 'mestre') left = libDrawer.getBoundingClientRect().right;
+    return { cx: ((left + r.width) / 2 - boardX) / scale, cy: (r.height / 2 - boardY) / scale };
+  }
+
+  // Posição (canto superior esquerdo) para um token w×h no centro da câmera, sem cair exatamente em cima de outro.
+  function freeSpawnPoint(w, h) {
+    const c = cameraCenter();
+    let x = Math.round(c.cx - w / 2), y = Math.round(c.cy - h / 2);
+    for (let i = 0; i < 24; i++) {
+      let busy = false;
+      tokenData.forEach((t) => { if (Math.abs((t.x || 0) - x) < 12 && Math.abs((t.y || 0) - y) < 12) busy = true; });
+      if (!busy) break;
+      x += 24; y += 24;
+    }
+    return { x, y };
+  }
+
+  async function createTokenFromUrl(url) {
+    const size = 96;
+    const box = await tokenBox(url, size);
+    const p = freeSpawnPoint(box.w, box.h);
+    const { data, error } = await sb.from('tokens').insert({
+      scene_id: currentSceneId, src_url: url, x: p.x, y: p.y, size, z: topLayerZ(tokenData), rotation: 0, flip_x: false, active_state: 0, states: []
+    }).select();
+    if (error) throw error;
+    if (data && data.length) { upsertTokenEl(data[0]); placeholder.style.display = 'none'; }
+  }
+
+  // ---------- util ----------
+  function showLibToast(msg) {
+    libToast.textContent = msg;
+    libToast.classList.remove('hidden');
+    clearTimeout(libToastTimer);
+    libToastTimer = setTimeout(() => libToast.classList.add('hidden'), 2600);
+  }
+
+  async function libRpc(name, args, quiet) {
+    const { data, error } = await sb.rpc(name, Object.assign({ p_user_id: currentUserId }, args));
+    if (error) {
+      if (quiet) console.error(name, error); else alert(error.message);
+      return { ok: false };
+    }
+    return { ok: true, data };
+  }
+
+  const byName = (a, b) => String(a.name).localeCompare(String(b.name), 'pt-BR', { sensitivity: 'base' });
+
+  function libPath(id) {
+    const out = [];
+    let cur = id, guard = 0;
+    while (cur && libFolders.has(cur) && guard++ < 50) { const f = libFolders.get(cur); out.unshift(f); cur = f.parent_id; }
+    return out;
+  }
+
+  function libDescendants(id) {
+    const out = new Set();
+    const stack = [id];
+    while (stack.length) {
+      const cur = stack.pop();
+      libFolders.forEach((f) => { if (f.parent_id === cur && !out.has(f.id)) { out.add(f.id); stack.push(f.id); } });
+    }
+    return out;
+  }
+
+  // ---------- carregar / desenhar ----------
+  async function loadLibrary() {
+    if (currentRole !== 'mestre' || !currentRoomId) return;
+    const r = await libRpc('library_list', { p_room_id: currentRoomId }, true);
+    if (!r.ok || !r.data) return;
+    libFolders = new Map((r.data.folders || []).map((f) => [f.id, f]));
+    libItems = new Map((r.data.items || []).map((i) => [i.id, i]));
+    if (libFolderId && !libFolders.has(libFolderId)) libFolderId = null;
+    renderLibrary();
+  }
+
+  function renderLibrary() {
+    const q = libSearch.value.trim().toLowerCase();
+
+    libCrumbs.innerHTML = '';
+    const mkCrumb = (label, fid) => {
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'libCrumb'; b.textContent = label; b.title = label;
+      b.addEventListener('click', () => { libFolderId = fid; libSearch.value = ''; renderLibrary(); });
+      attachLibDrop(b, fid);
+      return b;
+    };
+    libCrumbs.appendChild(mkCrumb('🏠 Raiz', null));
+    libPath(libFolderId).forEach((f) => {
+      const sep = document.createElement('span'); sep.textContent = '›';
+      libCrumbs.appendChild(sep);
+      libCrumbs.appendChild(mkCrumb(f.name, f.id));
+    });
+
+    libGrid.innerHTML = '';
+    let folders, items;
+    if (q) {
+      folders = [...libFolders.values()].filter((f) => f.name.toLowerCase().includes(q));
+      items = [...libItems.values()].filter((i) => i.name.toLowerCase().includes(q));
+    } else {
+      folders = [...libFolders.values()].filter((f) => (f.parent_id || null) === libFolderId);
+      items = [...libItems.values()].filter((i) => (i.folder_id || null) === libFolderId);
+    }
+    folders.sort(byName); items.sort(byName);
+
+    if (!folders.length && !items.length) {
+      const empty = document.createElement('div');
+      empty.className = 'libEmpty';
+      empty.textContent = q ? 'Nada encontrado.' : (libFolderId ? 'Pasta vazia. Arraste tokens para cá.' : 'A biblioteca está vazia. Guarde um token pelo menu do botão direito ou crie um com “＋ Token”.');
+      libGrid.appendChild(empty);
+      return;
+    }
+    folders.forEach((f) => libGrid.appendChild(buildFolderCard(f)));
+    items.forEach((i) => libGrid.appendChild(buildItemCard(i)));
+  }
+
+  function mkSmallBtn(label, title, fn) {
+    const b = document.createElement('button');
+    b.type = 'button'; b.textContent = label; b.title = title;
+    b.addEventListener('click', (e) => { e.stopPropagation(); fn(b); });
+    b.addEventListener('dblclick', (e) => e.stopPropagation());
+    return b;
+  }
+
+  function buildItemCard(it) {
+    const card = document.createElement('div');
+    card.className = 'libCard'; card.title = it.name; card.draggable = true;
+
+    const thumb = document.createElement('div');
+    thumb.className = 'libThumb';
+    const url = (imageForToken(it) || '').replace(/^http:\/\//, 'https://');
+    if (isVideoUrl(url)) {
+      const v = document.createElement('video');
+      v.src = url; v.muted = true; v.preload = 'metadata'; v.playsInline = true;
+      thumb.appendChild(v);
+    } else {
+      thumb.style.backgroundImage = `url("${url}")`;
+    }
+    card.appendChild(thumb);
+
+    const nm = document.createElement('div');
+    nm.className = 'libName'; nm.textContent = it.name;
+    card.appendChild(nm);
+
+    const btns = document.createElement('div');
+    btns.className = 'libCardBtns';
+    btns.appendChild(mkSmallBtn('↗', 'Puxar para a cena atual', () => spawnLibraryItem(it.id)));
+    btns.appendChild(mkSmallBtn('⋯', 'Mais ações', (b) => showLibMenu(b, [
+      { label: '↗ Puxar para a cena', fn: () => spawnLibraryItem(it.id) },
+      '-',
+      { label: 'Renomear…', fn: () => renameLibItem(it.id) },
+      { label: 'Mover para…', fn: () => openLibMove('item', it.id) },
+      '-',
+      { label: 'Apagar da biblioteca', danger: true, fn: () => deleteLibItem(it.id) }
+    ])));
+    card.appendChild(btns);
+
+    card.addEventListener('dblclick', () => spawnLibraryItem(it.id));
+    card.addEventListener('dragstart', (e) => {
+      libDrag = { kind: 'item', id: it.id };
+      e.dataTransfer.setData('application/x-anomaly-lib', it.id);
+      e.dataTransfer.setData('text/plain', it.name);
+      e.dataTransfer.effectAllowed = 'copyMove';
+    });
+    card.addEventListener('dragend', () => { libDrag = null; clearLibDropMarks(); });
+    return card;
+  }
+
+  function buildFolderCard(f) {
+    const card = document.createElement('div');
+    card.className = 'libCard folder'; card.title = f.name; card.draggable = true;
+
+    const thumb = document.createElement('div');
+    thumb.className = 'libThumb'; thumb.textContent = '📁';
+    card.appendChild(thumb);
+
+    let n = 0;
+    libItems.forEach((i) => { if (i.folder_id === f.id) n++; });
+    libFolders.forEach((g) => { if (g.parent_id === f.id) n++; });
+    if (n) { const c = document.createElement('span'); c.className = 'libCount'; c.textContent = String(n); card.appendChild(c); }
+
+    const nm = document.createElement('div');
+    nm.className = 'libName'; nm.textContent = f.name;
+    card.appendChild(nm);
+
+    const btns = document.createElement('div');
+    btns.className = 'libCardBtns';
+    btns.appendChild(mkSmallBtn('⋯', 'Mais ações', (b) => showLibMenu(b, [
+      { label: 'Abrir', fn: () => { libFolderId = f.id; libSearch.value = ''; renderLibrary(); } },
+      '-',
+      { label: 'Renomear…', fn: () => renameLibFolder(f.id) },
+      { label: 'Mover para…', fn: () => openLibMove('folder', f.id) },
+      '-',
+      { label: 'Apagar pasta (o conteúdo sobe um nível)', danger: true, fn: () => deleteLibFolder(f.id) }
+    ])));
+    card.appendChild(btns);
+
+    card.addEventListener('click', () => { libFolderId = f.id; libSearch.value = ''; renderLibrary(); });
+    card.addEventListener('dragstart', (e) => {
+      libDrag = { kind: 'folder', id: f.id };
+      e.dataTransfer.setData('application/x-anomaly-lib', f.id);
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    card.addEventListener('dragend', () => { libDrag = null; clearLibDropMarks(); });
+    attachLibDrop(card, f.id);
+    return card;
+  }
+
+  function clearLibDropMarks() {
+    libDrawer.querySelectorAll('.dropTarget').forEach((el) => el.classList.remove('dropTarget'));
+  }
+
+  // alvo de soltar: pasta ou item do caminho (breadcrumb)
+  function attachLibDrop(el, folderId) {
+    el.addEventListener('dragover', (e) => {
+      if (!libDrag) return;
+      if (libDrag.kind === 'folder' && folderId && (libDrag.id === folderId || libDescendants(libDrag.id).has(folderId))) return;
+      e.preventDefault();
+      el.classList.add('dropTarget');
+    });
+    el.addEventListener('dragleave', () => el.classList.remove('dropTarget'));
+    el.addEventListener('drop', (e) => {
+      e.preventDefault();
+      el.classList.remove('dropTarget');
+      if (!libDrag) return;
+      const d = libDrag; libDrag = null;
+      libMoveTo(d.kind, d.id, folderId);
+    });
+  }
+
+  // ---------- menus pequenos e diálogos ----------
+  function showLibMenu(anchor, entries) {
+    libMenu.innerHTML = '';
+    entries.forEach((en) => {
+      if (en === '-') { libMenu.appendChild(document.createElement('hr')); return; }
+      const b = document.createElement('button');
+      b.type = 'button'; b.textContent = en.label;
+      if (en.danger) b.className = 'danger';
+      b.addEventListener('click', () => { hideLibMenu(); en.fn(); });
+      libMenu.appendChild(b);
+    });
+    libMenu.classList.add('open');
+    const r = anchor.getBoundingClientRect();
+    const w = libMenu.offsetWidth, h = libMenu.offsetHeight;
+    libMenu.style.left = Math.max(8, Math.min(r.left, window.innerWidth - w - 8)) + 'px';
+    libMenu.style.top = Math.max(8, Math.min(r.bottom + 4, window.innerHeight - h - 8)) + 'px';
+  }
+  function hideLibMenu() { libMenu.classList.remove('open'); }
+  document.addEventListener('pointerdown', (e) => { if (libMenu.classList.contains('open') && !libMenu.contains(e.target)) hideLibMenu(); });
+
+  function openLibMove(kind, id) {
+    const exclude = new Set();
+    if (kind === 'folder') { exclude.add(id); libDescendants(id).forEach((d) => exclude.add(d)); }
+    libMoveSelect.innerHTML = '';
+    const root = document.createElement('option');
+    root.value = ''; root.textContent = '🏠 Raiz';
+    libMoveSelect.appendChild(root);
+    const walk = (parent, depth) => {
+      [...libFolders.values()].filter((f) => (f.parent_id || null) === parent && !exclude.has(f.id)).sort(byName).forEach((f) => {
+        const o = document.createElement('option');
+        o.value = f.id; o.textContent = '\u00A0\u00A0'.repeat(depth) + '📁 ' + f.name;
+        libMoveSelect.appendChild(o);
+        walk(f.id, depth + 1);
+      });
+    };
+    walk(null, 1);
+    const cur = kind === 'item' ? (libItems.get(id) || {}).folder_id : (libFolders.get(id) || {}).parent_id;
+    libMoveSelect.value = cur || '';
+    libMoveCtx = { kind, id };
+    libMoveModal.classList.remove('hidden');
+  }
+  libMoveCancel.addEventListener('click', () => { libMoveModal.classList.add('hidden'); libMoveCtx = null; });
+  libMoveOk.addEventListener('click', () => {
+    const c = libMoveCtx;
+    libMoveModal.classList.add('hidden'); libMoveCtx = null;
+    if (c) libMoveTo(c.kind, c.id, libMoveSelect.value || null);
+  });
+
+  async function libMoveTo(kind, id, folderId) {
+    const dest = folderId || null;
+    if (kind === 'item') {
+      const it = libItems.get(id);
+      if (!it || (it.folder_id || null) === dest) return;
+      const r = await libRpc('library_move_item', { p_item_id: id, p_folder_id: dest });
+      if (r.ok) { it.folder_id = dest; renderLibrary(); }
+    } else {
+      const f = libFolders.get(id);
+      if (!f || (f.parent_id || null) === dest) return;
+      const r = await libRpc('library_move_folder', { p_folder_id: id, p_parent_id: dest });
+      if (r.ok) { f.parent_id = dest; renderLibrary(); }
+    }
+  }
+
+  async function renameLibItem(id) {
+    const it = libItems.get(id); if (!it) return;
+    const name = prompt('Novo nome do token:', it.name);
+    if (name === null || !name.trim()) return;
+    const r = await libRpc('library_rename_item', { p_item_id: id, p_name: name });
+    if (r.ok) { it.name = name.trim().slice(0, 60); renderLibrary(); }
+  }
+  async function deleteLibItem(id) {
+    const it = libItems.get(id); if (!it) return;
+    if (!confirm('Apagar “' + it.name + '” da biblioteca? Tokens que já estão em cenas não são afetados.')) return;
+    const r = await libRpc('library_delete_item', { p_item_id: id });
+    if (r.ok) { libItems.delete(id); renderLibrary(); }
+  }
+  async function renameLibFolder(id) {
+    const f = libFolders.get(id); if (!f) return;
+    const name = prompt('Novo nome da pasta:', f.name);
+    if (name === null || !name.trim()) return;
+    const r = await libRpc('library_rename_folder', { p_folder_id: id, p_name: name });
+    if (r.ok) { f.name = name.trim().slice(0, 60); renderLibrary(); }
+  }
+  async function deleteLibFolder(id) {
+    const f = libFolders.get(id); if (!f) return;
+    if (!confirm('Apagar a pasta “' + f.name + '”? O conteúdo dela (tokens e subpastas) sobe para a pasta de cima, nada é perdido.')) return;
+    const r = await libRpc('library_delete_folder', { p_folder_id: id });
+    if (!r.ok) return;
+    const parent = f.parent_id || null;
+    libItems.forEach((i) => { if (i.folder_id === id) i.folder_id = parent; });
+    libFolders.forEach((g) => { if (g.parent_id === id) g.parent_id = parent; });
+    libFolders.delete(id);
+    if (libFolderId === id) libFolderId = parent;
+    renderLibrary();
+  }
+
+  libNewFolder.addEventListener('click', async () => {
+    if (!currentRoomId) return;
+    const name = prompt('Nome da nova pasta:', 'Nova pasta');
+    if (name === null || !name.trim()) return;
+    const r = await libRpc('library_create_folder', { p_room_id: currentRoomId, p_parent_id: libFolderId || null, p_name: name });
+    if (r.ok && r.data) { libFolders.set(r.data.id, r.data); libSearch.value = ''; renderLibrary(); }
+  });
+
+  libSearch.addEventListener('input', renderLibrary);
+
+  // criar token direto na biblioteca
+  libFileInput.addEventListener('change', async (e) => {
+    const file = e.target.files[0]; libFileInput.value = '';
+    if (!file || !currentRoomId) return;
+    const base = (file.name || 'Token').replace(/\.[^.]+$/, '');
+    const addItem = async (url) => {
+      const r = await libRpc('library_add_item', { p_room_id: currentRoomId, p_folder_id: libFolderId || null, p_name: base, p_src_url: url, p_size: 96 });
+      if (r.ok && r.data) { libItems.set(r.data.id, r.data); libSearch.value = ''; renderLibrary(); showLibToast('Token criado na biblioteca'); }
+    };
+    try {
+      if (isAnimatedOrVideoFile(file)) {
+        await addItem(await uploadFileBlob(file, 'tokens', file.name));
+      } else {
+        const rawDataUrl = await fileToDataURL(file);
+        openCropModal(rawDataUrl, async (croppedDataURL) => {
+          try {
+            const small = await resizeDataURL(croppedDataURL, 1024, 'image/png', 0.95);
+            await addItem(await uploadFileBlob(dataURLToBlob(small), 'tokens'));
+          } catch (err) { alert('Erro ao criar token: ' + err.message); }
+        });
+      }
+    } catch (err) { alert('Erro ao criar token: ' + err.message); }
+  });
+
+  // ---------- abrir / fechar a gaveta ----------
+  function setLibOpen(v) {
+    libDrawer.classList.toggle('open', v);
+    libToggle.textContent = v ? '◀' : '📚';
+    try { localStorage.setItem('tabletop_lib_open', v ? '1' : '0'); } catch (_) {}
+    if (!v) { hideLibMenu(); libDrawer.classList.remove('drop-hot'); }
+  }
+  libToggle.addEventListener('click', () => setLibOpen(!libDrawer.classList.contains('open')));
+  setLibOpen((function () { try { return localStorage.getItem('tabletop_lib_open') === '1'; } catch (_) { return false; } })());
+
+  // ---------- da biblioteca para a cena ----------
+  async function spawnLibraryItem(itemId, at) {
+    const it = libItems.get(itemId);
+    if (!it) return;
+    if (!currentSceneId) { alert('Nenhuma cena ativa selecionada.'); return; }
+    const box = await tokenBox(imageForToken(it) || it.src_url, it.size || 96);
+    const p = at ? { x: Math.round(at.x - box.w / 2), y: Math.round(at.y - box.h / 2) } : freeSpawnPoint(box.w, box.h);
+    const r = await libRpc('library_spawn', { p_item_id: itemId, p_scene_id: currentSceneId, p_x: p.x, p_y: p.y });
+    if (r.ok && r.data) { upsertTokenEl(r.data); placeholder.style.display = 'none'; }
+  }
+
+  // arrastar um card até o mapa
+  boardWrap.addEventListener('dragover', (e) => { if (libDrag && libDrag.kind === 'item' && currentRole === 'mestre') e.preventDefault(); });
+  boardWrap.addEventListener('drop', (e) => {
+    if (!libDrag || libDrag.kind !== 'item' || currentRole !== 'mestre') return;
+    e.preventDefault();
+    const id = libDrag.id; libDrag = null;
+    const r = boardWrap.getBoundingClientRect();
+    spawnLibraryItem(id, { x: (e.clientX - r.left - boardX) / scale, y: (e.clientY - r.top - boardY) / scale });
+  });
+
+  // ---------- do mapa para a biblioteca ----------
+  function libHit(x, y) {
+    if (currentRole !== 'mestre' || !libDrawer.classList.contains('open')) return false;
+    const r = libDrawer.getBoundingClientRect();
+    return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
+  }
+  function libDragHover(x, y) { libDrawer.classList.toggle('drop-hot', libHit(x, y)); }
+
+  async function storeTokenInLibrary(tokenId) {
+    const tok = tokenData.get(tokenId);
+    if (!tok || currentRole !== 'mestre') return;
+    const r = await libRpc('library_store_token', { p_token_id: tokenId, p_folder_id: libFolderId || null });
+    if (!r.ok) {
+      const el = tokenEls.get(tokenId);
+      if (el) { el.style.left = (tok.x || 0) + 'px'; el.style.top = (tok.y || 0) + 'px'; }
+      return;
+    }
+    removeTokenEl(tokenId);
+    if (r.data) { libItems.set(r.data.id, r.data); renderLibrary(); }
+    showLibToast('Guardado na biblioteca: ' + ((r.data && r.data.name) || 'token'));
+  }
+
+  async function duplicateToken(id) {
+    const t = tokenData.get(id);
+    if (!t || !currentSceneId) return;
+    const { data, error } = await sb.from('tokens').insert({
+      scene_id: currentSceneId, src_url: t.src_url, x: (t.x || 0) + 24, y: (t.y || 0) + 24, size: t.size || 96, z: topLayerZ(tokenData),
+      rotation: t.rotation || 0, flip_x: !!t.flip_x, states: t.states || [], active_state: t.active_state || 0,
+      name: t.name || null, tint: t.tint || null, tint_amount: t.tint_amount == null ? 0.5 : t.tint_amount, opacity: t.opacity == null ? 1 : t.opacity,
+      vision_enabled: !!t.vision_enabled, vision_radius: t.vision_radius || 400
+    }).select();
+    if (error) { alert('Erro ao duplicar: ' + error.message); return; }
+    if (data && data.length) upsertTokenEl(data[0]);
+  }
+
+  async function deleteTokenWithConfirm(id) {
+    if (!confirm('Apagar este elemento?')) return;
+    removeTokenEl(id);
+    await sb.rpc('delete_token', { p_user_id: currentUserId, p_token_id: id });
+  }
+
+  // ---------- itens novos do menu de botão direito ----------
+  menuProps.addEventListener('click', () => {
+    const t = contextTarget; closeContextMenu();
+    if (t && t.type === 'token') openTokenProps(t.id);
+  });
+  menuStore.addEventListener('click', () => {
+    const t = contextTarget; closeContextMenu();
+    if (t && t.type === 'token') storeTokenInLibrary(t.id);
+  });
+  menuDuplicate.addEventListener('click', () => {
+    const t = contextTarget; closeContextMenu();
+    if (t && t.type === 'token') duplicateToken(t.id);
+  });
+
+  // =====================================================================
+  //  PAINEL DE PROPRIEDADES DO TOKEN
+  // =====================================================================
+  const tokenPropsPanel = document.getElementById('tokenPropsPanel');
+  const tpThumb = document.getElementById('tpThumb');
+  const tpTitle = document.getElementById('tpTitle');
+  const tpName = document.getElementById('tpName');
+  const tpTint = document.getElementById('tpTint');
+  const tpTintAmt = document.getElementById('tpTintAmt');
+  const tpTintAmtVal = document.getElementById('tpTintAmtVal');
+  const tpTintClear = document.getElementById('tpTintClear');
+  const tpOpacity = document.getElementById('tpOpacity');
+  const tpOpacityVal = document.getElementById('tpOpacityVal');
+  const tpSize = document.getElementById('tpSize');
+  const tpSizeNum = document.getElementById('tpSizeNum');
+  const tpRot = document.getElementById('tpRot');
+  const tpRotNum = document.getElementById('tpRotNum');
+  const tpZ = document.getElementById('tpZ');
+  const tpFlip = document.getElementById('tpFlip');
+  let propsTokenId = null;
+  const propsPending = new Map();   // id -> { patch, timer }
+
+  function normDeg(v) { return ((Math.round(v) % 360) + 360) % 360; }
+
+  function fillTokenProps(tok) {
+    tpTitle.textContent = tok.name || 'Propriedades';
+    const url = (imageForToken(tok) || '').replace(/^http:\/\//, 'https://');
+    tpThumb.style.backgroundImage = isVideoUrl(url) ? 'none' : `url("${url}")`;
+    tpName.value = tok.name || '';
+    tpTint.value = tok.tint || '#ff0000';
+    tpTintAmt.value = Math.round((tok.tint_amount == null ? 0.5 : tok.tint_amount) * 100);
+    tpTintAmtVal.textContent = tok.tint ? tpTintAmt.value + '%' : 'sem cor';
+    tpOpacity.value = Math.round((tok.opacity == null ? 1 : tok.opacity) * 100);
+    tpOpacityVal.textContent = tpOpacity.value + '%';
+    tpSize.value = tpSizeNum.value = Math.round(tok.size || 64);
+    tpRot.value = tpRotNum.value = normDeg(tok.rotation || 0);
+    tpZ.value = Math.round(tok.z || 0);
+    tpFlip.checked = !!tok.flip_x;
+  }
+
+  function openTokenProps(id) {
+    const tok = tokenData.get(id);
+    if (!tok || currentRole !== 'mestre') return;
+    propsTokenId = id;
+    fillTokenProps(tok);
+    tokenPropsPanel.classList.remove('hidden');
+    const el = tokenEls.get(id);
+    if (el) selectElement(el);
+  }
+  function closeTokenProps() {
+    propsTokenId = null;
+    tokenPropsPanel.classList.add('hidden');
+  }
+
+  // Aplica na hora (visual) e manda para o banco com um pequeno atraso, juntando as mudanças.
+  function applyTokenProps(patch) {
+    const id = propsTokenId;
+    const tok = id && tokenData.get(id);
+    if (!tok) return;
+    Object.assign(tok, patch);
+    tok._lockUntil = Date.now() + 900;
+    upsertTokenEl(tok);
+    let p = propsPending.get(id);
+    if (!p) { p = { patch: {}, timer: null }; propsPending.set(id, p); }
+    Object.assign(p.patch, patch);
+    clearTimeout(p.timer);
+    p.timer = setTimeout(async () => {
+      propsPending.delete(id);
+      const { error } = await sb.rpc('update_token_props', { p_user_id: currentUserId, p_token_id: id, p_props: p.patch });
+      if (error) alert('Não foi possível salvar as propriedades: ' + error.message);
+    }, 180);
+  }
+
+  tpName.addEventListener('input', () => { const v = tpName.value.trim(); tpTitle.textContent = v || 'Propriedades'; applyTokenProps({ name: v || null }); });
+  tpTint.addEventListener('input', () => { tpTintAmtVal.textContent = tpTintAmt.value + '%'; applyTokenProps({ tint: tpTint.value }); });
+  tpTintAmt.addEventListener('input', () => {
+    tpTintAmtVal.textContent = tpTintAmt.value + '%';
+    const t = tokenData.get(propsTokenId);
+    applyTokenProps(t && !t.tint ? { tint: tpTint.value, tint_amount: tpTintAmt.value / 100 } : { tint_amount: tpTintAmt.value / 100 });
+  });
+  tpTintClear.addEventListener('click', () => { tpTintAmtVal.textContent = 'sem cor'; applyTokenProps({ tint: null }); });
+  tpOpacity.addEventListener('input', () => { tpOpacityVal.textContent = tpOpacity.value + '%'; applyTokenProps({ opacity: tpOpacity.value / 100 }); });
+  tpSize.addEventListener('input', () => { tpSizeNum.value = tpSize.value; applyTokenProps({ size: parseFloat(tpSize.value) }); });
+  tpSizeNum.addEventListener('change', () => {
+    const v = Math.max(8, Math.min(4096, parseFloat(tpSizeNum.value) || 64));
+    tpSizeNum.value = v; tpSize.value = v; applyTokenProps({ size: v });
+  });
+  tpRot.addEventListener('input', () => { tpRotNum.value = tpRot.value; applyTokenProps({ rotation: parseFloat(tpRot.value) }); });
+  tpRotNum.addEventListener('change', () => {
+    const v = normDeg(parseFloat(tpRotNum.value) || 0);
+    tpRotNum.value = v; tpRot.value = v; applyTokenProps({ rotation: v });
+  });
+  tpFlip.addEventListener('change', () => applyTokenProps({ flip_x: tpFlip.checked }));
+
+  tpZ.addEventListener('change', () => {
+    if (!propsTokenId) return;
+    const v = parseFloat(tpZ.value);
+    if (isNaN(v)) return;
+    setLayer('token', propsTokenId, v);
+  });
+  document.getElementById('tpZFront').addEventListener('click', () => {
+    if (!propsTokenId) return;
+    setLayer('token', propsTokenId, topLayerZ(tokenData, propsTokenId));
+    const t = tokenData.get(propsTokenId); if (t) tpZ.value = Math.round(t.z || 0);
+  });
+  document.getElementById('tpZBack').addEventListener('click', () => {
+    if (!propsTokenId) return;
+    setLayer('token', propsTokenId, bottomLayerZ(tokenData, propsTokenId));
+    const t = tokenData.get(propsTokenId); if (t) tpZ.value = Math.round(t.z || 0);
+  });
+
+  document.getElementById('tpClose').addEventListener('click', closeTokenProps);
+  document.getElementById('tpVision').addEventListener('click', () => { if (propsTokenId) openTokenVisionModal(propsTokenId); });
+  document.getElementById('tpStore').addEventListener('click', () => { if (propsTokenId) storeTokenInLibrary(propsTokenId); });
+  document.getElementById('tpDup').addEventListener('click', () => { if (propsTokenId) duplicateToken(propsTokenId); });
+  document.getElementById('tpDelete').addEventListener('click', () => { if (propsTokenId) deleteTokenWithConfirm(propsTokenId); });
+
+
   async function enterRoom(roomId) {
     currentRoomId = roomId;
     lobbyOverlay.classList.add('hidden');
@@ -3837,6 +4648,11 @@
     await loadSceneContent(currentSceneId);
     subscribeRealtimeChannels(currentSceneId);
     setupCameraChannel(roomId);
+
+    closeTokenProps();
+    libFolderId = null; libFolders = new Map(); libItems = new Map(); libSearch.value = '';
+    renderLibrary();
+    if (currentRole === 'mestre') loadLibrary();
 
     if (roomSyncChannel) sb.removeChannel(roomSyncChannel);
     roomSyncChannel = sb.channel('room-sync-' + roomId)
