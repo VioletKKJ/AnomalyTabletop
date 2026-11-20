@@ -278,6 +278,32 @@
     position: fixed; inset: 0; background: rgba(10, 11, 15, 0.8); backdrop-filter: blur(8px); display: flex;
     align-items: center; justify-content: center; z-index: 100000; padding: 16px; }
 
+  /* Configuração do grid em painel flutuante: mantém o tabuleiro visível durante os ajustes. */
+  #gridOverlay {
+    inset: 0;
+    align-items: flex-start;
+    justify-content: flex-start;
+    padding: 70px 14px 14px;
+    background: transparent;
+    backdrop-filter: none;
+    pointer-events: none;
+    z-index: 100000;
+  }
+  #gridOverlay .card {
+    width: min(360px, calc(100vw - 28px));
+    max-width: none;
+    max-height: calc(100dvh - 84px);
+    padding: 18px;
+    pointer-events: auto;
+    background: rgba(26, 28, 36, 0.97);
+    box-shadow: 0 10px 32px rgba(0, 0, 0, 0.42);
+  }
+  #gridOverlay .card h2 { margin-bottom: 8px; }
+  #gridOverlay .card p { margin: 0 0 12px; }
+  #gridOverlay .card label { margin-top: 8px; }
+  #gridOverlay .card input[type="range"],
+  #gridOverlay .card input[type="color"] { margin-top: 4px; margin-bottom: 8px; }
+
   /* Painel de luz flutuante: não cobre o mapa, assim dá pra ver a luz mudando ao vivo */
   #lightModal { inset: auto 0 14px 0; background: none; backdrop-filter: none; pointer-events: none; padding: 0 12px; }
   #lightModal .card { pointer-events: auto; max-width: 340px; padding: 14px 18px; background: rgba(26, 28, 36, 0.95); }
@@ -348,6 +374,14 @@
   body.player-preview #roleBadge { color: #b9e5ff; background: rgba(73,160,210,.13); border-color: rgba(73,160,210,.3); }
   body.player-preview #playerPreviewBtn { display: flex !important; }
   @media (max-width: 700px) {
+    #gridOverlay { padding: max(60px, env(safe-area-inset-top, 0px) + 54px) 10px 10px; }
+    #gridOverlay .card {
+      width: min(340px, calc(100vw - 20px));
+      max-height: calc(100dvh - max(70px, env(safe-area-inset-top, 0px) + 64px));
+      padding: 15px;
+      border-radius: 13px;
+    }
+
     #topBar { left: 10px; top: max(52px, calc(env(safe-area-inset-top, 0px) + 48px)); width: min(320px, calc(100vw - 20px));
       max-height: calc(100dvh - max(64px, env(safe-area-inset-top, 0px) + 60px)); }
     #topBarToggle { left: 10px; }
