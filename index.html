@@ -245,13 +245,20 @@
   .selected .resizeHandle, .selected .rotateHandle { display: block; }
   .selected .pieceImg, .selected .pieceVideo { outline: calc(2px * var(--inv-zoom, 1)) dashed var(--accent); outline-offset: calc(4px * var(--inv-zoom, 1)); filter: drop-shadow(0 0 6px rgba(157, 78, 223, 0.5)); }
 
-  #contextMenu { position: fixed; z-index: 60000; background: var(--panel); border: 1px solid var(--panel-border);
-    border-radius: 12px; padding: 8px; display: none; min-width: 210px; box-shadow: 0 10px 30px rgba(0,0,0,0.6);
-    backdrop-filter: blur(10px); }
+  #contextMenu { position: fixed; z-index: 60000; display: none; min-width: 224px; padding: 6px;
+    background: rgba(22, 24, 31, 0.97); border: 1px solid rgba(255,255,255,0.09); border-radius: 13px;
+    box-shadow: 0 14px 36px rgba(0,0,0,0.42); backdrop-filter: blur(16px); }
   #contextMenu.open { display: block; }
-  #contextMenu button { width: 100%; justify-content: flex-start; background: transparent; border-radius: 8px; margin: 2px 0; border: none; }
-  #contextMenu button:hover { background: var(--panel-border); color: #fff; }
-  #contextMenu hr { border: none; border-top: 1px solid var(--panel-border); margin: 6px 0; }
+  #contextMenu button { width: 100%; min-height: 34px; display: flex; align-items: center; justify-content: flex-start;
+    gap: 9px; padding: 7px 10px; background: transparent; color: var(--text); border: 0; border-radius: 8px;
+    margin: 1px 0; font-size: 12px; font-weight: 500; text-align: left; transition: background .14s ease, color .14s ease; }
+  #contextMenu button:hover { background: rgba(255,255,255,0.075); color: #fff; }
+  #contextMenu button.danger { color: #f08b8b; }
+  #contextMenu button.danger:hover { background: rgba(220,70,70,0.13); color: #ffaaaa; }
+  #contextMenu hr { border: 0; border-top: 1px solid rgba(255,255,255,0.075); margin: 5px 4px; }
+  #contextMenu .statesRow { padding: 6px 4px; }
+  #contextMenu .stateThumb { width: 40px; height: 40px; border-radius: 9px; border: 1px solid rgba(255,255,255,0.12); }
+  #contextMenu .stateThumb.active { border: 2px solid var(--accent); box-shadow: 0 0 0 2px rgba(157,78,223,0.12); }
   #contextMenu .statesRow { display: flex; flex-wrap: wrap; gap: 6px; padding: 4px 2px; }
   #contextMenu .stateThumb { width: 38px; height: 38px; border-radius: 8px; background-size: contain; overflow: hidden;
     background-position: center; background-repeat: no-repeat; border: 2px solid var(--panel-border); cursor: pointer; transition: transform .15s; position: relative; }
@@ -2852,6 +2859,10 @@
       if (e.target === handle || e.target.classList.contains('rotateHandle')) return;
 
       selectElement(el);
+      if (type === 'token' && currentRole === 'mestre' && !tokenPropsPanel.classList.contains('hidden')) {
+        const clickedToken = tokenData.get(itemId);
+        if (clickedToken) { propsTokenId = itemId; fillTokenProps(clickedToken); }
+      }
       dragging = true; moved = false; el.dragging = true;
       el.classList.add('dragging');
       el.setPointerCapture(e.pointerId);
@@ -4073,7 +4084,7 @@
     const box = await tokenBox(url, size);
     const p = freeSpawnPoint(box.w, box.h);
     const { data, error } = await sb.from('tokens').insert({
-      scene_id: currentSceneId, src_url: url, x: p.x, y: p.y, size, z: topLayerZ(tokenData), rotation: 0, flip_x: false, active_state: 0, states: []
+      scene_id: currentSceneId, src_url: url, x: p.x, y: p.y, size, z: topLayerZ(tokenData), rotation: 0, flip_x: false, active_state: 0, states: [], hide_name: true
     }).select();
     if (error) throw error;
     if (data && data.length) { upsertTokenEl(data[0]); placeholder.style.display = 'none'; }
@@ -4470,7 +4481,7 @@
       scene_id: currentSceneId, src_url: t.src_url, x: (t.x || 0) + 24, y: (t.y || 0) + 24, size: t.size || 96, z: topLayerZ(tokenData),
       rotation: t.rotation || 0, flip_x: !!t.flip_x, states: t.states || [], active_state: t.active_state || 0,
       name: t.name || null, tint: t.tint || null, tint_amount: t.tint_amount == null ? 0.5 : t.tint_amount, opacity: t.opacity == null ? 1 : t.opacity,
-      vision_enabled: !!t.vision_enabled, vision_radius: t.vision_radius || 400
+      vision_enabled: !!t.vision_enabled, vision_radius: t.vision_radius || 400, hide_name: !!t.hide_name
     }).select();
     if (error) { alert('Erro ao duplicar: ' + error.message); return; }
     if (data && data.length) upsertTokenEl(data[0]);
