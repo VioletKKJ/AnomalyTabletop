@@ -312,7 +312,8 @@
   .sceneRow .activeTag { font-size: 11px; color: var(--accent); font-weight: 600; }
 
   /* Menu superior recolhível */
-  #topBar { top: 54px; left: 14px; right: auto; bottom: auto; width: min(292px, calc(100vw - 28px)); max-width: none;
+  #topBar { top: 54px; left: 14px; right: auto; bottom: auto; width: min(292px, calc(100vw - 28px)); max-width: none; z-index: 42;
+    max-height: calc(100vh - 68px); overflow-y: auto; overscroll-behavior: contain;
     transform: translateY(0); padding: 14px; display: flex; flex-direction: column; align-items: stretch; gap: 12px;
     background: rgba(18, 19, 24, 0.94); border: 1px solid rgba(255,255,255,.1); border-radius: 16px;
     box-shadow: 0 14px 42px rgba(0,0,0,.48); backdrop-filter: blur(18px);
@@ -327,10 +328,13 @@
   #normalNav > button.mestre-only.primary { background: rgba(157,78,223,.13); border-color: rgba(157,78,223,.2); }
   #zoomOut, #zoomIn { min-width: 0; font-size: 15px; }
   #topBarToggle { position: fixed; top: max(12px, env(safe-area-inset-top, 12px)); left: 14px; right: auto; transform: none;
-    z-index: 31; width: 38px; height: 34px; padding: 0; display: flex; align-items: center; justify-content: center;
-    color: #f0e6ff; background: rgba(24,25,33,.94); border: 1px solid rgba(255,255,255,.13);
-    border-radius: 10px; font-size: 17px; box-shadow: 0 5px 18px rgba(0,0,0,.35); cursor: pointer; }
-  #topBarToggle:hover { background: rgba(157,78,223,.25); color: #fff; }
+    z-index: 43; width: 38px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center;
+    color: var(--accent); background: var(--panel); border: 1px solid var(--panel-border);
+    border-radius: 9px; cursor: pointer; box-shadow: 0 4px 14px rgba(0,0,0,.28); }
+  #topBarToggle::before { content: ""; width: 8px; height: 8px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor;
+    transform: translateY(-2px) rotate(45deg); transition: transform .2s ease; }
+  #topBar:not(.collapsed) ~ #topBarToggle::before { transform: translateY(2px) rotate(225deg); }
+  #topBarToggle:hover { background: var(--panel-border); color: #fff; }
   #topBar.collapsed ~ #topBarToggle { top: max(12px, env(safe-area-inset-top, 12px)); }
   #moreActionsMenu { position: static; display: flex; flex-direction: column; gap: 5px; min-width: 0; width: 100%;
     padding: 0; background: transparent; border: 0; border-radius: 0; box-shadow: none; backdrop-filter: none; }
@@ -343,7 +347,8 @@
   body.player-preview #roleBadge { color: #b9e5ff; background: rgba(73,160,210,.13); border-color: rgba(73,160,210,.3); }
   body.player-preview #playerPreviewBtn { display: flex !important; }
   @media (max-width: 700px) {
-    #topBar { left: 10px; width: min(292px, calc(100vw - 20px)); }
+    #topBar { left: 10px; top: max(52px, calc(env(safe-area-inset-top, 0px) + 48px)); width: min(320px, calc(100vw - 20px));
+      max-height: calc(100dvh - max(64px, env(safe-area-inset-top, 0px) + 60px)); }
     #topBarToggle { left: 10px; }
     .brandTitle h1 { max-width: 155px; font-size: 13px; }
   }
