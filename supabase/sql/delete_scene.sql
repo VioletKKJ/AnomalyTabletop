@@ -4,6 +4,8 @@
 -- A referência ativa da mesa e a referência legada de board são atualizadas
 -- antes da exclusão para evitar violação de chave estrangeira.
 
+drop function if exists public.delete_scene(uuid, uuid);
+
 create or replace function public.delete_scene(
   p_user_id uuid,
   p_scene_id uuid,
@@ -46,6 +48,9 @@ begin
     raise exception 'Somente o mestre desta mesa pode excluir cenas.'
       using errcode = '42501';
   end if;
+
+  -- Serializa exclusões simultâneas dentro da mesma mesa.
+  perform 1 from public.rooms where id = v_room_id for update;
 
   if lower(btrim(p_confirm_name)) is distinct from lower(btrim(v_scene_name)) then
     raise exception 'O nome digitado não corresponde ao nome da cena.'
