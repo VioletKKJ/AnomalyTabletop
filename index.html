@@ -98,12 +98,12 @@
   .brandTitle h1 { font-size: 14px; margin: 0; font-weight: 700; letter-spacing: 0.5px;
     background: linear-gradient(135deg, #e0aaff, #9d4edf); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
 
-  #topBarToggle { position: fixed; top: max(4px, env(safe-area-inset-top, 4px)); left: 50%; transform: translateX(-50%);
-    z-index: 31; background: var(--panel); border: 1px solid var(--panel-border); border-top: none;
-    border-radius: 0 0 10px 10px; padding: 2px 16px; color: var(--accent); cursor: pointer; font-size: 10px;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.3); transition: background .2s, color .2s; }
-  #topBarToggle:hover { background: var(--panel-border); color: #fff; }
-  #topBar.collapsed ~ #topBarToggle { top: 0; }
+  #topBarToggle { position: fixed; top: max(12px, env(safe-area-inset-top, 12px)); left: 14px; transform: none;
+    z-index: 31; width: 38px; height: 34px; padding: 0; display: flex; align-items: center; justify-content: center;
+    color: #f0e6ff; background: rgba(24,25,33,.94); border: 1px solid rgba(255,255,255,.13);
+    border-radius: 10px; cursor: pointer; font-size: 17px; box-shadow: 0 5px 18px rgba(0,0,0,.35); transition: background .2s, color .2s; }
+  #topBarToggle:hover { background: rgba(157,78,223,.25); color: #fff; }
+  #topBar.collapsed ~ #topBarToggle { top: max(12px, env(safe-area-inset-top, 12px)); }
 
   /* Barra Lateral de Ferramentas */
   #sideToolbar { position: fixed; right: 12px; top: 50%; transform: translateY(-50%); z-index: 30;
@@ -311,29 +311,41 @@
     background-color: var(--bg); flex-shrink: 0; border: 1px solid var(--panel-border); }
   .sceneRow .activeTag { font-size: 11px; color: var(--accent); font-weight: 600; }
 
-  /* Barra superior compacta */
-  #topBar { flex-wrap: nowrap; gap: 8px; padding: 7px 10px; background: rgba(18, 19, 24, 0.88); border-color: rgba(255, 255, 255, 0.09); box-shadow: 0 8px 28px rgba(0, 0, 0, 0.42); }
-  .brandTitle { gap: 8px; margin-right: 2px; padding-right: 12px; border-color: rgba(255, 255, 255, 0.12); }
-  .brandTitle h1 { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  #normalNav { position: relative; display: flex; align-items: center; gap: 5px; flex-wrap: nowrap; }
-  #normalNav button, #normalNav label.btn { min-height: 34px; padding: 6px 10px; border-radius: 8px; }
-  #normalNav .primary { box-shadow: 0 2px 10px rgba(123, 44, 191, 0.24); }
-  #zoomOut, #zoomIn { min-width: 34px; padding-inline: 8px; font-size: 15px; }
-
-  #moreActionsBtn { width: 36px; min-width: 36px; padding: 0; justify-content: center; font-size: 20px; line-height: 1; color: var(--text-dim); background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.08); }
-  #moreActionsBtn:hover, #moreActionsBtn[aria-expanded="true"] { color: #fff; background: rgba(157, 78, 223, 0.22); border-color: rgba(157, 78, 223, 0.4); }
-
-  #moreActionsMenu { position: absolute; top: calc(100% + 9px); right: 0; z-index: 60; display: none; flex-direction: column; gap: 5px; min-width: 190px; padding: 8px; background: rgba(26, 28, 36, 0.97); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 14px; box-shadow: 0 14px 36px rgba(0, 0, 0, 0.48); backdrop-filter: blur(16px); }
-  #moreActionsMenu.open { display: flex; }
-  #moreActionsMenu button, #moreActionsMenu label.btn { width: 100%; justify-content: flex-start; border-radius: 8px; background: transparent; }
-
+  /* Menu superior recolhível */
+  #topBar { top: 54px; left: 14px; right: auto; bottom: auto; width: min(292px, calc(100vw - 28px)); max-width: none;
+    transform: translateY(0); padding: 14px; display: flex; flex-direction: column; align-items: stretch; gap: 12px;
+    background: rgba(18, 19, 24, 0.94); border: 1px solid rgba(255,255,255,.1); border-radius: 16px;
+    box-shadow: 0 14px 42px rgba(0,0,0,.48); backdrop-filter: blur(18px);
+    transition: transform .24s ease, opacity .2s ease; }
+  #topBar.collapsed { transform: translateY(calc(-100% - 68px)); opacity: .96; }
+  .brandTitle { width: 100%; gap: 9px; margin: 0; padding: 0 0 10px; border: 0; border-bottom: 1px solid rgba(255,255,255,.1); }
+  .brandTitle h1 { max-width: 205px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; }
+  #roleBadge { margin-left: auto; }
+  #normalNav { position: relative; width: 100%; display: flex; flex-direction: column; align-items: stretch; gap: 5px; }
+  #normalNav button, #normalNav label.btn { width: 100%; min-height: 36px; padding: 8px 11px; border-radius: 9px; justify-content: flex-start; text-align: left; }
+  #normalNav .primary { box-shadow: none; }
+  #normalNav > button.mestre-only.primary { background: rgba(157,78,223,.13); border-color: rgba(157,78,223,.2); }
+  #zoomOut, #zoomIn { min-width: 0; font-size: 15px; }
+  #topBarToggle { position: fixed; top: max(12px, env(safe-area-inset-top, 12px)); left: 14px; right: auto; transform: none;
+    z-index: 31; width: 38px; height: 34px; padding: 0; display: flex; align-items: center; justify-content: center;
+    color: #f0e6ff; background: rgba(24,25,33,.94); border: 1px solid rgba(255,255,255,.13);
+    border-radius: 10px; font-size: 17px; box-shadow: 0 5px 18px rgba(0,0,0,.35); cursor: pointer; }
+  #topBarToggle:hover { background: rgba(157,78,223,.25); color: #fff; }
+  #topBar.collapsed ~ #topBarToggle { top: max(12px, env(safe-area-inset-top, 12px)); }
+  #moreActionsMenu { position: static; display: flex; flex-direction: column; gap: 5px; min-width: 0; width: 100%;
+    padding: 0; background: transparent; border: 0; border-radius: 0; box-shadow: none; backdrop-filter: none; }
+  #moreActionsMenu button, #moreActionsMenu label.btn { width: 100%; min-height: 35px; justify-content: flex-start; text-align: left;
+    border-radius: 9px; background: transparent; padding: 8px 11px; }
+  .menuGroupLabel { padding: 8px 3px 2px; color: var(--text-dim); font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
+  .menuDivider { height: 1px; margin: 3px 0; background: rgba(255,255,255,.09); }
+  #moreActionsMenu .danger { color: #ff8585; }
+  body.player-preview .mestre-only { display: none !important; }
+  body.player-preview #roleBadge { color: #b9e5ff; background: rgba(73,160,210,.13); border-color: rgba(73,160,210,.3); }
+  body.player-preview #playerPreviewBtn { display: flex !important; }
   @media (max-width: 700px) {
-    #topBar { left: 10px; right: 10px; width: auto; max-width: none; transform: none; flex-wrap: wrap; justify-content: center; row-gap: 6px; }
-    #topBar.collapsed { transform: translateY(calc(-100% - 20px)); }
-    #normalNav { flex-wrap: wrap; justify-content: center; max-width: 100%; }
-    .brandTitle { padding-right: 8px; }
-    .brandTitle h1 { max-width: 90px; font-size: 12px; }
-    #roleBadge { display: none; }
+    #topBar { left: 10px; width: min(292px, calc(100vw - 20px)); }
+    #topBarToggle { left: 10px; }
+    .brandTitle h1 { max-width: 155px; font-size: 13px; }
   }
 
   /* Régua */
@@ -651,30 +663,37 @@
 
     <!-- Interface Padrão -->
     <div id="normalNav">
-      <button class="mestre-only primary" id="openMapEditorBtn" title="Editor de Mapa">Editor</button>
-      <button class="mestre-only primary" id="openFogEditorBtn" title="Editor de Névoa">Névoa</button>
-      <button class="mestre-only primary" id="openWallEditorBtn" title="Editor de Paredes">Paredes</button>
-      <button class="mestre-only primary" id="openLightEditorBtn" title="Editor de Luzes">Luzes</button>
+      <div class="menuGroupLabel">Ferramentas do mestre</div>
+      <button class="mestre-only primary" id="openMapEditorBtn" title="Editor de Mapa">▦ Editor de mapa</button>
+      <button class="mestre-only primary" id="openFogEditorBtn" title="Editor de Névoa">◌ Névoa de guerra</button>
+      <button class="mestre-only primary" id="openWallEditorBtn" title="Editor de Paredes">▤ Paredes e portas</button>
+      <button class="mestre-only primary" id="openLightEditorBtn" title="Editor de Luzes">☼ Iluminação</button>
 
-      <button id="zoomOut" title="Menos Zoom" aria-label="Diminuir zoom">−</button>
-      <button id="zoomIn" title="Mais Zoom" aria-label="Aumentar zoom">+</button>
-      <button id="btnReturnLobby" title="Trocar Mesa">Mesas</button>
-
-      <button id="moreActionsBtn" type="button" title="Mais ações" aria-label="Mais ações" aria-expanded="false">⋯</button>
-
-      <div id="moreActionsMenu" aria-label="Mais ações">
+      <div class="menuDivider mestre-only"></div>
+      <div id="moreActionsMenu" aria-label="Ações da mesa">
+        <div class="menuGroupLabel mestre-only">Mesa e cena</div>
         <label class="btn mestre-only primary" title="Adicionar Token (Imagens, GIFs ou Vídeos WebM transparentes)">
-          + Token
+          + Adicionar token
           <input type="file" id="tokenInput" accept="image/png,image/jpeg,image/webp,image/gif,video/webm,video/mp4">
         </label>
-        <button id="gridBtn" class="mestre-only" title="Configurar Grid">Grid</button>
-        <button id="dynFogBtn" class="mestre-only" title="Cada jogador só vê o que os tokens dele enxergam (paredes bloqueiam)">👁️ Fog dinâmico: OFF</button>
-        <button id="scenesBtn" class="mestre-only">Cenas</button>
-        <button id="camPullBtn" class="mestre-only" title="Centraliza a câmera de todos os jogadores na sua">📷 Puxar jogadores</button>
-        <button id="camLiveBtn" class="mestre-only" title="Os jogadores seguem a sua câmera em tempo real">📡 Câmera ao vivo: OFF</button>
-        <button id="managePlayersBtn" class="mestre-only hidden">Jogadores</button>
-        <button id="settingsBtn" title="Configurações">⚙️ Configurações</button>
-        <button id="clearBtn" class="danger mestre-only" title="Limpar Tudo">Limpar</button>
+        <button id="gridBtn" class="mestre-only" title="Configurar Grid">▦ Configurar grid</button>
+        <button id="dynFogBtn" class="mestre-only" title="Cada jogador só vê o que os tokens dele enxergam (paredes bloqueiam)">◉ Fog dinâmico: OFF</button>
+        <button id="scenesBtn" class="mestre-only">▧ Gerenciar cenas</button>
+        <div class="menuDivider mestre-only"></div>
+        <div class="menuGroupLabel mestre-only">Jogadores e câmera</div>
+        <button id="camPullBtn" class="mestre-only" title="Centraliza a câmera de todos os jogadores na sua">⌖ Puxar jogadores</button>
+        <button id="camLiveBtn" class="mestre-only" title="Os jogadores seguem a sua câmera em tempo real">◉ Câmera ao vivo: OFF</button>
+        <button id="managePlayersBtn" class="mestre-only hidden">♟ Gerenciar jogadores</button>
+        <button id="playerPreviewBtn" class="mestre-only" type="button">◉ Ver como player</button>
+        <div class="menuDivider"></div>
+        <div class="menuGroupLabel">Acesso rápido</div>
+        <div style="display:flex; gap:6px;">
+          <button id="zoomOut" title="Menos Zoom" aria-label="Diminuir zoom" style="flex:1; justify-content:center;">− Zoom</button>
+          <button id="zoomIn" title="Mais Zoom" aria-label="Aumentar zoom" style="flex:1; justify-content:center;">+ Zoom</button>
+        </div>
+        <button id="btnReturnLobby" title="Trocar Mesa">↩ Voltar às mesas</button>
+        <button id="settingsBtn" title="Configurações">⚙ Configurações</button>
+        <button id="clearBtn" class="danger mestre-only" title="Limpar Tudo">Limpar mesa</button>
       </div>
     </div>
 
@@ -898,28 +917,18 @@
   const topBar = document.getElementById('topBar');
   const topBarToggle = document.getElementById('topBarToggle');
 
-  const moreActionsBtn = document.getElementById('moreActionsBtn');
-  const moreActionsMenu = document.getElementById('moreActionsMenu');
-
-  moreActionsBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    const isOpen = moreActionsMenu.classList.toggle('open');
-    moreActionsBtn.setAttribute('aria-expanded', String(isOpen));
-  });
-
-  document.addEventListener('click', (e) => {
-    if (!moreActionsMenu.contains(e.target) && !moreActionsBtn.contains(e.target)) {
-      moreActionsMenu.classList.remove('open');
-      moreActionsBtn.setAttribute('aria-expanded', 'false');
-    }
-  });
-
-  moreActionsMenu.addEventListener('click', (e) => {
-    if (e.target.closest('button')) {
-      moreActionsMenu.classList.remove('open');
-      moreActionsBtn.setAttribute('aria-expanded', 'false');
-    }
-  });
+  const playerPreviewBtn = document.getElementById('playerPreviewBtn');
+  if (playerPreviewBtn) {
+    playerPreviewBtn.addEventListener('click', () => {
+      if (currentRole !== 'mestre') return;
+      const previewing = document.body.classList.toggle('player-preview');
+      document.body.classList.toggle('jogador', previewing);
+      playerPreviewBtn.textContent = previewing ? '↩ Voltar à visão do mestre' : '◉ Ver como player';
+      const badge = document.getElementById('roleBadge');
+      if (badge) badge.textContent = previewing ? 'Prévia: player' : 'Mestre';
+      topBar.classList.toggle('preview-mode', previewing);
+    });
+  }
 
   const sideToolbar = document.getElementById('sideToolbar');
   const sideToolbarToggle = document.getElementById('sideToolbarToggle');
@@ -3389,11 +3398,11 @@
   function applyBarState() {
     const topHidden = localStorage.getItem('tabletop_topbar_hidden') === '1';
     const sideHidden = localStorage.getItem('tabletop_sidebar_hidden') === '1';
-    topBar.classList.toggle('collapsed', topHidden); topBarToggle.textContent = topHidden ? '▼' : '▲';
+    topBar.classList.toggle('collapsed', topHidden); topBarToggle.textContent = topHidden ? '⌄' : '⌃';
     sideToolbar.classList.toggle('collapsed', sideHidden); sideToolbarToggle.textContent = sideHidden ? '◀' : '▶';
   }
   topBarToggle.addEventListener('click', () => {
-    const h = topBar.classList.toggle('collapsed'); localStorage.setItem('tabletop_topbar_hidden', h ? '1' : '0'); topBarToggle.textContent = h ? '▼' : '▲';
+    const h = topBar.classList.toggle('collapsed'); localStorage.setItem('tabletop_topbar_hidden', h ? '1' : '0'); topBarToggle.textContent = h ? '⌄' : '⌃';
   });
   sideToolbarToggle.addEventListener('click', () => {
     const h = sideToolbar.classList.toggle('collapsed'); localStorage.setItem('tabletop_sidebar_hidden', h ? '1' : '0'); sideToolbarToggle.textContent = h ? '◀' : '▶';
@@ -4638,6 +4647,9 @@
 
     const { data: memberData } = await sb.from('room_members').select('role').eq('room_id', roomId).eq('user_id', currentUserId).maybeSingle();
     currentRole = memberData ? memberData.role : 'jogador';
+    document.body.classList.remove('player-preview');
+    if (playerPreviewBtn) playerPreviewBtn.textContent = '◉ Ver como player';
+    topBar.classList.remove('preview-mode');
     document.body.classList.toggle('jogador', currentRole !== 'mestre');
     roleBadge.textContent = currentRole === 'mestre' ? 'Mestre' : 'Jogador';
     roleBadge.classList.remove('hidden');
