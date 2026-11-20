@@ -310,6 +310,7 @@
   .sceneRow .thumb { width: 52px; height: 38px; border-radius: 8px; background-size: cover; background-position: center;
     background-color: var(--bg); flex-shrink: 0; border: 1px solid var(--panel-border); }
   .sceneRow .activeTag { font-size: 11px; color: var(--accent); font-weight: 600; }
+  .sceneRow .sceneDeleteBtn { flex-shrink: 0; min-height: 30px; padding: 5px 9px; font-size: 11px; }
 
   /* Menu superior recolhível */
   #topBar { top: 54px; left: 14px; right: auto; bottom: auto; width: min(292px, calc(100vw - 28px)); max-width: none; z-index: 42;
@@ -3207,9 +3208,14 @@
   async function openScenesPanel() {
     scenesList.innerHTML = 'Carregando...';
     scenesOverlay.classList.remove('hidden');
-    const { data: scenes } = await sb.from('scenes').select('*').eq('room_id', currentRoomId).order('created_at');
+    const { data: scenes, error } = await sb.from('scenes').select('*').eq('room_id', currentRoomId).order('created_at');
+    if (error) {
+      scenesList.textContent = 'Não foi possível carregar as cenas: ' + error.message;
+      return;
+    }
     scenesList.innerHTML = '';
-    (scenes || []).forEach((s) => {
+    const sceneRows = scenes || [];
+    sceneRows.forEach((s) => {
       const row = document.createElement('div');
       row.className = 'sceneRow';
       const isActive = s.id === currentSceneId;
@@ -3217,20 +3223,67 @@
       thumb.className = 'thumb';
       if (s.map_url) thumb.style.backgroundImage = `url("${s.map_url.replace(/^http:\/\//, 'https://')}")`;
       row.appendChild(thumb);
-      const name = document.createElement('span'); name.className = 'name'; name.textContent = s.name; row.appendChild(name);
+      const name = document.createElement('span');
+      name.className = 'name';
+      name.textContent = s.name;
+      row.appendChild(name);
+
       if (isActive) {
-        const tag = document.createElement('span'); tag.className = 'activeTag'; tag.textContent = '● atual'; row.appendChild(tag);
+        const tag = document.createElement('span');
+        tag.className = 'activeTag';
+        tag.textContent = '● atual';
+        row.appendChild(tag);
       } else {
-        const useBtn = document.createElement('button'); useBtn.textContent = 'Usar';
+        const useBtn = document.createElement('button');
+        useBtn.textContent = 'Usar';
         useBtn.addEventListener('click', async () => {
+          const { error: roomError } = await sb.from('rooms').update({ active_scene_id: s.id }).eq('id', currentRoomId);
+          if (roomError) { alert('Não foi possível trocar de cena: ' + roomError.message); return; }
           currentSceneId = s.id;
-          await sb.from('rooms').update({ active_scene_id: s.id }).eq('id', currentRoomId);
           await loadSceneContent(currentSceneId);
           subscribeRealtimeChannels(currentSceneId);
           scenesOverlay.classList.add('hidden');
         });
         row.appendChild(useBtn);
       }
+
+      const deleteBtn = document.createElement('button');
+      deleteBtn.type = 'button';
+      deleteBtn.className = 'danger sceneDeleteBtn';
+      deleteBtn.textContent = 'Excluir';
+      deleteBtn.disabled = sceneRows.length <= 1;
+      deleteBtn.title = sceneRows.length <= 1 ? 'A mesa precisa manter pelo menos uma cena' : 'Excluir esta cena';
+      deleteBtn.addEventListener('click', async () => {
+        if (sceneRows.length <= 1) return;
+        const acceptedName = prompt(
+          `Esta ação excluirá permanentemente "${s.name}" e todos os tokens, peças de mapa, paredes, luzes, névoas e desenhos desta cena.\n\nDigite o nome exato da cena para continuar:`
+        );
+        if (acceptedName === null) return;
+        const password = prompt('Confirme sua senha para excluir a cena:');
+        if (password === null) return;
+        if (!password) { alert('A senha é obrigatória.'); return; }
+
+        deleteBtn.disabled = true;
+        const { data: replacementSceneId, error: deleteError } = await sb.rpc('delete_scene', {
+          p_user_id: currentUserId,
+          p_scene_id: s.id,
+          p_password: password,
+          p_confirm_name: acceptedName
+        });
+        if (deleteError) {
+          alert('Não foi possível excluir a cena: ' + deleteError.message);
+          deleteBtn.disabled = false;
+          return;
+        }
+
+        if (isActive) {
+          currentSceneId = replacementSceneId;
+          await loadSceneContent(currentSceneId);
+          subscribeRealtimeChannels(currentSceneId);
+        }
+        await openScenesPanel();
+      });
+      row.appendChild(deleteBtn);
       scenesList.appendChild(row);
     });
   }
