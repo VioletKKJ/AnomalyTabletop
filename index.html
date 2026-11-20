@@ -345,6 +345,7 @@
     -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
     -webkit-mask-position: center; mask-position: center; }
   .tokenNameWrap { position: absolute; inset: 0; pointer-events: none; }
+  .tokenNameWrap.name-hidden { display: none; }
   .tokenName { position: absolute; left: 50%; top: 100%; transform: translate(-50%, calc(4px * var(--inv-zoom, 1)));
     font-size: calc(13px * var(--inv-zoom, 1)); font-weight: 600; line-height: 1.25; color: #fff; white-space: nowrap;
     padding: calc(1px * var(--inv-zoom, 1)) calc(7px * var(--inv-zoom, 1)); border-radius: calc(8px * var(--inv-zoom, 1));
@@ -875,6 +876,7 @@
     <div class="tpRow"><input type="number" class="tpNum" id="tpZ" step="1"><button id="tpZFront" type="button">Frente</button><button id="tpZBack" type="button">Trás</button></div>
 
     <label class="tpCheck"><input type="checkbox" id="tpFlip"> Espelhar</label>
+    <label class="tpCheck"><input type="checkbox" id="tpHideName"> Ocultar nome flutuante</label>
 
     <div class="tpActions">
       <button id="tpVision" type="button">👁️ Visão…</button>
@@ -2502,7 +2504,7 @@
     }
   }
 
-  const TOKEN_PROP_KEYS = ['name', 'tint', 'tint_amount', 'opacity', 'size', 'rotation', 'flip_x'];
+  const TOKEN_PROP_KEYS = ['name', 'tint', 'tint_amount', 'opacity', 'size', 'rotation', 'flip_x', 'hide_name'];
   function upsertTokenEl(tok) {
     const prev = tokenData.get(tok.id);
     if (prev && prev !== tok && prev._lockUntil && prev._lockUntil > Date.now()) {
@@ -2571,6 +2573,7 @@
         nameWrap.appendChild(lb); el.appendChild(nameWrap);
       }
       nameWrap.firstChild.textContent = tok.name;
+      nameWrap.classList.toggle('name-hidden', !!tok.hide_name);
       // desfaz a rotação/espelhamento do token para o texto ficar sempre em pé
       nameWrap.style.transform = `scaleX(${tok.flip_x ? -1 : 1}) rotate(${-(tok.rotation || 0)}deg)`;
     } else if (nameWrap) { nameWrap.remove(); }
@@ -4512,6 +4515,7 @@
   const tpRotNum = document.getElementById('tpRotNum');
   const tpZ = document.getElementById('tpZ');
   const tpFlip = document.getElementById('tpFlip');
+  const tpHideName = document.getElementById('tpHideName');
   let propsTokenId = null;
   const propsPending = new Map();   // id -> { patch, timer }
 
@@ -4531,6 +4535,7 @@
     tpRot.value = tpRotNum.value = normDeg(tok.rotation || 0);
     tpZ.value = Math.round(tok.z || 0);
     tpFlip.checked = !!tok.flip_x;
+    tpHideName.checked = !!tok.hide_name;
   }
 
   function openTokenProps(id) {
@@ -4586,6 +4591,7 @@
     tpRotNum.value = v; tpRot.value = v; applyTokenProps({ rotation: v });
   });
   tpFlip.addEventListener('change', () => applyTokenProps({ flip_x: tpFlip.checked }));
+  tpHideName.addEventListener('change', () => applyTokenProps({ hide_name: tpHideName.checked }));
 
   tpZ.addEventListener('change', () => {
     if (!propsTokenId) return;
