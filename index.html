@@ -1516,11 +1516,11 @@
 
     if (mode === 'erase') {
       breakWallChain();
-      wallStatusText.textContent = 'Modo Borracha: Toque em uma parede para apagar';
+      wallStatusText.innerHTML = 'Modo Borracha: Toque em uma parede para apagar';
     } else if (mode === 'door') {
-      wallStatusText.textContent = wallStartPoint ? 'Porta: Toque no ponto final' : 'Porta: Toque no ponto inicial (ou porta existente p/ abrir)';
+      wallStatusText.innerHTML = wallStartPoint ? 'Porta: Toque no ponto final' : 'Porta: Toque no ponto inicial (ou porta existente p/ abrir)';
     } else {
-      wallStatusText.textContent = wallStartPoint ? 'Parede: Toque no ponto final' : 'Parede: Toque no ponto inicial';
+      wallStatusText.innerHTML = wallStartPoint ? 'Parede: Toque no ponto final' : 'Parede: Toque no ponto inicial';
     }
   }
 
@@ -1529,7 +1529,7 @@
     if (wallDraftLine) { wallDraftLine.remove(); wallDraftLine = null; }
     if (snapIndicatorCircle) { snapIndicatorCircle.remove(); snapIndicatorCircle = null; }
     if (wallToolMode !== 'erase') {
-      wallStatusText.textContent = wallToolMode === 'door' ? 'Porta: Toque no início' : 'Parede: Toque no início';
+      wallStatusText.innerHTML = wallToolMode === 'door' ? 'Porta: Toque no início' : 'Parede: Toque no início';
     }
   }
 
@@ -1659,7 +1659,7 @@
         const newOpen = !wallData.is_open;
         wallData.is_open = newOpen;
         line.classList.toggle('door-open', newOpen);
-        wallStatusText.textContent = newOpen ? '<svg class="uiIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V3h14v18M8 21V6h8v15m-3-8h.01"/></svg> Porta ABERTA' : '<svg class="uiIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V3h14v18M8 21V6h8v15m-3-8h.01"/></svg> Porta FECHADA';
+        wallStatusText.innerHTML = newOpen ? '<svg class="uiIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V3h14v18M8 21V6h8v15m-3-8h.01"/></svg> Porta ABERTA' : '<svg class="uiIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V3h14v18M8 21V6h8v15m-3-8h.01"/></svg> Porta FECHADA';
         await sb.from('walls').update({ is_open: newOpen }).eq('id', wallData.id);
         computeLighting();
       }
@@ -1690,7 +1690,7 @@
 
     if (!wallStartPoint) {
       wallStartPoint = { x, y };
-      wallStatusText.textContent = wallToolMode === 'door' ? 'Porta: Toque no fim' : 'Parede: Toque no fim';
+      wallStatusText.innerHTML = wallToolMode === 'door' ? 'Porta: Toque no fim' : 'Parede: Toque no fim';
       
       if (wallDraftLine) wallDraftLine.remove();
       wallDraftLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
@@ -1724,7 +1724,7 @@
         wallDraftLine.setAttribute('stroke-dasharray', typeToInsert === 'door' ? '8,5' : 'none');
       }
 
-      wallStatusText.textContent = `Criado! Continue ou clique "Soltar Linha"`;
+      wallStatusText.innerHTML = `Criado! Continue ou clique "Soltar Linha"`;
 
       const { data, error } = await sb.from('walls').insert({
         scene_id: currentSceneId,
@@ -2809,7 +2809,7 @@
     fogPolyEditControls.classList.remove('hidden');
 
     const isVis = editingFogObj.is_visible !== false;
-    btnToggleFogVisibility.textContent = isVis ? '<svg class="uiIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg> Névoa: ON' : '<svg class="uiIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg> Névoa: OFF';
+    btnToggleFogVisibility.innerHTML = isVis ? '<svg class="uiIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg> Névoa: ON' : '<svg class="uiIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg> Névoa: OFF';
     fogStatusText.textContent = 'Editando polígono. Arraste os pontos verdes no mapa.';
     renderFogEditorHandles();
   }
@@ -2886,7 +2886,7 @@
     const newVis = !(editingFogObj.is_visible !== false);
     editingFogObj.is_visible = newVis;
     await sb.from('fog_elements').update({ is_visible: newVis }).eq('id', editingFogObj.id);
-    btnToggleFogVisibility.textContent = newVis ? '<svg class="uiIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg> Névoa: ON' : '👁️ Névoa: OFF';
+    btnToggleFogVisibility.innerHTML = newVis ? '<svg class="uiIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg> Névoa: ON' : '<svg class="uiIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg> Névoa: OFF';
     loadFogElements();
   });
 
@@ -3707,13 +3707,13 @@
     if (camLive && !silent) sendCamera(false, 'release');
     camLive = false;
     camLiveBtn.classList.remove('active');
-    camLiveBtn.textContent = '<svg class="uiIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9a14 14 0 0 1 18 0M6 12a9 9 0 0 1 12 0m-9 3a4 4 0 0 1 6 0m-3 4h.01"/></svg> Câmera ao vivo: OFF';
+    camLiveBtn.innerHTML = '<svg class="uiIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9a14 14 0 0 1 18 0M6 12a9 9 0 0 1 12 0m-9 3a4 4 0 0 1 6 0m-3 4h.01"/></svg> Câmera ao vivo: OFF';
   }
 
   function startCameraLive() {
     camLive = true; camLastKey = ''; camLastSent = 0;
     camLiveBtn.classList.add('active');
-    camLiveBtn.textContent = '<svg class="uiIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9a14 14 0 0 1 18 0M6 12a9 9 0 0 1 12 0m-9 3a4 4 0 0 1 6 0m-3 4h.01"/></svg> Câmera ao vivo: ON';
+    camLiveBtn.innerHTML = '<svg class="uiIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9a14 14 0 0 1 18 0M6 12a9 9 0 0 1 12 0m-9 3a4 4 0 0 1 6 0m-3 4h.01"/></svg> Câmera ao vivo: ON';
     camLiveTimer = setInterval(() => {
       const key = [boardX, boardY, scale].map(n => n.toFixed(2)).join('|');
       const now = Date.now();
@@ -3753,7 +3753,7 @@
     boardContextMenu.style.left = `${Math.max(8, Math.min(e.clientX, maxLeft))}px`;
     boardContextMenu.style.top = `${Math.max(8, Math.min(e.clientY, maxTop))}px`;
 
-    boardContextToggleLive.textContent = camLive ? '<svg class="uiIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9a14 14 0 0 1 18 0M6 12a9 9 0 0 1 12 0m-9 3a4 4 0 0 1 6 0m-3 4h.01"/></svg> Desativar câmera ao vivo' : '<svg class="uiIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9a14 14 0 0 1 18 0M6 12a9 9 0 0 1 12 0m-9 3a4 4 0 0 1 6 0m-3 4h.01"/></svg> Ativar câmera ao vivo';
+    boardContextToggleLive.innerHTML = camLive ? '<svg class="uiIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9a14 14 0 0 1 18 0M6 12a9 9 0 0 1 12 0m-9 3a4 4 0 0 1 6 0m-3 4h.01"/></svg> Desativar câmera ao vivo' : '<svg class="uiIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9a14 14 0 0 1 18 0M6 12a9 9 0 0 1 12 0m-9 3a4 4 0 0 1 6 0m-3 4h.01"/></svg> Ativar câmera ao vivo';
   });
 
   boardContextPullPlayers.addEventListener('click', () => {
@@ -3927,7 +3927,7 @@
 
   const dynFogBtn = document.getElementById('dynFogBtn');
   function syncDynFogUI() {
-    dynFogBtn.textContent = '<svg class="uiIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg> Fog dinâmico: ' + ((gridConfig && gridConfig.dynFog) ? 'ON' : 'OFF');
+    dynFogBtn.innerHTML = '<svg class="uiIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg> Fog dinâmico: ' + ((gridConfig && gridConfig.dynFog) ? 'ON' : 'OFF');
     dynFogBtn.classList.toggle('active', !!(gridConfig && gridConfig.dynFog));
   }
   dynFogBtn.addEventListener('click', () => {
