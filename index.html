@@ -382,10 +382,64 @@
       border-radius: 13px;
     }
 
-    #topBar { left: 10px; top: max(52px, calc(env(safe-area-inset-top, 0px) + 48px)); width: min(320px, calc(100vw - 20px));
-      max-height: calc(100dvh - max(64px, env(safe-area-inset-top, 0px) + 60px)); }
+    #topBar {
+      left: 10px;
+      top: max(52px, calc(env(safe-area-inset-top, 0px) + 48px));
+      width: min(320px, calc(100vw - 20px));
+      max-width: calc(100vw - 20px);
+      max-height: calc(100dvh - max(64px, env(safe-area-inset-top, 0px) + 60px));
+      display: flex !important;
+      flex-direction: column !important;
+      align-items: stretch !important;
+      flex-wrap: nowrap !important;
+      overflow-x: hidden;
+    }
     #topBarToggle { left: 10px; }
-    .brandTitle h1 { max-width: 155px; font-size: 13px; }
+    #topBar .brandTitle {
+      display: flex;
+      width: 100%;
+      min-width: 0;
+      align-items: center;
+      flex-wrap: nowrap;
+      gap: 8px;
+    }
+    #topBar .brandTitle h1 {
+      flex: 1;
+      min-width: 0;
+      max-width: none;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 13px;
+    }
+    #topBar #roleBadge { flex: 0 0 auto; margin-left: auto; }
+    #normalNav {
+      display: flex !important;
+      width: 100% !important;
+      min-width: 0;
+      flex-direction: column !important;
+      align-items: stretch !important;
+      overflow: visible;
+    }
+    #normalNav > button,
+    #normalNav > label.btn,
+    #moreActionsMenu > button,
+    #moreActionsMenu > label.btn {
+      display: flex;
+      width: 100% !important;
+      min-width: 0;
+      max-width: 100%;
+      flex: 0 0 auto;
+      white-space: normal;
+    }
+    #moreActionsMenu {
+      display: flex !important;
+      width: 100% !important;
+      min-width: 0;
+      flex-direction: column !important;
+      overflow: visible;
+    }
+    #topBarToggle { left: 10px; }
   }
 
   /* Régua */
@@ -698,8 +752,8 @@
     <div class="brandTitle">
       <span id="connDot" title="Status da conexão"></span>
       <h1 id="currentRoomTitle">Anomaly</h1>
+      <span id="roleBadge" class="hidden"></span>
     </div>
-    <span id="roleBadge" class="hidden"></span>
 
     <!-- Interface Padrão -->
     <div id="normalNav">
