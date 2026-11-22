@@ -3429,7 +3429,7 @@
       deleteBtn.addEventListener('click', async () => {
         if (deleteBtn.disabled) return;
         const acceptedName = prompt(
-          `Esta ação excluirá permanentemente "${s.name}" e todos os tokens, peças de mapa, paredes, luzes, névoas e desenhos desta cena.\\n\\nDigite o nome exato da cena para continuar:`
+          `Esta ação excluirá permanentemente "${s.name}" e todos os tokens, peças de mapa, paredes, luzes, névoas e desenhos desta cena.\n\nDigite o nome exato da cena para continuar:`
         );
         if (acceptedName === null) return;
         const password = prompt('Confirme sua senha para excluir a cena:');
@@ -5263,6 +5263,9 @@
 
 
   async function enterRoom(roomId) {
+    document.body.classList.remove('player-preview');
+    const previewButton = document.getElementById('playerPreviewBtn');
+    if (previewButton) previewButton.textContent = 'Ver como player';
     currentRoomId = roomId;
     lobbyOverlay.classList.add('hidden');
     placeholder.textContent = 'Carregando mesa...';
