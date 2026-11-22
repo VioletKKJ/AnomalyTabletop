@@ -3521,8 +3521,8 @@
   if (managePlayersBtn) managePlayersBtn.addEventListener('click', openPlayersPanel);
   if (closePlayersBtn) closePlayersBtn.addEventListener('click', () => playersOverlay.classList.add('hidden'));
 
-  zoomInBtn.addEventListener('click', () => { if (cameraLocked) return; scale = Math.min(scale * 1.2, 10); applyZoom(); });
-  zoomOutBtn.addEventListener('click', () => { if (cameraLocked) return; scale = Math.max(scale / 1.2, 0.05); applyZoom(); });
+  if (zoomInBtn) zoomInBtn.addEventListener('click', () => { if (cameraLocked) return; scale = Math.min(scale * 1.2, 10); applyZoom(); });
+  if (zoomOutBtn) zoomOutBtn.addEventListener('click', () => { if (cameraLocked) return; scale = Math.max(scale / 1.2, 0.05); applyZoom(); });
 
   const activePointers = new Map();
   const middlePanPointers = new Map();
@@ -4898,7 +4898,7 @@
   document.addEventListener('click', (e) => { if (!editMenu.contains(e.target) && !editMenuBtn.contains(e.target)) closeEditMenu(); });
   editMenu.addEventListener('click', (e) => { if (e.target.closest('button')) closeEditMenu(); });
 
-  zoomLabel.addEventListener('click', () => { if (cameraLocked) return; scale = 1; applyZoom(); });
+  if (zoomLabel) zoomLabel.addEventListener('click', () => { if (cameraLocked) return; scale = 1; applyZoom(); });
 
   // Nomes dos tokens: preferência só de quem está olhando (não vai para os outros jogadores)
   let namesVisible = true;
