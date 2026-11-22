@@ -643,6 +643,42 @@
     #topBar .brandTitle { margin-left: 3px !important; }
   }
 
+
+  /* Mesmo diâmetro visual entre os botões de recolher e as barras abertas */
+  #topBar {
+    box-sizing: border-box !important;
+    height: 42px !important; min-height: 42px !important;
+    padding-top: 0 !important; padding-bottom: 0 !important;
+    align-items: center !important;
+  }
+  #topBar .navBtn {
+    box-sizing: border-box !important;
+    width: 40px !important; min-width: 40px !important;
+    height: 40px !important; min-height: 40px !important;
+  }
+  #sideToolbar {
+    box-sizing: border-box !important;
+    width: 42px !important; min-width: 42px !important;
+    padding: 0 !important; gap: 6px !important;
+    align-items: center !important;
+  }
+  #sideToolbar button, #sideToolbar label.btn {
+    box-sizing: border-box !important;
+    width: 42px !important; min-width: 42px !important;
+    height: 42px !important; min-height: 42px !important;
+  }
+  #topBarToggle, #libToggle, #sideToolbarToggle {
+    box-sizing: border-box !important;
+    width: 42px !important; min-width: 42px !important;
+    height: 42px !important; min-height: 42px !important;
+  }
+  @media (max-width: 760px) {
+    #topBar { height: 42px !important; min-height: 42px !important; padding-top: 0 !important; padding-bottom: 0 !important; }
+    #topBar .navBtn { width: 40px !important; min-width: 40px !important; height: 40px !important; min-height: 40px !important; }
+    #sideToolbar { width: 42px !important; min-width: 42px !important; padding: 0 !important; gap: 5px !important; }
+    #sideToolbar button, #sideToolbar label.btn { width: 42px !important; min-width: 42px !important; height: 42px !important; min-height: 42px !important; }
+  }
+
 </style>
 </head>
 <body>
