@@ -617,6 +617,32 @@
   body.projetor #projBar { display: flex; }
   #projBar.show { opacity: 1; }
   #projBar button { height: 30px; padding: 0 10px; font-size: 12px; }
+
+  /* Ajustes finais: ordem dos controles no topo e tamanhos unificados */
+  #topBar { left: 112px !important; right: auto !important; }
+  #topBar #normalNav { order: 1 !important; }
+  #topBar .brandTitle { order: 2 !important; margin-left: 5px !important; }
+  #topBarToggle {
+    left: 12px !important; right: auto !important;
+    width: 42px !important; min-width: 42px !important; height: 42px !important; min-height: 42px !important;
+    border-radius: 50% !important; padding: 0 !important;
+  }
+  #libToggle {
+    left: 62px !important; right: auto !important;
+    width: 42px !important; min-width: 42px !important; height: 42px !important; min-height: 42px !important;
+  }
+  #sideToolbarToggle {
+    width: 42px !important; min-width: 42px !important; height: 42px !important; min-height: 42px !important;
+    border-radius: 50% !important; padding: 0 !important;
+  }
+  @media (max-width: 760px) {
+    #topBar { left: 102px !important; right: 8px !important; max-width: none !important; }
+    #topBarToggle { left: 9px !important; right: auto !important; width: 42px !important; min-width: 42px !important; height: 42px !important; min-height: 42px !important; }
+    #libToggle { left: 58px !important; right: auto !important; width: 42px !important; min-width: 42px !important; height: 42px !important; min-height: 42px !important; }
+    #sideToolbarToggle { width: 42px !important; min-width: 42px !important; height: 42px !important; min-height: 42px !important; }
+    #topBar .brandTitle { margin-left: 3px !important; }
+  }
+
 </style>
 </head>
 <body>
