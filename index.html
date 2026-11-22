@@ -3101,6 +3101,15 @@
       if (e.target === handle || e.target.classList.contains('rotateHandle')) return;
 
       selectElement(el);
+      // Com o painel de propriedades aberto, trocar o token selecionado também troca
+      // imediatamente o token editado pelo painel, sem precisar abrir o menu de contexto.
+      if (type === 'token' && currentRole === 'mestre' && !tokenPropsPanel.classList.contains('hidden')) {
+        const clickedToken = tokenData.get(itemId);
+        if (clickedToken) {
+          propsTokenId = itemId;
+          fillTokenProps(clickedToken);
+        }
+      }
       dragging = true; moved = false; el.dragging = true;
       el.classList.add('dragging');
       el.setPointerCapture(e.pointerId);
