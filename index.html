@@ -233,7 +233,7 @@
 
   /* Controles circulares no topo, inspirados na referência */
   #topBar {
-    left: 76px !important; right: auto !important; top: max(8px, env(safe-area-inset-top, 8px)) !important;
+    left: 122px !important; right: auto !important; top: max(8px, env(safe-area-inset-top, 8px)) !important;
     transform: none !important; max-width: calc(100vw - 160px) !important;
     border-radius: 999px !important; padding: 6px 9px !important; gap: 5px !important;
   }
@@ -245,7 +245,7 @@
   }
   #topBar .navBtn .lbl, #topBar .navBtn .chev, #topBar .navDivider { display: none !important; }
   #topBarToggle {
-    left: auto !important; right: 76px !important; top: max(8px, env(safe-area-inset-top, 8px)) !important;
+    left: 68px !important; right: auto !important; top: max(8px, env(safe-area-inset-top, 8px)) !important;
     transform: none !important; width: 40px !important; height: 40px !important; padding: 0 !important;
     display: inline-flex !important; align-items: center !important; justify-content: center !important;
     border: 1px solid var(--panel-border) !important; border-radius: 50% !important;
@@ -1110,8 +1110,8 @@
   </div>
 
   <!-- Gaveta / biblioteca de tokens (só o mestre) -->
+  <button id="libToggle" type="button" title="Biblioteca de tokens" aria-label="Abrir biblioteca de tokens"><svg class="uiIcon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 6l4 14M12 6v14M8 8v12M4 4v16"/></svg></button>
   <aside id="libDrawer" class="mestre-only" aria-label="Biblioteca de tokens">
-    <button id="libToggle" type="button" title="Biblioteca de tokens"><svg class="uiIcon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 6l4 14M12 6v14M8 8v12M4 4v16"/></svg></button>
     <div class="libHead">
       <strong>Biblioteca</strong>
       <button id="libNewFolder" type="button" title="Nova pasta"><svg class="uiIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6a2 2 0 0 1 2-2h4.5l2 2.5H19a2 2 0 0 1 2 2V18a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M12 11v6M9 14h6"/></svg></button>
