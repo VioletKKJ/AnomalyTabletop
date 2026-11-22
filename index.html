@@ -679,6 +679,38 @@
     #sideToolbar button, #sideToolbar label.btn { width: 42px !important; min-width: 42px !important; height: 42px !important; min-height: 42px !important; }
   }
 
+
+  /* Restaura as dimensões originais da barra lateral; os toggles acompanham os botões */
+  #sideToolbar {
+    box-sizing: content-box !important;
+    width: auto !important; min-width: 0 !important;
+    padding: 6px !important; gap: 6px !important;
+  }
+  #sideToolbar button, #sideToolbar label.btn {
+    box-sizing: border-box !important;
+    width: 40px !important; min-width: 40px !important;
+    height: 40px !important; min-height: 40px !important;
+  }
+  #topBarToggle, #libToggle, #sideToolbarToggle {
+    box-sizing: border-box !important;
+    width: 40px !important; min-width: 40px !important;
+    height: 40px !important; min-height: 40px !important;
+  }
+  @media (max-width: 760px) {
+    #sideToolbar {
+      width: auto !important; min-width: 0 !important;
+      padding: 6px !important; gap: 6px !important;
+    }
+    #sideToolbar button, #sideToolbar label.btn {
+      width: 40px !important; min-width: 40px !important;
+      height: 40px !important; min-height: 40px !important;
+    }
+    #topBarToggle, #libToggle, #sideToolbarToggle {
+      width: 40px !important; min-width: 40px !important;
+      height: 40px !important; min-height: 40px !important;
+    }
+  }
+
 </style>
 </head>
 <body>
