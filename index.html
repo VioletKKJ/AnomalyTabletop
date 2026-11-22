@@ -856,14 +856,14 @@
     </div>
   </header>
   <button id="topBarToggle" title="Esconder/mostrar barra">▲</button>
-  <div id="camLockBadge" class="hidden">📷 Câmera controlada pelo mestre</div>
+  <div id="camLockBadge" class="hidden"><svg class="uiIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h4l2-3h6l2 3h4v13H3z"/><circle cx="12" cy="13" r="4"/></svg> Câmera controlada pelo mestre</div>
 
   <!-- Barra Lateral de Ferramentas -->
   <div id="sideToolbar">
-    <button class="toolBtn active" id="toolSelectBtn" data-tool="select" title="Selecionar e Mover">🖱️</button>
-    <button class="toolBtn" id="toolMoveBtn" data-tool="move" title="Mover Câmera">✋</button>
-    <button class="toolBtn" id="toolRulerBtn" data-tool="ruler" title="Régua (arraste para medir; Esc limpa)">📏</button>
-    <button class="toolBtn" id="toolDrawBtn" data-tool="draw" title="Desenhar (Ctrl+Z desfaz)">✏️</button>
+    <button class="toolBtn active" id="toolSelectBtn" data-tool="select" title="Selecionar e Mover"><svg class="uiIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="3" width="12" height="18" rx="6"/><path d="M12 3v6"/></svg></button>
+    <button class="toolBtn" id="toolMoveBtn" data-tool="move" title="Mover Câmera"><svg class="uiIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 12V5a1.5 1.5 0 0 1 3 0v6-8a1.5 1.5 0 0 1 3 0v8-6a1.5 1.5 0 0 1 3 0v8-4a1.5 1.5 0 0 1 3 0v7c0 4-2 6-6 6h-2c-2 0-3-1-4-3l-3-5a1.5 1.5 0 0 1 3-2l2 2"/></svg></button>
+    <button class="toolBtn" id="toolRulerBtn" data-tool="ruler" title="Régua (arraste para medir; Esc limpa)"><svg class="uiIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h18v10H3zM7 7v4m4-4v2m4-2v4m4-4v2"/></svg></button>
+    <button class="toolBtn" id="toolDrawBtn" data-tool="draw" title="Desenhar (Ctrl+Z desfaz)"><svg class="uiIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m4 16-.8 4.8L8 20l11-11-4-4L4 16Z"/><path d="m13.5 6.5 4 4"/></svg></button>
   </div>
   <button id="sideToolbarToggle" title="Esconder/mostrar ferramentas">▶</button>
 
@@ -895,7 +895,7 @@
     <button id="menuAddState" class="mestre-only">Adicionar estado</button>
     <input type="file" id="stateInput" accept="image/png,image/jpeg,image/webp,image/gif,video/webm,video/mp4" class="hidden">
     <hr id="statesHr">
-    <button id="menuProps" class="mestre-only">⚙️ Propriedades…</button>
+    <button id="menuProps" class="mestre-only"><svg class="uiIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-1.7 2.9-.2-.1a1.7 1.7 0 0 0-1.8.2l-.2.1h-3.4l-.1-.2a1.7 1.7 0 0 0-1.5-1.1 1.7 1.7 0 0 0-1.5 1.1l-.1.2H6l-.1-.2a1.7 1.7 0 0 0-1.8-.2l-.2.1-1.7-2.9.1-.1a1.7 1.7 0 0 0 .3-1.9l-.1-.2v-3.4l.2-.1a1.7 1.7 0 0 0 1.1-1.5 1.7 1.7 0 0 0-1.1-1.5l-.2-.1V6l.2-.1a1.7 1.7 0 0 0 .2-1.8l-.1-.2 2.9-1.7.1.1a1.7 1.7 0 0 0 1.9.3l.2-.1h3.4l.1.2a1.7 1.7 0 0 0 1.5 1.1 1.7 1.7 0 0 0 1.5-1.1l.1-.2h3.4l.1.2a1.7 1.7 0 0 0 1.8.2l.2-.1 1.7 2.9-.1.1a1.7 1.7 0 0 0-.3 1.9l.1.2v3.4l-.2.1a1.7 1.7 0 0 0-1.1 1.5 1.7 1.7 0 0 0 1.1 1.5z"/></svg> Propriedades…</button>
     <button id="menuLock" class="mestre-only">🔒 Travar</button>
     <button id="menuHide" class="mestre-only">🙈 Ocultar dos jogadores</button>
     <button id="menuHideName" class="mestre-only">🏷️ Ocultar nome dos jogadores</button>
@@ -906,8 +906,8 @@
     <button id="menuRotate">Girar 90°</button>
     <button id="menuFlip">Espelhar</button>
     <hr>
-    <button id="menuVision" class="mestre-only">👁️ Visão do token…</button>
-    <button id="menuStore" class="mestre-only">📚 Guardar na biblioteca</button>
+    <button id="menuVision" class="mestre-only"><svg class="uiIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg> Visão do token…</button>
+    <button id="menuStore" class="mestre-only"><svg class="uiIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v15H4zM8 3v15m5-13v15m5-13v15"/></svg> Guardar na biblioteca</button>
     <button id="menuDuplicate" class="mestre-only">Duplicar</button>
     <button id="menuDelete" class="mestre-only danger">Apagar</button>
   </div>
@@ -1065,8 +1065,8 @@
     <label class="tpCheck"><input type="checkbox" id="tpNameHidden"> 🏷️ Ocultar nome dos jogadores</label>
 
     <div class="tpActions">
-      <button id="tpVision" type="button">👁️ Visão…</button>
-      <button id="tpStore" type="button">📚 Guardar</button>
+      <button id="tpVision" type="button"><svg class="uiIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg> Visão…</button>
+      <button id="tpStore" type="button"><svg class="uiIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v15H4zM8 3v15m5-13v15m5-13v15"/></svg> Guardar</button>
       <button id="tpDup" type="button">Duplicar</button>
       <button id="tpDelete" type="button" class="danger">Apagar</button>
     </div>
