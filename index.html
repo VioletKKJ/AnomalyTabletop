@@ -3629,7 +3629,10 @@
     sideToolbar.classList.toggle('collapsed', sideHidden); sideToolbarToggle.textContent = sideHidden ? '◀' : '▶';
   }
   topBarToggle.addEventListener('click', () => {
-    const h = topBar.classList.toggle('collapsed'); localStorage.setItem('tabletop_topbar_hidden', h ? '1' : '0'); topBarToggle.textContent = h ? '▼' : '▲';
+    const h = topBar.classList.toggle('collapsed');
+    localStorage.setItem('tabletop_topbar_hidden', h ? '1' : '0');
+    topBarToggle.textContent = h ? '▼' : '▲';
+    if (!h) setLibOpen(false);
   });
   sideToolbarToggle.addEventListener('click', () => {
     const h = sideToolbar.classList.toggle('collapsed'); localStorage.setItem('tabletop_sidebar_hidden', h ? '1' : '0'); sideToolbarToggle.textContent = h ? '◀' : '▶';
