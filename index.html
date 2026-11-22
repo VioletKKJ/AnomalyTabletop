@@ -327,6 +327,36 @@
   #lightModal .card input[type="range"], #lightModal .card input[type="color"] { margin: 4px 0 8px; }
   .light-marker { touch-action: none; }
 
+  /* Configuração do grid flutuante: mantém a mesa visível durante os ajustes. */
+  #gridOverlay {
+    inset: 64px auto auto 12px;
+    background: transparent;
+    backdrop-filter: none;
+    pointer-events: none;
+    align-items: flex-start;
+    justify-content: flex-start;
+    padding: 0;
+    z-index: 39;
+  }
+  #gridOverlay .card {
+    width: min(340px, calc(100vw - 24px));
+    max-width: none;
+    max-height: calc(100vh - 84px);
+    overflow-y: auto;
+    padding: 16px;
+    pointer-events: auto;
+    background: rgba(26, 28, 36, 0.96);
+    border-radius: 13px;
+  }
+  @media (max-width: 700px) {
+    #gridOverlay { inset: max(52px, calc(env(safe-area-inset-top, 0px) + 48px)) 10px auto 10px; }
+    #gridOverlay .card {
+      width: 100%;
+      max-height: calc(100dvh - max(64px, env(safe-area-inset-top, 0px) + 60px));
+      padding: 14px;
+    }
+  }
+
   .card { background: var(--panel); border: 1px solid var(--panel-border); border-radius: 16px;
     padding: 24px; max-width: 480px; width: 100%; max-height: 85vh; overflow-y: auto; box-shadow: 0 12px 40px rgba(0,0,0,0.6); }
   .card h2 { margin-top: 0; font-size: 18px; font-weight: 700; color: #fff; }
@@ -488,6 +518,8 @@
     font-size: calc(14px * var(--inv-zoom, 1)); line-height: 1; z-index: 3; pointer-events: none; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .8)); }
   body.jogador .token.tokenHidden { visibility: hidden !important; pointer-events: none !important; }
   .tokenName.dimmed { opacity: .6; font-style: italic; }
+  body.player-preview .mestre-only { display: none !important; }
+  body.player-preview #playerPreviewBtn { display: flex !important; }
 </style>
 </head>
 <body>
@@ -741,11 +773,6 @@
       </div>
 
       <span class="navDivider"></span>
-      <div class="zoomGroup">
-        <button id="zoomOut" class="navBtn iconOnly" type="button" title="Menos zoom" aria-label="Diminuir zoom"><svg viewBox="0 0 24 24"><path d="M5 12h14"/></svg></button>
-        <button id="zoomLabel" class="navBtn" type="button" title="Voltar para 100%">100%</button>
-        <button id="zoomIn" class="navBtn iconOnly" type="button" title="Mais zoom" aria-label="Aumentar zoom"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
-      </div>
       <span class="navDivider"></span>
 
       <button id="btnReturnLobby" class="navBtn" type="button" title="Trocar de mesa">
@@ -767,6 +794,7 @@
           <button id="camLiveBtn" class="mestre-only" type="button" title="Os jogadores seguem a sua câmera em tempo real">📡 Câmera ao vivo: OFF</button>
           <div class="ddLabel">Mesa</div>
           <button id="managePlayersBtn" class="mestre-only hidden" type="button">Jogadores</button>
+          <button id="playerPreviewBtn" class="mestre-only" type="button">Ver como player</button>
           <button id="toggleNamesBtn" type="button" title="Mostrar ou esconder os nomes dos tokens (só para você)">🏷️ Nomes dos tokens: ON</button>
           <button id="settingsBtn" type="button" title="Configurações">⚙️ Configurações</button>
           <hr class="mestre-only">
@@ -1031,6 +1059,7 @@
     <div class="tpRow"><input type="number" class="tpNum" id="tpZ" step="1"><button id="tpZFront" type="button">Frente</button><button id="tpZBack" type="button">Trás</button></div>
 
     <label class="tpCheck"><input type="checkbox" id="tpFlip"> Espelhar</label>
+    <label class="tpCheck"><input type="checkbox" id="tpHideName"> Ocultar nome flutuante</label>
     <label class="tpCheck"><input type="checkbox" id="tpLocked"> 🔒 Travar posição (não move nem clica)</label>
     <label class="tpCheck"><input type="checkbox" id="tpHidden"> 🙈 Ocultar dos jogadores</label>
     <label class="tpCheck"><input type="checkbox" id="tpNameHidden"> 🏷️ Ocultar nome dos jogadores</label>
@@ -1070,6 +1099,18 @@
       moreActionsBtn.setAttribute('aria-expanded', 'false');
     }
   });
+
+  const playerPreviewBtn = document.getElementById('playerPreviewBtn');
+  if (playerPreviewBtn) {
+    playerPreviewBtn.addEventListener('click', () => {
+      if (currentRole !== 'mestre') return;
+      const previewing = document.body.classList.toggle('player-preview');
+      document.body.classList.toggle('jogador', previewing);
+      playerPreviewBtn.textContent = previewing ? 'Voltar à visão do mestre' : 'Ver como player';
+      const badge = document.getElementById('roleBadge');
+      if (badge) badge.textContent = previewing ? 'Prévia: player' : 'Mestre';
+    });
+  }
 
   const sideToolbar = document.getElementById('sideToolbar');
   const sideToolbarToggle = document.getElementById('sideToolbarToggle');
@@ -2662,7 +2703,7 @@
     }
   }
 
-  const TOKEN_PROP_KEYS = ['name', 'tint', 'tint_amount', 'opacity', 'size', 'rotation', 'flip_x', 'hidden', 'locked', 'name_hidden'];
+  const TOKEN_PROP_KEYS = ['name', 'tint', 'tint_amount', 'opacity', 'size', 'rotation', 'flip_x', 'hidden', 'locked', 'name_hidden', 'hide_name'];
   function upsertTokenEl(tok) {
     const prev = tokenData.get(tok.id);
     if (prev && prev !== tok && prev._lockUntil && prev._lockUntil > Date.now()) {
@@ -2724,7 +2765,7 @@
     el.style.setProperty('--tok-op', String(tok.opacity == null ? 1 : tok.opacity));
     el.style.setProperty('--tint-amt', String(tok.tint_amount == null ? 0.5 : tok.tint_amount));
     let nameWrap = el.querySelector(':scope > .tokenNameWrap');
-    const showName = !!tok.name && namesVisible && (currentRole === 'mestre' || !tok.name_hidden);
+    const showName = !!tok.name && !tok.hide_name && namesVisible && (currentRole === 'mestre' || !tok.name_hidden);
     el.classList.toggle('locked', !!tok.locked);
     el.classList.toggle('tokenHidden', !!tok.hidden);
     if (tok.locked && selectedEl === el) deselectAll();
@@ -3379,6 +3420,43 @@
         });
         row.appendChild(useBtn);
       }
+      const deleteBtn = document.createElement('button');
+      deleteBtn.type = 'button';
+      deleteBtn.className = 'danger sceneDeleteBtn';
+      deleteBtn.textContent = 'Excluir';
+      deleteBtn.disabled = (scenes || []).length <= 1;
+      deleteBtn.title = deleteBtn.disabled ? 'A mesa precisa manter pelo menos uma cena' : 'Excluir esta cena';
+      deleteBtn.addEventListener('click', async () => {
+        if (deleteBtn.disabled) return;
+        const acceptedName = prompt(
+          `Esta ação excluirá permanentemente "${s.name}" e todos os tokens, peças de mapa, paredes, luzes, névoas e desenhos desta cena.\\n\\nDigite o nome exato da cena para continuar:`
+        );
+        if (acceptedName === null) return;
+        const password = prompt('Confirme sua senha para excluir a cena:');
+        if (password === null) return;
+        if (!password) { alert('A senha é obrigatória.'); return; }
+
+        deleteBtn.disabled = true;
+        const { data: replacementSceneId, error: deleteError } = await sb.rpc('delete_scene', {
+          p_user_id: currentUserId,
+          p_scene_id: s.id,
+          p_password: password,
+          p_confirm_name: acceptedName
+        });
+        if (deleteError) {
+          alert('Não foi possível excluir a cena: ' + deleteError.message);
+          deleteBtn.disabled = false;
+          return;
+        }
+
+        if (isActive) {
+          currentSceneId = replacementSceneId;
+          await loadSceneContent(currentSceneId);
+          subscribeRealtimeChannels(currentSceneId);
+        }
+        await openScenesPanel();
+      });
+      row.appendChild(deleteBtn);
       scenesList.appendChild(row);
     });
   }
@@ -4687,6 +4765,7 @@
   const tpRotNum = document.getElementById('tpRotNum');
   const tpZ = document.getElementById('tpZ');
   const tpFlip = document.getElementById('tpFlip');
+  const tpHideName = document.getElementById('tpHideName');
   const tpLocked = document.getElementById('tpLocked');
   const tpHidden = document.getElementById('tpHidden');
   const tpNameHidden = document.getElementById('tpNameHidden');
@@ -4709,6 +4788,7 @@
     tpRot.value = tpRotNum.value = normDeg(tok.rotation || 0);
     tpZ.value = Math.round(tok.z || 0);
     tpFlip.checked = !!tok.flip_x;
+    tpHideName.checked = !!tok.hide_name;
     tpLocked.checked = !!tok.locked;
     tpHidden.checked = !!tok.hidden;
     tpNameHidden.checked = !!tok.name_hidden;
@@ -4767,6 +4847,7 @@
     tpRotNum.value = v; tpRot.value = v; applyTokenProps({ rotation: v });
   });
   tpFlip.addEventListener('change', () => applyTokenProps({ flip_x: tpFlip.checked }));
+  tpHideName.addEventListener('change', () => applyTokenProps({ hide_name: tpHideName.checked }));
   tpLocked.addEventListener('change', () => applyTokenProps({ locked: tpLocked.checked }));
   tpHidden.addEventListener('change', () => applyTokenProps({ hidden: tpHidden.checked }));
   tpNameHidden.addEventListener('change', () => applyTokenProps({ name_hidden: tpNameHidden.checked }));
