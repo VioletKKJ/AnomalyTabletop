@@ -5515,28 +5515,62 @@
 
   async function connect(url, key) {
     setupError.textContent = '';
+    loginError.textContent = '';
     connDot.classList.remove('ok');
+
+    if (!url || !key) {
+      setupError.textContent = 'Informe a URL e a chave pública (anon/publishable) do Supabase.';
+      setupOverlay.classList.remove('hidden');
+      loginOverlay.classList.add('hidden');
+      return;
+    }
+    if (!/^https:\/\/[a-z0-9-]+\.supabase\.co\/?$/i.test(url)) {
+      setupError.textContent = 'A URL do projeto parece inválida. Use o Project URL exibido nas configurações do Supabase.';
+      setupOverlay.classList.remove('hidden');
+      loginOverlay.classList.add('hidden');
+      return;
+    }
+
     try {
-      sb = supabase.createClient(url, key);
-      localStorage.setItem('tabletop_sb_url', url);
+      if (!window.supabase || typeof window.supabase.createClient !== 'function') {
+        throw new Error('A biblioteca do Supabase não carregou. Verifique sua conexão e tente recarregar a página.');
+      }
+      const client = window.supabase.createClient(url.replace(/\/$/, ''), key);
+      const { error: probeError } = await client.from('profiles').select('id').limit(1);
+      if (probeError && !/permission denied|row-level security|rls/i.test(probeError.message || '')) {
+        throw probeError;
+      }
+
+      sb = client;
+      localStorage.setItem('tabletop_sb_url', url.replace(/\/$/, ''));
       localStorage.setItem('tabletop_sb_key', key);
       setupOverlay.classList.add('hidden');
 
       const savedUserId = localStorage.getItem('tabletop_user_id');
       const savedUsername = localStorage.getItem('tabletop_username');
       if (savedUserId) {
-        const { data: profile } = await sb.from('profiles').select('id, display_name').eq('id', savedUserId).maybeSingle();
+        const { data: profile, error: profileError } = await sb.from('profiles').select('id, display_name').eq('id', savedUserId).maybeSingle();
+        if (profileError) throw profileError;
         if (profile) await loadProfileAndEnter({ id: profile.id, username: profile.display_name || savedUsername });
-        else { localStorage.removeItem('tabletop_user_id'); loginOverlay.classList.remove('hidden'); }
-      } else { loginOverlay.classList.remove('hidden'); }
+        else {
+          localStorage.removeItem('tabletop_user_id');
+          localStorage.removeItem('tabletop_username');
+          loginOverlay.classList.remove('hidden');
+        }
+      } else {
+        loginOverlay.classList.remove('hidden');
+      }
     } catch (err) {
-      setupError.textContent = err.message;
+      sb = null;
+      setupError.textContent = 'Falha ao conectar: ' + (err?.message || 'erro desconhecido');
+      setupOverlay.classList.remove('hidden');
+      loginOverlay.classList.add('hidden');
     }
   }
 
   btnConnect.addEventListener('click', () => {
     const url = inpUrl.value.trim(), key = inpKey.value.trim();
-    if (url && key) connect(url, key);
+    connect(url, key);
   });
 
   btnLogin.addEventListener('click', async () => {
@@ -5570,9 +5604,17 @@
   });
 
   applyZoom(); drawGrid();
-  const savedUrl = localStorage.getItem('tabletop_sb_url'), savedKey = localStorage.getItem('tabletop_sb_key');
-  if (savedUrl && savedKey) connect(savedUrl, savedKey);
-  else setupOverlay.classList.add('hidden');
+  const savedUrl = localStorage.getItem('tabletop_sb_url') || '';
+  const savedKey = localStorage.getItem('tabletop_sb_key') || '';
+  inpUrl.value = savedUrl;
+  inpKey.value = savedKey;
+  if (savedUrl && savedKey) {
+    connect(savedUrl, savedKey);
+  } else {
+    setupOverlay.classList.remove('hidden');
+    loginOverlay.classList.add('hidden');
+    lobbyOverlay.classList.add('hidden');
+  }
 })();
 </script>
 </body>
