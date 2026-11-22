@@ -87,23 +87,72 @@
     .lobbyLogout button { width:100%; }
   }
 
-  /* Barra Superior Flutuante Minimalista */
-  #topBar { position: fixed; top: max(12px, env(safe-area-inset-top, 12px)); left: 50%; transform: translateX(-50%) translateY(0); z-index: 30;
-    padding: 8px 14px; background: rgba(26, 28, 36, 0.88); border: 1px solid var(--panel-border);
-    backdrop-filter: blur(12px); display: flex; flex-wrap: wrap; gap: 6px; align-items: center; justify-content: center;
-    border-radius: 14px; transition: transform .25s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 8px 32px rgba(0,0,0,0.6); max-width: 96vw; }
+  /* ===== Barra superior (redesenhada: mais limpa) ===== */
+  #topBar { position: fixed; top: max(10px, env(safe-area-inset-top, 10px)); left: 50%; transform: translateX(-50%); z-index: 30;
+    display: flex; align-items: center; gap: 4px; padding: 5px 6px; max-width: calc(100vw - 16px);
+    background: rgba(18, 19, 26, 0.82); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 14px;
+    backdrop-filter: blur(16px) saturate(1.2); box-shadow: 0 6px 24px rgba(0, 0, 0, 0.4);
+    transition: transform .25s cubic-bezier(0.4, 0, 0.2, 1); }
   #topBar.collapsed { transform: translateX(-50%) translateY(calc(-100% - 20px)); }
-  
-  .brandTitle { display: flex; align-items: center; gap: 6px; margin-right: 4px; padding-right: 8px; border-right: 1px solid var(--panel-border); }
-  .brandTitle h1 { font-size: 14px; margin: 0; font-weight: 700; letter-spacing: 0.5px;
-    background: linear-gradient(135deg, #e0aaff, #9d4edf); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  #topBar .brandTitle { display: flex; align-items: center; gap: 8px; padding: 0 8px 0 6px; min-width: 0; margin: 0; border: none; }
+  #topBar .brandTitle h1 { margin: 0; font-size: 13px; font-weight: 600; letter-spacing: .2px; color: #f1eef7; max-width: 170px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; background: none; -webkit-text-fill-color: currentColor; }
+  #topBar #roleBadge { font-size: 10px; padding: 2px 7px; letter-spacing: .3px; text-transform: uppercase; color: #d9c2ef; background: rgba(157, 78, 223, 0.16); border: none; }
+  #topBar .navDivider { width: 1px; height: 20px; flex: none; margin: 0 4px; background: rgba(255, 255, 255, 0.1); }
+  #topBar #normalNav { position: relative; display: flex; align-items: center; gap: 2px; flex-wrap: nowrap; }
+  #topBar .navGroup { display: flex; align-items: center; gap: 2px; }
+  #topBar .navBtn { height: 32px; min-height: 32px; padding: 0 10px; display: inline-flex; align-items: center; gap: 7px; flex: none;
+    background: transparent; border: 1px solid transparent; border-radius: 9px; box-shadow: none; transform: none;
+    color: #b9bdca; font-size: 12.5px; font-weight: 500; cursor: pointer; white-space: nowrap; }
+  #topBar .navBtn svg { width: 16px; height: 16px; flex: none; stroke: currentColor; fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+  #topBar .navBtn:hover { background: rgba(255, 255, 255, 0.07); color: #fff; border-color: transparent; transform: none; box-shadow: none; }
+  #topBar .navBtn.active, #topBar .navBtn[aria-expanded="true"] { background: rgba(157, 78, 223, 0.22); color: #fff; }
+  #topBar .navBtn.iconOnly { width: 32px; padding: 0; justify-content: center; }
+  #topBar .navBtn .chev { width: 12px; height: 12px; margin-left: -2px; opacity: .7; }
+  #topBar .zoomGroup { display: flex; align-items: center; background: rgba(255, 255, 255, 0.05); border-radius: 10px; }
+  #topBar #zoomLabel { min-width: 46px; padding: 0 4px; justify-content: center; font-size: 11.5px; font-variant-numeric: tabular-nums; }
+  #topBar .dd { position: relative; }
+  #topBar .ddMenu { position: absolute; top: calc(100% + 10px); z-index: 60; display: none; flex-direction: column; gap: 1px; min-width: 230px; padding: 6px;
+    background: rgba(24, 25, 34, 0.97); border: 1px solid rgba(255, 255, 255, 0.09); border-radius: 12px;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5); backdrop-filter: blur(16px); }
+  #topBar .ddMenu.open { display: flex; }
+  #topBar .ddMenu.left { left: 0; }
+  #topBar .ddMenu.right { right: 0; }
+  #topBar .ddMenu button { width: 100%; display: flex; flex-direction: column; align-items: flex-start; gap: 1px; padding: 8px 10px; margin: 0;
+    background: transparent; border: none; border-radius: 8px; box-shadow: none; transform: none;
+    color: #dcdfe9; font-size: 12.5px; font-weight: 500; text-align: left; white-space: normal; }
+  #topBar .ddMenu button:hover { background: rgba(255, 255, 255, 0.07); color: #fff; }
+  #topBar .ddMenu button.active { color: #fff; background: rgba(157, 78, 223, 0.22); }
+  #topBar .ddMenu button.danger { color: #ff8585; }
+  #topBar .ddMenu button.danger:hover { background: rgba(255, 82, 82, 0.2); color: #fff; }
+  #topBar .ddMenu .sub { font-size: 10.5px; font-weight: 400; color: var(--text-dim); }
+  #topBar .ddMenu .ddLabel { padding: 8px 10px 3px; font-size: 10px; font-weight: 700; letter-spacing: .9px; text-transform: uppercase; color: var(--text-dim); }
+  #topBar .ddMenu hr { width: 100%; border: none; border-top: 1px solid rgba(255, 255, 255, 0.08); margin: 5px 0; }
+  /* navegações dos editores (Mapa/Névoa/Paredes/Luzes) com o mesmo visual enxuto */
+  #topBar #editorNav button, #topBar #fogEditorNav button, #topBar #wallEditorNav button, #topBar #lightEditorNav button, #topBar #editorNav label.btn {
+    min-height: 32px; padding: 0 11px; border-radius: 9px; font-size: 12.5px; }
+  /* modo editor: a barra vira só a barra de ferramentas do editor, numa linha */
+  #topBar:has(> [id$="EditorNav"]:not(.hidden)) .brandTitle { display: none; }
+  #topBar > [id$="EditorNav"] { padding: 2px 6px; }
+  #topBar > [id$="EditorNav"] > span:first-child { white-space: nowrap; padding-right: 4px; }
+  @media (min-width: 761px) { #topBar > [id$="EditorNav"] { flex-wrap: nowrap !important; } }
+  #topBarToggle { position: fixed; top: max(4px, env(safe-area-inset-top, 4px)); left: 50%; transform: translateX(-50%); z-index: 31;
+    background: var(--panel); border: 1px solid var(--panel-border); border-top: none; border-radius: 0 0 10px 10px; padding: 2px 16px; color: var(--accent);
+    cursor: pointer; font-size: 10px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3); transition: background .2s, color .2s; }
+  #topBarToggle:hover { background: var(--panel-border); color: #fff; }
+  #topBar.collapsed ~ #topBarToggle { top: 0; }
+  @media (max-width: 760px) {
+    #topBar { left: 8px; right: 8px; max-width: none; transform: none; justify-content: space-between; }
+    #topBar.collapsed { transform: translateY(calc(-100% - 20px)); }
+    #topBar .brandTitle h1 { max-width: 84px; font-size: 12px; }
+    #topBar #roleBadge { display: none; }
+    #topBar .navBtn .lbl { display: none; }
+    #topBar .navBtn { padding: 0 8px; }
+    #topBar .navBtn .chev { display: none; }
+    #topBar .navDivider { margin: 0 1px; }
+    #topBar #zoomLabel { min-width: 38px; }
+  }
 
-  #topBarToggle { position: fixed; top: max(12px, env(safe-area-inset-top, 12px)); left: 14px; transform: none;
-    z-index: 31; width: 38px; height: 34px; padding: 0; display: flex; align-items: center; justify-content: center;
-    color: #f0e6ff; background: rgba(24,25,33,.94); border: 1px solid rgba(255,255,255,.13);
-    border-radius: 10px; cursor: pointer; font-size: 17px; box-shadow: 0 5px 18px rgba(0,0,0,.35); transition: background .2s, color .2s; }
-  #topBarToggle:hover { background: rgba(157,78,223,.25); color: #fff; }
-  #topBar.collapsed ~ #topBarToggle { top: max(12px, env(safe-area-inset-top, 12px)); }
 
   /* Barra Lateral de Ferramentas */
   #sideToolbar { position: fixed; right: 12px; top: 50%; transform: translateY(-50%); z-index: 30;
@@ -220,7 +269,7 @@
 
   #placeholder { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
     color: var(--text-dim); font-size: 13px; text-align: center; padding: 20px; z-index: 0; gap: 10px; }
-  #placeholder::before { content: ""; width: 34px; height: 34px; border: 1px solid rgba(255,255,255,.22); border-radius: 50%; box-shadow: 0 0 24px rgba(157,78,223,.35); opacity: .7; }
+  #placeholder::before { content: "🌌"; font-size: 36px; opacity: 0.7; }
   
   .token { position: absolute; touch-action: none; cursor: grab; user-select: none; -webkit-user-drag: none; will-change: left, top; }
   .token.dragging { opacity: .85; filter: drop-shadow(0 8px 16px rgba(0,0,0,0.6)); }
@@ -245,20 +294,13 @@
   .selected .resizeHandle, .selected .rotateHandle { display: block; }
   .selected .pieceImg, .selected .pieceVideo { outline: calc(2px * var(--inv-zoom, 1)) dashed var(--accent); outline-offset: calc(4px * var(--inv-zoom, 1)); filter: drop-shadow(0 0 6px rgba(157, 78, 223, 0.5)); }
 
-  #contextMenu { position: fixed; z-index: 60000; display: none; min-width: 224px; padding: 6px;
-    background: rgba(22, 24, 31, 0.97); border: 1px solid rgba(255,255,255,0.09); border-radius: 13px;
-    box-shadow: 0 14px 36px rgba(0,0,0,0.42); backdrop-filter: blur(16px); }
+  #contextMenu { position: fixed; z-index: 60000; background: var(--panel); border: 1px solid var(--panel-border);
+    border-radius: 12px; padding: 8px; display: none; min-width: 210px; box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+    backdrop-filter: blur(10px); }
   #contextMenu.open { display: block; }
-  #contextMenu button { width: 100%; min-height: 34px; display: flex; align-items: center; justify-content: flex-start;
-    gap: 9px; padding: 7px 10px; background: transparent; color: var(--text); border: 0; border-radius: 8px;
-    margin: 1px 0; font-size: 12px; font-weight: 500; text-align: left; transition: background .14s ease, color .14s ease; }
-  #contextMenu button:hover { background: rgba(255,255,255,0.075); color: #fff; }
-  #contextMenu button.danger { color: #f08b8b; }
-  #contextMenu button.danger:hover { background: rgba(220,70,70,0.13); color: #ffaaaa; }
-  #contextMenu hr { border: 0; border-top: 1px solid rgba(255,255,255,0.075); margin: 5px 4px; }
-  #contextMenu .statesRow { padding: 6px 4px; }
-  #contextMenu .stateThumb { width: 40px; height: 40px; border-radius: 9px; border: 1px solid rgba(255,255,255,0.12); }
-  #contextMenu .stateThumb.active { border: 2px solid var(--accent); box-shadow: 0 0 0 2px rgba(157,78,223,0.12); }
+  #contextMenu button { width: 100%; justify-content: flex-start; background: transparent; border-radius: 8px; margin: 2px 0; border: none; }
+  #contextMenu button:hover { background: var(--panel-border); color: #fff; }
+  #contextMenu hr { border: none; border-top: 1px solid var(--panel-border); margin: 6px 0; }
   #contextMenu .statesRow { display: flex; flex-wrap: wrap; gap: 6px; padding: 4px 2px; }
   #contextMenu .stateThumb { width: 38px; height: 38px; border-radius: 8px; background-size: contain; overflow: hidden;
     background-position: center; background-repeat: no-repeat; border: 2px solid var(--panel-border); cursor: pointer; transition: transform .15s; position: relative; }
@@ -277,32 +319,6 @@
   #setupOverlay, #loginOverlay, #createRoomOverlay, #joinRoomOverlay, #cropOverlay, #playersOverlay, #scenesOverlay, #gridOverlay, #lightModal {
     position: fixed; inset: 0; background: rgba(10, 11, 15, 0.8); backdrop-filter: blur(8px); display: flex;
     align-items: center; justify-content: center; z-index: 100000; padding: 16px; }
-
-  /* Configuração do grid em painel flutuante: mantém o tabuleiro visível durante os ajustes. */
-  #gridOverlay {
-    inset: 0;
-    align-items: flex-start;
-    justify-content: flex-start;
-    padding: 70px 14px 14px;
-    background: transparent;
-    backdrop-filter: none;
-    pointer-events: none;
-    z-index: 100000;
-  }
-  #gridOverlay .card {
-    width: min(360px, calc(100vw - 28px));
-    max-width: none;
-    max-height: calc(100dvh - 84px);
-    padding: 18px;
-    pointer-events: auto;
-    background: rgba(26, 28, 36, 0.97);
-    box-shadow: 0 10px 32px rgba(0, 0, 0, 0.42);
-  }
-  #gridOverlay .card h2 { margin-bottom: 8px; }
-  #gridOverlay .card p { margin: 0 0 12px; }
-  #gridOverlay .card label { margin-top: 8px; }
-  #gridOverlay .card input[type="range"],
-  #gridOverlay .card input[type="color"] { margin-top: 4px; margin-bottom: 8px; }
 
   /* Painel de luz flutuante: não cobre o mapa, assim dá pra ver a luz mudando ao vivo */
   #lightModal { inset: auto 0 14px 0; background: none; backdrop-filter: none; pointer-events: none; padding: 0 12px; }
@@ -336,116 +352,6 @@
   .sceneRow .thumb { width: 52px; height: 38px; border-radius: 8px; background-size: cover; background-position: center;
     background-color: var(--bg); flex-shrink: 0; border: 1px solid var(--panel-border); }
   .sceneRow .activeTag { font-size: 11px; color: var(--accent); font-weight: 600; }
-  .sceneRow .sceneDeleteBtn { flex-shrink: 0; min-height: 30px; padding: 5px 9px; font-size: 11px; }
-
-  .uiIcon { display:inline-block; width:16px; height:16px; flex:0 0 16px; vertical-align:-3px; color:currentColor; }
-  .toolBtn .uiIcon { width:19px; height:19px; flex-basis:19px; }
-  .libThumb .uiIcon, .emptyIcon .uiIcon { width:28px; height:28px; flex-basis:28px; }
-  button .uiIcon { margin-right:6px; }
-  .toolBtn .uiIcon { margin:0; }
-  /* Menu superior recolhível */
-  #topBar { top: 54px; left: 14px; right: auto; bottom: auto; width: min(292px, calc(100vw - 28px)); max-width: none; z-index: 42;
-    max-height: calc(100dvh - 68px); overflow-y: auto; overscroll-behavior: contain;
-    transform: translateY(0); padding: 14px; display: flex; flex-direction: column; align-items: stretch; gap: 12px;
-    background: rgba(18, 19, 24, 0.94); border: 1px solid rgba(255,255,255,.1); border-radius: 16px;
-    box-shadow: 0 14px 42px rgba(0,0,0,.48); backdrop-filter: blur(18px);
-    transition: transform .24s ease, opacity .2s ease; }
-  #topBar.collapsed { transform: translateY(calc(-100% - 68px)); opacity: .96; }
-  .brandTitle { width: 100%; gap: 9px; margin: 0; padding: 0 0 10px; border: 0; border-bottom: 1px solid rgba(255,255,255,.1); }
-  .brandTitle h1 { max-width: 205px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; }
-  #roleBadge { margin-left: auto; }
-  #normalNav { position: relative; width: 100%; display: flex; flex-direction: column; align-items: stretch; gap: 5px; }
-  #normalNav button, #normalNav label.btn { width: 100%; min-height: 36px; padding: 8px 11px; border-radius: 9px; justify-content: flex-start; text-align: left; }
-  #normalNav .primary { box-shadow: none; }
-  #normalNav > button.mestre-only.primary { background: rgba(157,78,223,.13); border-color: rgba(157,78,223,.2); }
-  #zoomOut, #zoomIn { min-width: 0; font-size: 15px; }
-  #topBarToggle { position: fixed; top: max(12px, env(safe-area-inset-top, 12px)); left: 14px; right: auto; transform: none;
-    z-index: 43; width: 38px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center;
-    color: var(--accent); background: var(--panel); border: 1px solid var(--panel-border);
-    border-radius: 9px; cursor: pointer; box-shadow: 0 4px 14px rgba(0,0,0,.28); }
-  #topBarToggle::before { content: ""; width: 8px; height: 8px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor;
-    transform: translateY(-2px) rotate(45deg); transition: transform .2s ease; }
-  #topBar:not(.collapsed) ~ #topBarToggle::before { transform: translateY(2px) rotate(225deg); }
-  #topBarToggle:hover { background: var(--panel-border); color: #fff; }
-  #topBar.collapsed ~ #topBarToggle { top: max(12px, env(safe-area-inset-top, 12px)); }
-  #moreActionsMenu { position: static; display: flex; flex-direction: column; gap: 5px; min-width: 0; width: 100%;
-    padding: 0; background: transparent; border: 0; border-radius: 0; box-shadow: none; backdrop-filter: none; }
-  #moreActionsMenu button, #moreActionsMenu label.btn { width: 100%; min-height: 35px; justify-content: flex-start; text-align: left;
-    border-radius: 9px; background: transparent; padding: 8px 11px; }
-  .menuGroupLabel { padding: 8px 3px 2px; color: var(--text-dim); font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
-  .menuDivider { height: 1px; margin: 3px 0; background: rgba(255,255,255,.09); }
-  #moreActionsMenu .danger { color: #ff8585; }
-  body.player-preview .mestre-only { display: none !important; }
-  body.player-preview #roleBadge { color: #b9e5ff; background: rgba(73,160,210,.13); border-color: rgba(73,160,210,.3); }
-  body.player-preview #playerPreviewBtn { display: flex !important; }
-  @media (max-width: 700px) {
-    #gridOverlay { padding: max(60px, env(safe-area-inset-top, 0px) + 54px) 10px 10px; }
-    #gridOverlay .card {
-      width: min(340px, calc(100vw - 20px));
-      max-height: calc(100dvh - max(70px, env(safe-area-inset-top, 0px) + 64px));
-      padding: 15px;
-      border-radius: 13px;
-    }
-
-    #topBar {
-      left: 10px;
-      top: max(52px, calc(env(safe-area-inset-top, 0px) + 48px));
-      width: min(320px, calc(100vw - 20px));
-      max-width: calc(100vw - 20px);
-      max-height: calc(100dvh - max(64px, env(safe-area-inset-top, 0px) + 60px));
-      display: flex !important;
-      flex-direction: column !important;
-      align-items: stretch !important;
-      flex-wrap: nowrap !important;
-      overflow-x: hidden;
-    }
-    #topBarToggle { left: 10px; }
-    #topBar .brandTitle {
-      display: flex;
-      width: 100%;
-      min-width: 0;
-      align-items: center;
-      flex-wrap: nowrap;
-      gap: 8px;
-    }
-    #topBar .brandTitle h1 {
-      flex: 1;
-      min-width: 0;
-      max-width: none;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      font-size: 13px;
-    }
-    #topBar #roleBadge { flex: 0 0 auto; margin-left: auto; }
-    #normalNav {
-      display: flex !important;
-      width: 100% !important;
-      min-width: 0;
-      flex-direction: column !important;
-      align-items: stretch !important;
-      overflow: visible;
-    }
-    #normalNav > button,
-    #normalNav > label.btn,
-    #moreActionsMenu > button,
-    #moreActionsMenu > label.btn {
-      display: flex;
-      width: 100% !important;
-      min-width: 0;
-      max-width: 100%;
-      flex: 0 0 auto;
-      white-space: normal;
-    }
-    #moreActionsMenu {
-      display: flex !important;
-      width: 100% !important;
-      min-width: 0;
-      flex-direction: column !important;
-      overflow: visible;
-    }
-    #topBarToggle { left: 10px; }
-  }
 
   /* Régua */
   #rulerLayer { position: absolute; left: 0; top: 0; width: 40000px; height: 40000px; pointer-events: none; z-index: 30000; overflow: visible; }
@@ -463,7 +369,6 @@
     -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
     -webkit-mask-position: center; mask-position: center; }
   .tokenNameWrap { position: absolute; inset: 0; pointer-events: none; }
-  .tokenNameWrap.name-hidden { display: none; }
   .tokenName { position: absolute; left: 50%; top: 100%; transform: translate(-50%, calc(4px * var(--inv-zoom, 1)));
     font-size: calc(13px * var(--inv-zoom, 1)); font-weight: 600; line-height: 1.25; color: #fff; white-space: nowrap;
     padding: calc(1px * var(--inv-zoom, 1)) calc(7px * var(--inv-zoom, 1)); border-radius: calc(8px * var(--inv-zoom, 1));
@@ -536,6 +441,53 @@
   @media (max-width: 700px) {
     #tokenPropsPanel { left: 8px; right: 8px; top: auto; bottom: 8px; width: auto; max-height: 52vh; }
   }
+  /* ===== Ambiente da cena ===== */
+  .envLayer { position: absolute; left: 0; top: 0; width: 1px; height: 1px; pointer-events: none; opacity: 0;
+    transition: opacity 1.2s ease, background-color 1.2s ease; }
+  /* fundo opaco igual ao do tabuleiro: o multiply precisa de algo opaco para multiplicar (senão pinta o vazio em vez de escurecer) */
+  #envVoid { position: absolute; left: 0; top: 0; width: 1px; height: 1px; z-index: 0; pointer-events: none; display: none;
+    background: radial-gradient(circle at center, #181a24 0%, #0d0e12 100%); }
+  #envTint { z-index: 17000; mix-blend-mode: multiply; }
+  #envDark { z-index: 17001; background: #03050c; }
+  #envWeatherTint { z-index: 17002; mix-blend-mode: multiply; }
+  #envVignette { position: fixed; inset: 0; z-index: 4; pointer-events: none; opacity: 0; transition: opacity 1.2s ease;
+    background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0) 42%, rgba(0, 0, 0, 0.88) 100%); }
+  #weatherCanvas { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 5; pointer-events: none; }
+  #envFlash { position: fixed; inset: 0; z-index: 6; pointer-events: none; opacity: 0; background: #dfe8ff; }
+
+  #envPanel { position: fixed; top: 70px; left: 50%; width: min(350px, calc(100vw - 16px)); max-height: calc(100vh - 90px); overflow-y: auto; z-index: 40;
+    padding: 12px 14px 14px; background: rgba(24, 25, 34, 0.97); border: 1px solid rgba(255, 255, 255, 0.09); border-radius: 14px;
+    box-shadow: 0 16px 44px rgba(0, 0, 0, 0.55); backdrop-filter: blur(16px); }
+  #envPanel .envHead { display: flex; align-items: center; gap: 8px; }
+  #envPanel .envHead strong { flex: 1; font-size: 14px; }
+  #envPanel .envHead button { min-height: 28px; padding: 3px 10px; }
+  #envPanel .envNote { margin: 4px 0 0; font-size: 11px; line-height: 1.45; color: var(--text-dim); }
+  #envPanel .envSection { margin: 14px 0 6px; font-size: 10px; font-weight: 700; letter-spacing: .9px; text-transform: uppercase; color: var(--text-dim); }
+  #envPanel .envChips { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 6px; }
+  #envPanel .envChips button { display: flex; align-items: center; justify-content: flex-start; gap: 7px; padding: 8px 9px; font-size: 12px;
+    border-radius: 10px; background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.07); }
+  #envPanel .envChips button i { font-style: normal; font-size: 15px; }
+  #envPanel .envChips button:hover { background: rgba(255, 255, 255, 0.08); }
+  #envPanel .envChips button.active { background: rgba(157, 78, 223, 0.24); border-color: rgba(157, 78, 223, 0.65); color: #fff; }
+  #envPanel .envRow { display: flex; align-items: center; gap: 8px; margin: 7px 0; font-size: 12px; }
+  #envPanel .envRow > span.lb { width: 92px; flex: none; color: var(--text-dim); }
+  #envPanel .envRow input[type=range] { flex: 1; min-width: 0; accent-color: var(--accent); }
+  #envPanel .envRow input[type=color] { width: 34px; height: 26px; padding: 0; border: none; background: none; cursor: pointer; flex: none; }
+  #envPanel .envRow .val { width: 38px; text-align: right; flex: none; font-variant-numeric: tabular-nums; color: #cfd2de; font-size: 11px; }
+  #envPanel .envCheck { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 12px; }
+
+  #contextMenu button { text-align: left; }
+
+  /* ===== Token: travado, oculto, nome oculto ===== */
+  #tokensLayer > .token.locked { pointer-events: none; cursor: default; }
+  body:not(.jogador) .token.locked::before { content: '🔒'; position: absolute; left: calc(-6px * var(--inv-zoom, 1)); top: calc(-8px * var(--inv-zoom, 1));
+    font-size: calc(14px * var(--inv-zoom, 1)); line-height: 1; z-index: 3; pointer-events: none; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .8)); }
+  .token.tokenHidden .pieceContent { opacity: calc(var(--tok-op, 1) * 0.42); }
+  .token.tokenHidden .pieceTint { opacity: calc(var(--tint-amt, 0.5) * var(--tok-op, 1) * 0.42); }
+  body:not(.jogador) .token.tokenHidden::after { content: '🙈'; position: absolute; right: calc(-6px * var(--inv-zoom, 1)); top: calc(-8px * var(--inv-zoom, 1));
+    font-size: calc(14px * var(--inv-zoom, 1)); line-height: 1; z-index: 3; pointer-events: none; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .8)); }
+  body.jogador .token.tokenHidden { visibility: hidden !important; pointer-events: none !important; }
+  .tokenName.dimmed { opacity: .6; font-style: italic; }
 </style>
 </head>
 <body>
@@ -568,7 +520,7 @@
         <button class="primary" id="btnLogin">Entrar</button>
         <button id="btnSignup">Criar conta</button>
       </div>
-      <button id="btnBackToSetup" style="width:100%; margin-top:10px; background:var(--panel-border);"><svg class="uiIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-1.7 2.9-.2-.1a1.7 1.7 0 0 0-1.8.2l-.2.1h-3.4l-.1-.2a1.7 1.7 0 0 0-1.5-1.1 1.7 1.7 0 0 0-1.5 1.1l-.1.2H6l-.1-.2a1.7 1.7 0 0 0-1.8-.2l-.2.1-1.7-2.9.1-.1a1.7 1.7 0 0 0 .3-1.9l-.1-.2v-3.4l.2-.1a1.7 1.7 0 0 0 1.1-1.5 1.7 1.7 0 0 0-1.1-1.5l-.2-.1V6l.2-.1a1.7 1.7 0 0 0 .2-1.8l-.1-.2 2.9-1.7.1.1a1.7 1.7 0 0 0 1.9.3l.2-.1h3.4l.1.2a1.7 1.7 0 0 0 1.5 1.1 1.7 1.7 0 0 0 1.5-1.1l.1-.2h3.4l.1.2a1.7 1.7 0 0 0 1.8.2l.2-.1 1.7 2.9-.1.1a1.7 1.7 0 0 0-.3 1.9l.1.2v3.4l-.2.1a1.7 1.7 0 0 0-1.1 1.5 1.7 1.7 0 0 0 1.1 1.5z"/></svg> Reconfigurar Supabase</button>
+      <button id="btnBackToSetup" style="width:100%; margin-top:10px; background:var(--panel-border);">⚙️ Reconfigurar Supabase</button>
     </div>
   </div>
 
@@ -577,7 +529,7 @@
     <div class="lobbyCard">
       <header class="lobbyHeader">
         <div class="lobbyBrand">
-          <div class="lobbyBrandMark"><svg class="uiIcon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 2.7 5.5 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg></div>
+          <div class="lobbyBrandMark">✦</div>
           <div>
             <h1>ANOMALY VTT</h1>
             <div class="subtitle">Seu espaço para criar histórias.</div>
@@ -760,37 +712,66 @@
       <span id="roleBadge" class="hidden"></span>
     </div>
 
-    <!-- Interface Padrão -->
+    <!-- Interface padrão -->
     <div id="normalNav">
-      <div class="menuGroupLabel">Ferramentas do mestre</div>
-      <button class="mestre-only primary" id="openMapEditorBtn" title="Editor de Mapa">▦ Editor de mapa</button>
-      <button class="mestre-only primary" id="openFogEditorBtn" title="Editor de Névoa">◌ Névoa de guerra</button>
-      <button class="mestre-only primary" id="openWallEditorBtn" title="Editor de Paredes">▤ Paredes e portas</button>
-      <button class="mestre-only primary" id="openLightEditorBtn" title="Editor de Luzes"><svg class="uiIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6m-5 3h4m-6-6a7 7 0 1 1 8 0c-1 .8-1 1.5-1 3h-6c0-1.5 0-2.2-1-3Z"/></svg> Iluminação</button>
-
-      <div class="menuDivider mestre-only"></div>
-      <div id="moreActionsMenu" aria-label="Ações da mesa">
-        <div class="menuGroupLabel mestre-only">Mesa e cena</div>
-        <label class="btn mestre-only primary" title="Adicionar Token (Imagens, GIFs ou Vídeos WebM transparentes)">
-          + Adicionar token
+      <div class="navGroup mestre-only">
+        <span class="navDivider"></span>
+        <div class="dd">
+          <button id="editMenuBtn" class="navBtn" type="button" aria-expanded="false" title="Editores do mapa">
+            <svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+            <span class="lbl">Editar</span>
+            <svg class="chev" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
+          </button>
+          <div id="editMenu" class="ddMenu left" aria-label="Editores">
+            <button id="openMapEditorBtn" class="mestre-only" type="button"><span>Mapa</span><span class="sub">Peças, imagens e GIFs do cenário</span></button>
+            <button id="openFogEditorBtn" class="mestre-only" type="button"><span>Névoa</span><span class="sub">Áreas escondidas dos jogadores</span></button>
+            <button id="openWallEditorBtn" class="mestre-only" type="button"><span>Paredes e portas</span><span class="sub">Bloqueiam luz e visão</span></button>
+            <button id="openLightEditorBtn" class="mestre-only" type="button"><span>Luzes</span><span class="sub">Tochas, lanternas e escuridão</span></button>
+          </div>
+        </div>
+        <button id="envBtn" class="navBtn" type="button" title="Ambiente da cena: hora do dia e clima">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+          <span class="lbl">Ambiente</span>
+        </button>
+        <label class="navBtn" title="Adicionar token (imagem, GIF ou vídeo WebM)">
+          <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+          <span class="lbl">Token</span>
           <input type="file" id="tokenInput" accept="image/png,image/jpeg,image/webp,image/gif,video/webm,video/mp4">
         </label>
-        <button id="gridBtn" class="mestre-only" title="Configurar Grid">▦ Configurar grid</button>
-        <button id="dynFogBtn" class="mestre-only" title="Cada jogador só vê o que os tokens dele enxergam (paredes bloqueiam)">◉ Fog dinâmico: OFF</button>
-        <button id="scenesBtn" class="mestre-only">▧ Gerenciar cenas</button>
-        <div class="menuDivider mestre-only"></div>
-        <div class="menuGroupLabel mestre-only">Jogadores e câmera</div>
-        <button id="camPullBtn" class="mestre-only" title="Centraliza a câmera de todos os jogadores na sua">⌖ Puxar jogadores</button>
-        <button id="camLiveBtn" class="mestre-only" title="Os jogadores seguem a sua câmera em tempo real">◉ Câmera ao vivo: OFF</button>
-        <button id="managePlayersBtn" class="mestre-only hidden"><svg class="uiIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h7a3 3 0 0 1 3 3v13a3 3 0 0 0-3-3H4zM20 4h-3a3 3 0 0 0-3 3v13a3 3 0 0 1 3-3h3z"/></svg> Gerenciar jogadores</button>
-        <button id="playerPreviewBtn" class="mestre-only" type="button">◉ Ver como player</button>
-        <div class="menuDivider"></div>
-        <div class="menuGroupLabel">Acesso rápido</div>
-        <div style="display:flex; gap:6px;">
+      </div>
+
+      <span class="navDivider"></span>
+      <div class="zoomGroup">
+        <button id="zoomOut" class="navBtn iconOnly" type="button" title="Menos zoom" aria-label="Diminuir zoom"><svg viewBox="0 0 24 24"><path d="M5 12h14"/></svg></button>
+        <button id="zoomLabel" class="navBtn" type="button" title="Voltar para 100%">100%</button>
+        <button id="zoomIn" class="navBtn iconOnly" type="button" title="Mais zoom" aria-label="Aumentar zoom"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+      </div>
+      <span class="navDivider"></span>
+
+      <button id="btnReturnLobby" class="navBtn" type="button" title="Trocar de mesa">
+        <svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>
+        <span class="lbl">Mesas</span>
+      </button>
+
+      <div class="dd">
+        <button id="moreActionsBtn" class="navBtn iconOnly" type="button" title="Mais ações" aria-label="Mais ações" aria-expanded="false">
+          <svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/></svg>
+        </button>
+        <div id="moreActionsMenu" class="ddMenu right" aria-label="Mais ações">
+          <div class="ddLabel mestre-only">Cena</div>
+          <button id="scenesBtn" class="mestre-only" type="button">Cenas</button>
+          <button id="gridBtn" class="mestre-only" type="button" title="Configurar grid">Grid</button>
+          <button id="dynFogBtn" class="mestre-only" type="button" title="Cada jogador só vê o que os tokens dele enxergam (paredes bloqueiam)">👁️ Fog dinâmico: OFF</button>
+          <div class="ddLabel mestre-only">Câmera</div>
+          <button id="camPullBtn" class="mestre-only" type="button" title="Centraliza a câmera de todos os jogadores na sua">📷 Puxar jogadores</button>
+          <button id="camLiveBtn" class="mestre-only" type="button" title="Os jogadores seguem a sua câmera em tempo real">📡 Câmera ao vivo: OFF</button>
+          <div class="ddLabel">Mesa</div>
+          <button id="managePlayersBtn" class="mestre-only hidden" type="button">Jogadores</button>
+          <button id="toggleNamesBtn" type="button" title="Mostrar ou esconder os nomes dos tokens (só para você)">🏷️ Nomes dos tokens: ON</button>
+          <button id="settingsBtn" type="button" title="Configurações">⚙️ Configurações</button>
+          <hr class="mestre-only">
+          <button id="clearBtn" class="danger mestre-only" type="button" title="Limpar tudo">Limpar mesa</button>
         </div>
-        <button id="btnReturnLobby" title="Trocar Mesa">↩ Voltar às mesas</button>
-        <button id="settingsBtn" title="Configurações"><svg class="uiIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-1.7 2.9-.2-.1a1.7 1.7 0 0 0-1.8.2l-.2.1h-3.4l-.1-.2a1.7 1.7 0 0 0-1.5-1.1 1.7 1.7 0 0 0-1.5 1.1l-.1.2H6l-.1-.2a1.7 1.7 0 0 0-1.8-.2l-.2.1-1.7-2.9.1-.1a1.7 1.7 0 0 0 .3-1.9l-.1-.2v-3.4l.2-.1a1.7 1.7 0 0 0 1.1-1.5 1.7 1.7 0 0 0-1.1-1.5l-.2-.1V6l.2-.1a1.7 1.7 0 0 0 .2-1.8l-.1-.2 2.9-1.7.1.1a1.7 1.7 0 0 0 1.9.3l.2-.1h3.4l.1.2a1.7 1.7 0 0 0 1.5 1.1 1.7 1.7 0 0 0 1.5-1.1l.1-.2h3.4l.1.2a1.7 1.7 0 0 0 1.8.2l.2-.1 1.7 2.9-.1.1a1.7 1.7 0 0 0-.3 1.9l.1.2v3.4l-.2.1a1.7 1.7 0 0 0-1.1 1.5 1.7 1.7 0 0 0 1.1 1.5z"/></svg> Configurações</button>
-        <button id="clearBtn" class="danger mestre-only" title="Limpar Tudo">Limpar mesa</button>
       </div>
     </div>
 
@@ -810,12 +791,12 @@
       
       <div id="fogDrawControls" style="display:inline-flex; gap:6px;">
         <button id="btnUndoFogPoint">⌫ Desfazer</button>
-        <button class="primary" id="btnFinishFog"><svg class="uiIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg> Concluir</button>
+        <button class="primary" id="btnFinishFog">✅ Concluir</button>
       </div>
 
       <div id="fogPolyEditControls" class="hidden" style="display:inline-flex; gap:6px;">
-        <button id="btnToggleFogVisibility"><svg class="uiIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg> Névoa: ON</button>
-        <button class="danger" id="btnDeleteFogPolyInline"><svg class="uiIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2m3 0-1 14H6L5 6m4 4v6m6-6v6"/></svg> Apagar</button>
+        <button id="btnToggleFogVisibility">🙈 Névoa: ON</button>
+        <button class="danger" id="btnDeleteFogPolyInline">🗑️ Apagar</button>
         <button class="primary" id="btnDoneEditingFog">Salvar</button>
       </div>
 
@@ -826,10 +807,10 @@
     <!-- Interface Alternada (Modo Editor de Paredes) -->
     <div id="wallEditorNav" class="hidden" style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
       <span style="color:var(--accent); font-weight:600; font-size:12px;" id="wallStatusText">Toque p/ iniciar parede</span>
-      <button class="primary" id="btnWallModeWall" title="Desenhar Parede"><svg class="uiIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 4h18v16H3zM3 10h18M3 16h18M9 4v6m6 0v6M9 16v4"/></svg> Parede</button>
-      <button class="door-btn" id="btnWallModeDoor" title="Desenhar Porta"><svg class="uiIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V3h14v18M8 21V6h8v15m-3-8h.01"/></svg> Porta</button>
-      <button class="danger" id="btnWallModeErase" title="Apagar Segmento"><svg class="uiIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2m3 0-1 14H6L5 6m4 4v6m6-6v6"/></svg> Apagar</button>
-      <button id="btnBreakWallChain" title="Finalizar segmento atual sem apagar"><svg class="uiIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="6" r="2.5"/><circle cx="6" cy="18" r="2.5"/><path d="m8 8 12 10M8 16 20 6"/></svg> Soltar Linha</button>
+      <button class="primary" id="btnWallModeWall" title="Desenhar Parede">🧱 Parede</button>
+      <button class="door-btn" id="btnWallModeDoor" title="Desenhar Porta">🚪 Porta</button>
+      <button class="danger" id="btnWallModeErase" title="Apagar Segmento">🗑️ Apagar</button>
+      <button id="btnBreakWallChain" title="Finalizar segmento atual sem apagar">✂️ Soltar Linha</button>
       <button class="danger" id="btnClearWallScene">Limpar Tudo</button>
       <button id="closeWallEditorBtn">Sair</button>
     </div>
@@ -838,7 +819,7 @@
     <div id="lightEditorNav" class="hidden" style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
       <span style="color:var(--accent); font-weight:600; font-size:12px;">Editor de Luzes: clique para criar · arraste para mover</span>
       <label style="font-size:11px; color:var(--text-dim); display:flex; align-items:center; gap:6px;" title="Escuridão do ambiente: só as luzes iluminam">
-        <svg class="uiIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg> Escuridão
+        🌑 Escuridão
         <input type="range" id="ambientRange" min="0" max="0.95" step="0.05" value="0" style="width:90px; accent-color:var(--accent);">
         <span id="ambientVal" style="min-width:30px;">0%</span>
       </label>
@@ -846,15 +827,15 @@
       <button id="closeLightEditorBtn">Sair</button>
     </div>
   </header>
-  <button id="topBarToggle" type="button" title="Mostrar/ocultar menu" aria-label="Mostrar/ocultar menu" aria-expanded="true"></button>
-  <div id="camLockBadge" class="hidden"><svg class="uiIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h4l2-3h6l2 3h4v13H3z"/><circle cx="12" cy="13" r="4"/></svg> Câmera controlada pelo mestre</div>
+  <button id="topBarToggle" title="Esconder/mostrar barra">▲</button>
+  <div id="camLockBadge" class="hidden">📷 Câmera controlada pelo mestre</div>
 
   <!-- Barra Lateral de Ferramentas -->
   <div id="sideToolbar">
-    <button class="toolBtn active" id="toolSelectBtn" data-tool="select" title="Selecionar e Mover"><svg class="uiIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="3" width="12" height="18" rx="6"/><path d="M12 3v6"/></svg></button>
-    <button class="toolBtn" id="toolMoveBtn" data-tool="move" title="Mover Câmera"><svg class="uiIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 12V5a1.5 1.5 0 0 1 3 0v6-8a1.5 1.5 0 0 1 3 0v8-6a1.5 1.5 0 0 1 3 0v8-4a1.5 1.5 0 0 1 3 0v7c0 4-2 6-6 6h-2c-2 0-3-1-4-3l-3-5a1.5 1.5 0 0 1 3-2l2 2"/></svg></button>
-    <button class="toolBtn" id="toolRulerBtn" data-tool="ruler" title="Régua (arraste para medir; Esc limpa)"><svg class="uiIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h18v10H3zM7 7v4m4-4v2m4-2v4m4-4v2"/></svg></button>
-    <button class="toolBtn" id="toolDrawBtn" data-tool="draw" title="Desenhar (Ctrl+Z desfaz)"><svg class="uiIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m4 16-.8 4.8L8 20l11-11-4-4L4 16Z"/><path d="m13.5 6.5 4 4"/></svg></button>
+    <button class="toolBtn active" id="toolSelectBtn" data-tool="select" title="Selecionar e Mover">🖱️</button>
+    <button class="toolBtn" id="toolMoveBtn" data-tool="move" title="Mover Câmera">✋</button>
+    <button class="toolBtn" id="toolRulerBtn" data-tool="ruler" title="Régua (arraste para medir; Esc limpa)">📏</button>
+    <button class="toolBtn" id="toolDrawBtn" data-tool="draw" title="Desenhar (Ctrl+Z desfaz)">✏️</button>
   </div>
   <button id="sideToolbarToggle" title="Esconder/mostrar ferramentas">▶</button>
 
@@ -865,6 +846,10 @@
       <div id="mapPiecesLayer"></div>
       <div id="gridLayer"></div>
       <div id="tokensLayer"></div>
+      <div id="envVoid"></div>
+      <div id="envTint" class="envLayer"></div>
+      <div id="envDark" class="envLayer"></div>
+      <div id="envWeatherTint" class="envLayer"></div>
       <canvas id="shadowLayer"></canvas>
       <canvas id="lightingLayer"></canvas>
       <canvas id="visionLayer"></canvas>
@@ -882,7 +867,10 @@
     <button id="menuAddState" class="mestre-only">Adicionar estado</button>
     <input type="file" id="stateInput" accept="image/png,image/jpeg,image/webp,image/gif,video/webm,video/mp4" class="hidden">
     <hr id="statesHr">
-    <button id="menuProps" class="mestre-only"><svg class="uiIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-1.7 2.9-.2-.1a1.7 1.7 0 0 0-1.8.2l-.2.1h-3.4l-.1-.2a1.7 1.7 0 0 0-1.5-1.1 1.7 1.7 0 0 0-1.5 1.1l-.1.2H6l-.1-.2a1.7 1.7 0 0 0-1.8-.2l-.2.1-1.7-2.9.1-.1a1.7 1.7 0 0 0 .3-1.9l-.1-.2v-3.4l.2-.1a1.7 1.7 0 0 0 1.1-1.5 1.7 1.7 0 0 0-1.1-1.5l-.2-.1V6l.2-.1a1.7 1.7 0 0 0 .2-1.8l-.1-.2 2.9-1.7.1.1a1.7 1.7 0 0 0 1.9.3l.2-.1h3.4l.1.2a1.7 1.7 0 0 0 1.5 1.1 1.7 1.7 0 0 0 1.5-1.1l.1-.2h3.4l.1.2a1.7 1.7 0 0 0 1.8.2l.2-.1 1.7 2.9-.1.1a1.7 1.7 0 0 0-.3 1.9l.1.2v3.4l-.2.1a1.7 1.7 0 0 0-1.1 1.5 1.7 1.7 0 0 0 1.1 1.5z"/></svg> Propriedades…</button>
+    <button id="menuProps" class="mestre-only">⚙️ Propriedades…</button>
+    <button id="menuLock" class="mestre-only">🔒 Travar</button>
+    <button id="menuHide" class="mestre-only">🙈 Ocultar dos jogadores</button>
+    <button id="menuHideName" class="mestre-only">🏷️ Ocultar nome dos jogadores</button>
     <hr>
     <button id="menuFront">Trazer para frente</button>
     <button id="menuBack">Mandar para trás</button>
@@ -890,26 +878,26 @@
     <button id="menuRotate">Girar 90°</button>
     <button id="menuFlip">Espelhar</button>
     <hr>
-    <button id="menuVision" class="mestre-only"><svg class="uiIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg> Visão do token…</button>
-    <button id="menuStore" class="mestre-only"><svg class="uiIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v15H4zM8 3v15m5-13v15m5-13v15"/></svg> Guardar na biblioteca</button>
+    <button id="menuVision" class="mestre-only">👁️ Visão do token…</button>
+    <button id="menuStore" class="mestre-only">📚 Guardar na biblioteca</button>
     <button id="menuDuplicate" class="mestre-only">Duplicar</button>
     <button id="menuDelete" class="mestre-only danger">Apagar</button>
   </div>
 
   <div id="drawPanel">
-    <button data-draw-mode="free" class="active" title="Lápis"><svg class="uiIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m4 16-.8 4.8L8 20l11-11-4-4L4 16Z"/><path d="m13.5 6.5 4 4"/></svg></button>
+    <button data-draw-mode="free" class="active" title="Lápis">✏️</button>
     <button data-draw-mode="line" title="Linha">╱</button>
-    <button data-draw-mode="arrow" title="Seta"><svg class="uiIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12h15m-6-6 6 6-6 6"/></svg></button>
+    <button data-draw-mode="arrow" title="Seta">➚</button>
     <button data-draw-mode="rect" title="Retângulo">▭</button>
     <button data-draw-mode="ellipse" title="Elipse">◯</button>
-    <button data-draw-mode="erase" title="Borracha (apaga seus desenhos)"><svg class="uiIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2m3 0-1 14H6L5 6m4 4v6m6-6v6"/></svg></button>
+    <button data-draw-mode="erase" title="Borracha (apaga seus desenhos)">🧽</button>
     <input type="color" id="drawColor" value="#ffd54f" title="Cor">
     <input type="range" id="drawWidth" min="1" max="24" step="1" value="4" title="Espessura">
     <label class="opt mestre-only" title="Só o mestre vê"><input type="checkbox" id="drawMasterOnly"> só mestre</label>
     <button id="drawUndo" title="Desfazer (Ctrl+Z)">↩️</button>
-    <button id="drawClear" class="danger" title="Apagar desenhos"><svg class="uiIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2m3 0-1 14H6L5 6m4 4v6m6-6v6"/></svg></button>
+    <button id="drawClear" class="danger" title="Apagar desenhos">🗑️</button>
   </div>
-  <div id="visionBadge" class="hidden"><svg class="uiIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg> Nenhum token seu tem visão nesta cena</div>
+  <div id="visionBadge" class="hidden">👁️ Nenhum token seu tem visão nesta cena</div>
   <div id="tokenVisionModal" class="hidden">
     <div class="card">
       <h2>Visão do token</h2>
@@ -939,17 +927,61 @@
     <button id="boardContextZoomIn" type="button">＋ Aumentar zoom</button>
     <button id="boardContextZoomOut" type="button">− Diminuir zoom</button>
     <hr>
-    <button id="boardContextPullPlayers" class="mestre-only" type="button"><svg class="uiIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h4l2-3h6l2 3h4v13H3z"/><circle cx="12" cy="13" r="4"/></svg> Puxar jogadores</button>
-    <button id="boardContextToggleLive" class="mestre-only" type="button"><svg class="uiIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9a14 14 0 0 1 18 0M6 12a9 9 0 0 1 12 0m-9 3a4 4 0 0 1 6 0m-3 4h.01"/></svg> Câmera ao vivo</button>
+    <button id="boardContextPullPlayers" class="mestre-only" type="button">📷 Puxar jogadores</button>
+    <button id="boardContextToggleLive" class="mestre-only" type="button">📡 Câmera ao vivo</button>
   </div>
 
 
+
+  <!-- Efeitos de ambiente em tela cheia (clima, vinheta, relâmpago) -->
+  <div id="envVignette"></div>
+  <canvas id="weatherCanvas"></canvas>
+  <div id="envFlash"></div>
+
+  <!-- Aba de ambiente da cena (só o mestre) -->
+  <div id="envPanel" class="hidden mestre-only" role="dialog" aria-label="Ambiente da cena">
+    <div class="envHead">
+      <strong>🌦 Ambiente da cena</strong>
+      <button id="envReset" type="button" title="Voltar ao padrão (dia, tempo limpo)">Resetar</button>
+      <button id="envClose" type="button" title="Fechar">✕</button>
+    </div>
+    <p class="envNote">Vale só para a cena atual e aparece para todos os jogadores ao vivo.</p>
+
+    <div class="envSection">Momento do dia</div>
+    <div class="envChips" id="envTimeChips">
+      <button type="button" data-time="dia"><i>☀️</i>Dia</button>
+      <button type="button" data-time="amanhecer"><i>🌄</i>Amanhecer</button>
+      <button type="button" data-time="entardecer"><i>🌇</i>Pôr do sol</button>
+      <button type="button" data-time="anoitecer"><i>🌆</i>Anoitecer</button>
+      <button type="button" data-time="noite"><i>🌙</i>Noite</button>
+    </div>
+
+    <div class="envSection">Clima</div>
+    <div class="envChips" id="envWeatherChips">
+      <button type="button" data-weather="none"><i>🌤️</i>Limpo</button>
+      <button type="button" data-weather="cloudy"><i>☁️</i>Nublado</button>
+      <button type="button" data-weather="rain"><i>🌧️</i>Chuva</button>
+      <button type="button" data-weather="storm"><i>⛈️</i>Tempestade</button>
+      <button type="button" data-weather="snow"><i>❄️</i>Neve</button>
+      <button type="button" data-weather="fog"><i>🌫️</i>Neblina</button>
+      <button type="button" data-weather="ash"><i>🔥</i>Cinzas</button>
+    </div>
+
+    <div class="envSection">Ajuste fino</div>
+    <div class="envRow"><span class="lb">Cor</span><input type="color" id="envTintInp" value="#ffffff"><input type="range" id="envTintAmt" min="0" max="100" step="1"><span class="val" id="envTintAmtVal"></span></div>
+    <div class="envRow"><span class="lb">Escuridão</span><input type="range" id="envDarkInp" min="0" max="90" step="1"><span class="val" id="envDarkVal"></span></div>
+    <div class="envRow"><span class="lb">Vinheta</span><input type="range" id="envVigInp" min="0" max="100" step="1"><span class="val" id="envVigVal"></span></div>
+    <div class="envRow"><span class="lb">Intensidade</span><input type="range" id="envIntInp" min="10" max="100" step="1"><span class="val" id="envIntVal"></span></div>
+    <div class="envRow"><span class="lb">Vento</span><input type="range" id="envWindInp" min="-100" max="100" step="1"><span class="val" id="envWindVal"></span></div>
+    <label class="envCheck"><input type="checkbox" id="envLightningInp"> Relâmpagos</label>
+  </div>
+
   <!-- Gaveta / biblioteca de tokens (só o mestre) -->
   <aside id="libDrawer" class="mestre-only" aria-label="Biblioteca de tokens">
-    <button id="libToggle" type="button" title="Biblioteca de tokens"><svg class="uiIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v15H4zM8 3v15m5-13v15m5-13v15"/></svg></button>
+    <button id="libToggle" type="button" title="Biblioteca de tokens">📚</button>
     <div class="libHead">
-      <strong><svg class="uiIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v15H4zM8 3v15m5-13v15m5-13v15"/></svg> Biblioteca</strong>
-      <button id="libNewFolder" type="button" title="Nova pasta">＋ <svg class="uiIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h7l2 2h9v11H3z"/></svg></button>
+      <strong>📚 Biblioteca</strong>
+      <button id="libNewFolder" type="button" title="Nova pasta">＋ 📁</button>
       <label class="btn primary" title="Criar um token direto na biblioteca (imagem, GIF ou vídeo WebM)">＋ Token
         <input type="file" id="libFileInput" accept="image/png,image/jpeg,image/webp,image/gif,video/webm,video/mp4">
       </label>
@@ -974,7 +1006,7 @@
     <div class="tpHead">
       <span class="tpThumb" id="tpThumb"></span>
       <strong id="tpTitle">Propriedades</strong>
-      <button id="tpClose" type="button" title="Fechar"><svg class="uiIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
+      <button id="tpClose" type="button" title="Fechar">✕</button>
     </div>
     <label class="tpLabel" for="tpName">Nome</label>
     <input type="text" id="tpName" maxlength="60" placeholder="Sem nome" autocomplete="off">
@@ -999,11 +1031,13 @@
     <div class="tpRow"><input type="number" class="tpNum" id="tpZ" step="1"><button id="tpZFront" type="button">Frente</button><button id="tpZBack" type="button">Trás</button></div>
 
     <label class="tpCheck"><input type="checkbox" id="tpFlip"> Espelhar</label>
-    <label class="tpCheck"><input type="checkbox" id="tpHideName"> Ocultar nome flutuante</label>
+    <label class="tpCheck"><input type="checkbox" id="tpLocked"> 🔒 Travar posição (não move nem clica)</label>
+    <label class="tpCheck"><input type="checkbox" id="tpHidden"> 🙈 Ocultar dos jogadores</label>
+    <label class="tpCheck"><input type="checkbox" id="tpNameHidden"> 🏷️ Ocultar nome dos jogadores</label>
 
     <div class="tpActions">
-      <button id="tpVision" type="button"><svg class="uiIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg> Visão…</button>
-      <button id="tpStore" type="button"><svg class="uiIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v15H4zM8 3v15m5-13v15m5-13v15"/></svg> Guardar</button>
+      <button id="tpVision" type="button">👁️ Visão…</button>
+      <button id="tpStore" type="button">📚 Guardar</button>
       <button id="tpDup" type="button">Duplicar</button>
       <button id="tpDelete" type="button" class="danger">Apagar</button>
     </div>
@@ -1014,18 +1048,28 @@
   const topBar = document.getElementById('topBar');
   const topBarToggle = document.getElementById('topBarToggle');
 
-  const playerPreviewBtn = document.getElementById('playerPreviewBtn');
-  if (playerPreviewBtn) {
-    playerPreviewBtn.addEventListener('click', () => {
-      if (currentRole !== 'mestre') return;
-      const previewing = document.body.classList.toggle('player-preview');
-      document.body.classList.toggle('jogador', previewing);
-      playerPreviewBtn.textContent = previewing ? '↩ Voltar à visão do mestre' : '◉ Ver como player';
-      const badge = document.getElementById('roleBadge');
-      if (badge) badge.textContent = previewing ? 'Prévia: player' : 'Mestre';
-      topBar.classList.toggle('preview-mode', previewing);
-    });
-  }
+  const moreActionsBtn = document.getElementById('moreActionsBtn');
+  const moreActionsMenu = document.getElementById('moreActionsMenu');
+
+  moreActionsBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const isOpen = moreActionsMenu.classList.toggle('open');
+    moreActionsBtn.setAttribute('aria-expanded', String(isOpen));
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!moreActionsMenu.contains(e.target) && !moreActionsBtn.contains(e.target)) {
+      moreActionsMenu.classList.remove('open');
+      moreActionsBtn.setAttribute('aria-expanded', 'false');
+    }
+  });
+
+  moreActionsMenu.addEventListener('click', (e) => {
+    if (e.target.closest('button')) {
+      moreActionsMenu.classList.remove('open');
+      moreActionsBtn.setAttribute('aria-expanded', 'false');
+    }
+  });
 
   const sideToolbar = document.getElementById('sideToolbar');
   const sideToolbarToggle = document.getElementById('sideToolbarToggle');
@@ -1108,6 +1152,8 @@
   const mapPieceInput = document.getElementById('mapPieceInput');
   const tokenInput = document.getElementById('tokenInput');
   const clearBtn = document.getElementById('clearBtn');
+  const zoomInBtn = document.getElementById('zoomIn');
+  const zoomOutBtn = document.getElementById('zoomOut');
   const settingsBtn = document.getElementById('settingsBtn');
   const connDot = document.getElementById('connDot');
 
@@ -1326,6 +1372,7 @@
     gridConfig = normalizeGrid(cfg);
     drawGrid();
     syncAmbientUI(); markLightingDirty();
+    applyEnvironment(); syncEnvUI();
   }
 
   function broadcastGrid(sceneId, cfg) {
@@ -1516,11 +1563,11 @@
 
     if (mode === 'erase') {
       breakWallChain();
-      wallStatusText.innerHTML = 'Modo Borracha: Toque em uma parede para apagar';
+      wallStatusText.textContent = 'Modo Borracha: Toque em uma parede para apagar';
     } else if (mode === 'door') {
-      wallStatusText.innerHTML = wallStartPoint ? 'Porta: Toque no ponto final' : 'Porta: Toque no ponto inicial (ou porta existente p/ abrir)';
+      wallStatusText.textContent = wallStartPoint ? 'Porta: Toque no ponto final' : 'Porta: Toque no ponto inicial (ou porta existente p/ abrir)';
     } else {
-      wallStatusText.innerHTML = wallStartPoint ? 'Parede: Toque no ponto final' : 'Parede: Toque no ponto inicial';
+      wallStatusText.textContent = wallStartPoint ? 'Parede: Toque no ponto final' : 'Parede: Toque no ponto inicial';
     }
   }
 
@@ -1529,7 +1576,7 @@
     if (wallDraftLine) { wallDraftLine.remove(); wallDraftLine = null; }
     if (snapIndicatorCircle) { snapIndicatorCircle.remove(); snapIndicatorCircle = null; }
     if (wallToolMode !== 'erase') {
-      wallStatusText.innerHTML = wallToolMode === 'door' ? 'Porta: Toque no início' : 'Parede: Toque no início';
+      wallStatusText.textContent = wallToolMode === 'door' ? 'Porta: Toque no início' : 'Parede: Toque no início';
     }
   }
 
@@ -1659,7 +1706,7 @@
         const newOpen = !wallData.is_open;
         wallData.is_open = newOpen;
         line.classList.toggle('door-open', newOpen);
-        wallStatusText.innerHTML = newOpen ? '<svg class="uiIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V3h14v18M8 21V6h8v15m-3-8h.01"/></svg> Porta ABERTA' : '<svg class="uiIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V3h14v18M8 21V6h8v15m-3-8h.01"/></svg> Porta FECHADA';
+        wallStatusText.textContent = newOpen ? '🚪 Porta ABERTA' : '🚪 Porta FECHADA';
         await sb.from('walls').update({ is_open: newOpen }).eq('id', wallData.id);
         computeLighting();
       }
@@ -1690,7 +1737,7 @@
 
     if (!wallStartPoint) {
       wallStartPoint = { x, y };
-      wallStatusText.innerHTML = wallToolMode === 'door' ? 'Porta: Toque no fim' : 'Parede: Toque no fim';
+      wallStatusText.textContent = wallToolMode === 'door' ? 'Porta: Toque no fim' : 'Parede: Toque no fim';
       
       if (wallDraftLine) wallDraftLine.remove();
       wallDraftLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
@@ -1724,7 +1771,7 @@
         wallDraftLine.setAttribute('stroke-dasharray', typeToInsert === 'door' ? '8,5' : 'none');
       }
 
-      wallStatusText.innerHTML = `Criado! Continue ou clique "Soltar Linha"`;
+      wallStatusText.textContent = `Criado! Continue ou clique "Soltar Linha"`;
 
       const { data, error } = await sb.from('walls').insert({
         scene_id: currentSceneId,
@@ -2159,7 +2206,7 @@
     marker.style.left = l.x + 'px';
     marker.style.top = l.y + 'px';
     marker.style.setProperty('--light-color', l.color);
-    marker.innerHTML = '<svg class="uiIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6m-5 3h4m-6-6a7 7 0 1 1 8 0c-1 .8-1 1.5-1 3h-6c0-1.5 0-2.2-1-3Z"/></svg>';
+    marker.textContent = '💡';
 
     marker.addEventListener('contextmenu', (e) => {
       e.preventDefault();
@@ -2491,7 +2538,7 @@
   }
   requestAnimationFrame(lightingTick);
 
-  function applyZoom() { board.style.transform = `scale(${scale})`; board.style.setProperty('--inv-zoom', String(1 / scale)); if (typeof renderRuler === 'function') renderRuler(); }
+  function applyZoom() { const zl = document.getElementById('zoomLabel'); if (zl) zl.textContent = Math.round(scale * 100) + '%'; board.style.transform = `scale(${scale})`; board.style.setProperty('--inv-zoom', String(1 / scale)); if (typeof renderRuler === 'function') renderRuler(); }
 
   function applyElementSize(el, size, ar) {
     let w, h;
@@ -2615,7 +2662,7 @@
     }
   }
 
-  const TOKEN_PROP_KEYS = ['name', 'tint', 'tint_amount', 'opacity', 'size', 'rotation', 'flip_x', 'hide_name'];
+  const TOKEN_PROP_KEYS = ['name', 'tint', 'tint_amount', 'opacity', 'size', 'rotation', 'flip_x', 'hidden', 'locked', 'name_hidden'];
   function upsertTokenEl(tok) {
     const prev = tokenData.get(tok.id);
     if (prev && prev !== tok && prev._lockUntil && prev._lockUntil > Date.now()) {
@@ -2677,14 +2724,18 @@
     el.style.setProperty('--tok-op', String(tok.opacity == null ? 1 : tok.opacity));
     el.style.setProperty('--tint-amt', String(tok.tint_amount == null ? 0.5 : tok.tint_amount));
     let nameWrap = el.querySelector(':scope > .tokenNameWrap');
-    if (tok.name) {
+    const showName = !!tok.name && namesVisible && (currentRole === 'mestre' || !tok.name_hidden);
+    el.classList.toggle('locked', !!tok.locked);
+    el.classList.toggle('tokenHidden', !!tok.hidden);
+    if (tok.locked && selectedEl === el) deselectAll();
+    if (showName) {
       if (!nameWrap) {
         nameWrap = document.createElement('div'); nameWrap.className = 'tokenNameWrap';
         const lb = document.createElement('div'); lb.className = 'tokenName';
         nameWrap.appendChild(lb); el.appendChild(nameWrap);
       }
+      nameWrap.firstChild.classList.toggle('dimmed', !!tok.name_hidden);
       nameWrap.firstChild.textContent = tok.name;
-      nameWrap.classList.toggle('name-hidden', !!tok.hide_name);
       // desfaz a rotação/espelhamento do token para o texto ficar sempre em pé
       nameWrap.style.transform = `scaleX(${tok.flip_x ? -1 : 1}) rotate(${-(tok.rotation || 0)}deg)`;
     } else if (nameWrap) { nameWrap.remove(); }
@@ -2809,7 +2860,7 @@
     fogPolyEditControls.classList.remove('hidden');
 
     const isVis = editingFogObj.is_visible !== false;
-    btnToggleFogVisibility.innerHTML = isVis ? '<svg class="uiIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg> Névoa: ON' : '<svg class="uiIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg> Névoa: OFF';
+    btnToggleFogVisibility.textContent = isVis ? '🙈 Névoa: ON' : '👁️ Névoa: OFF';
     fogStatusText.textContent = 'Editando polígono. Arraste os pontos verdes no mapa.';
     renderFogEditorHandles();
   }
@@ -2886,7 +2937,7 @@
     const newVis = !(editingFogObj.is_visible !== false);
     editingFogObj.is_visible = newVis;
     await sb.from('fog_elements').update({ is_visible: newVis }).eq('id', editingFogObj.id);
-    btnToggleFogVisibility.innerHTML = newVis ? '<svg class="uiIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg> Névoa: ON' : '<svg class="uiIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg> Névoa: OFF';
+    btnToggleFogVisibility.textContent = newVis ? '🙈 Névoa: ON' : '👁️ Névoa: OFF';
     loadFogElements();
   });
 
@@ -2963,10 +3014,6 @@
       if (e.target === handle || e.target.classList.contains('rotateHandle')) return;
 
       selectElement(el);
-      if (type === 'token' && currentRole === 'mestre' && !tokenPropsPanel.classList.contains('hidden')) {
-        const clickedToken = tokenData.get(itemId);
-        if (clickedToken) { propsTokenId = itemId; fillTokenProps(clickedToken); }
-      }
       dragging = true; moved = false; el.dragging = true;
       el.classList.add('dragging');
       el.setPointerCapture(e.pointerId);
@@ -3170,6 +3217,13 @@
     menuProps.style.display = type === 'token' ? 'block' : 'none';
     menuStore.style.display = type === 'token' ? 'block' : 'none';
     menuDuplicate.style.display = type === 'token' ? 'block' : 'none';
+    [menuLock, menuHide, menuHideName].forEach((b) => { b.style.display = type === 'token' ? 'block' : 'none'; });
+    const tkc = type === 'token' ? tokenData.get(id) : null;
+    if (tkc) {
+      menuLock.textContent = tkc.locked ? '🔓 Destravar' : '🔒 Travar';
+      menuHide.textContent = tkc.hidden ? '👁️ Mostrar aos jogadores' : '🙈 Ocultar dos jogadores';
+      menuHideName.textContent = tkc.name_hidden ? '🏷️ Mostrar nome aos jogadores' : '🏷️ Ocultar nome dos jogadores';
+    }
     contextMenu.classList.add('open');
     contextMenu.style.left = Math.max(8, Math.min(clientX, window.innerWidth - 220)) + 'px';
     contextMenu.style.top = Math.max(8, Math.min(clientY, window.innerHeight - contextMenu.offsetHeight - 8)) + 'px';
@@ -3301,14 +3355,9 @@
   async function openScenesPanel() {
     scenesList.innerHTML = 'Carregando...';
     scenesOverlay.classList.remove('hidden');
-    const { data: scenes, error } = await sb.from('scenes').select('*').eq('room_id', currentRoomId).order('created_at');
-    if (error) {
-      scenesList.textContent = 'Não foi possível carregar as cenas: ' + error.message;
-      return;
-    }
+    const { data: scenes } = await sb.from('scenes').select('*').eq('room_id', currentRoomId).order('created_at');
     scenesList.innerHTML = '';
-    const sceneRows = scenes || [];
-    sceneRows.forEach((s) => {
+    (scenes || []).forEach((s) => {
       const row = document.createElement('div');
       row.className = 'sceneRow';
       const isActive = s.id === currentSceneId;
@@ -3316,67 +3365,20 @@
       thumb.className = 'thumb';
       if (s.map_url) thumb.style.backgroundImage = `url("${s.map_url.replace(/^http:\/\//, 'https://')}")`;
       row.appendChild(thumb);
-      const name = document.createElement('span');
-      name.className = 'name';
-      name.textContent = s.name;
-      row.appendChild(name);
-
+      const name = document.createElement('span'); name.className = 'name'; name.textContent = s.name; row.appendChild(name);
       if (isActive) {
-        const tag = document.createElement('span');
-        tag.className = 'activeTag';
-        tag.textContent = '● atual';
-        row.appendChild(tag);
+        const tag = document.createElement('span'); tag.className = 'activeTag'; tag.textContent = '● atual'; row.appendChild(tag);
       } else {
-        const useBtn = document.createElement('button');
-        useBtn.textContent = 'Usar';
+        const useBtn = document.createElement('button'); useBtn.textContent = 'Usar';
         useBtn.addEventListener('click', async () => {
-          const { error: roomError } = await sb.from('rooms').update({ active_scene_id: s.id }).eq('id', currentRoomId);
-          if (roomError) { alert('Não foi possível trocar de cena: ' + roomError.message); return; }
           currentSceneId = s.id;
+          await sb.from('rooms').update({ active_scene_id: s.id }).eq('id', currentRoomId);
           await loadSceneContent(currentSceneId);
           subscribeRealtimeChannels(currentSceneId);
           scenesOverlay.classList.add('hidden');
         });
         row.appendChild(useBtn);
       }
-
-      const deleteBtn = document.createElement('button');
-      deleteBtn.type = 'button';
-      deleteBtn.className = 'danger sceneDeleteBtn';
-      deleteBtn.textContent = 'Excluir';
-      deleteBtn.disabled = sceneRows.length <= 1;
-      deleteBtn.title = sceneRows.length <= 1 ? 'A mesa precisa manter pelo menos uma cena' : 'Excluir esta cena';
-      deleteBtn.addEventListener('click', async () => {
-        if (sceneRows.length <= 1) return;
-        const acceptedName = prompt(
-          `Esta ação excluirá permanentemente "${s.name}" e todos os tokens, peças de mapa, paredes, luzes, névoas e desenhos desta cena.\n\nDigite o nome exato da cena para continuar:`
-        );
-        if (acceptedName === null) return;
-        const password = prompt('Confirme sua senha para excluir a cena:');
-        if (password === null) return;
-        if (!password) { alert('A senha é obrigatória.'); return; }
-
-        deleteBtn.disabled = true;
-        const { data: replacementSceneId, error: deleteError } = await sb.rpc('delete_scene', {
-          p_user_id: currentUserId,
-          p_scene_id: s.id,
-          p_password: password,
-          p_confirm_name: acceptedName
-        });
-        if (deleteError) {
-          alert('Não foi possível excluir a cena: ' + deleteError.message);
-          deleteBtn.disabled = false;
-          return;
-        }
-
-        if (isActive) {
-          currentSceneId = replacementSceneId;
-          await loadSceneContent(currentSceneId);
-          subscribeRealtimeChannels(currentSceneId);
-        }
-        await openScenesPanel();
-      });
-      row.appendChild(deleteBtn);
       scenesList.appendChild(row);
     });
   }
@@ -3425,7 +3427,7 @@
     (members || []).forEach((m) => {
       const row = document.createElement('div'); row.className = 'playerRow';
       const isMe = m.user_id === currentUserId;
-      row.innerHTML = `<span class="name">${m.profiles?.display_name || 'Usuário'}${isMe ? ' (você)' : ''}</span><span class="roleTag">${m.role === 'mestre' ? 'Mestre' : 'Jogador'}</span>`;
+      row.innerHTML = `<span class="name">${m.profiles?.display_name || 'Usuário'}${isMe ? ' (você)' : ''}</span><span class="roleTag">${m.role === 'mestre' ? '👑 mestre' : '🧑 jogador'}</span>`;
       if (currentRole === 'mestre' && !isMe) {
         const btn = document.createElement('button');
         btn.textContent = m.role === 'mestre' ? 'Tornar jogador' : 'Tornar mestre';
@@ -3440,6 +3442,9 @@
   }
   if (managePlayersBtn) managePlayersBtn.addEventListener('click', openPlayersPanel);
   if (closePlayersBtn) closePlayersBtn.addEventListener('click', () => playersOverlay.classList.add('hidden'));
+
+  zoomInBtn.addEventListener('click', () => { if (cameraLocked) return; scale = Math.min(scale * 1.2, 10); applyZoom(); });
+  zoomOutBtn.addEventListener('click', () => { if (cameraLocked) return; scale = Math.max(scale / 1.2, 0.05); applyZoom(); });
 
   const activePointers = new Map();
   const middlePanPointers = new Map();
@@ -3542,15 +3547,11 @@
   function applyBarState() {
     const topHidden = localStorage.getItem('tabletop_topbar_hidden') === '1';
     const sideHidden = localStorage.getItem('tabletop_sidebar_hidden') === '1';
-    topBar.classList.toggle('collapsed', topHidden);
-    topBarToggle.setAttribute('aria-expanded', topHidden ? 'false' : 'true');
+    topBar.classList.toggle('collapsed', topHidden); topBarToggle.textContent = topHidden ? '▼' : '▲';
     sideToolbar.classList.toggle('collapsed', sideHidden); sideToolbarToggle.textContent = sideHidden ? '◀' : '▶';
   }
   topBarToggle.addEventListener('click', () => {
-    const h = topBar.classList.toggle('collapsed');
-    localStorage.setItem('tabletop_topbar_hidden', h ? '1' : '0');
-    topBarToggle.setAttribute('aria-expanded', h ? 'false' : 'true');
-    if (!h) setLibOpen(false);
+    const h = topBar.classList.toggle('collapsed'); localStorage.setItem('tabletop_topbar_hidden', h ? '1' : '0'); topBarToggle.textContent = h ? '▼' : '▲';
   });
   sideToolbarToggle.addEventListener('click', () => {
     const h = sideToolbar.classList.toggle('collapsed'); localStorage.setItem('tabletop_sidebar_hidden', h ? '1' : '0'); sideToolbarToggle.textContent = h ? '◀' : '▶';
@@ -3698,6 +3699,7 @@
         gridConfig = normalizeGrid(payload.grid);
         drawGrid();
         syncAmbientUI(); markLightingDirty();
+        applyEnvironment();
       })
       .subscribe();
   }
@@ -3707,13 +3709,13 @@
     if (camLive && !silent) sendCamera(false, 'release');
     camLive = false;
     camLiveBtn.classList.remove('active');
-    camLiveBtn.innerHTML = '<svg class="uiIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9a14 14 0 0 1 18 0M6 12a9 9 0 0 1 12 0m-9 3a4 4 0 0 1 6 0m-3 4h.01"/></svg> Câmera ao vivo: OFF';
+    camLiveBtn.textContent = '📡 Câmera ao vivo: OFF';
   }
 
   function startCameraLive() {
     camLive = true; camLastKey = ''; camLastSent = 0;
     camLiveBtn.classList.add('active');
-    camLiveBtn.innerHTML = '<svg class="uiIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9a14 14 0 0 1 18 0M6 12a9 9 0 0 1 12 0m-9 3a4 4 0 0 1 6 0m-3 4h.01"/></svg> Câmera ao vivo: ON';
+    camLiveBtn.textContent = '📡 Câmera ao vivo: ON';
     camLiveTimer = setInterval(() => {
       const key = [boardX, boardY, scale].map(n => n.toFixed(2)).join('|');
       const now = Date.now();
@@ -3753,7 +3755,7 @@
     boardContextMenu.style.left = `${Math.max(8, Math.min(e.clientX, maxLeft))}px`;
     boardContextMenu.style.top = `${Math.max(8, Math.min(e.clientY, maxTop))}px`;
 
-    boardContextToggleLive.innerHTML = camLive ? '<svg class="uiIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9a14 14 0 0 1 18 0M6 12a9 9 0 0 1 12 0m-9 3a4 4 0 0 1 6 0m-3 4h.01"/></svg> Desativar câmera ao vivo' : '<svg class="uiIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9a14 14 0 0 1 18 0M6 12a9 9 0 0 1 12 0m-9 3a4 4 0 0 1 6 0m-3 4h.01"/></svg> Ativar câmera ao vivo';
+    boardContextToggleLive.textContent = camLive ? '📡 Desativar câmera ao vivo' : '📡 Ativar câmera ao vivo';
   });
 
   boardContextPullPlayers.addEventListener('click', () => {
@@ -3795,6 +3797,7 @@
   function snapToToken(pt) {
     let best = null, bestZ = -Infinity;
     tokenEls.forEach((el) => {
+      if (el.classList.contains('tokenHidden') && document.body.classList.contains('jogador')) return;
       const l = parseFloat(el.style.left) || 0, t = parseFloat(el.style.top) || 0;
       const w = el.offsetWidth, h = el.offsetHeight;
       if (pt.x >= l && pt.x <= l + w && pt.y >= t && pt.y <= t + h) {
@@ -3927,7 +3930,7 @@
 
   const dynFogBtn = document.getElementById('dynFogBtn');
   function syncDynFogUI() {
-    dynFogBtn.innerHTML = '<svg class="uiIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg> Fog dinâmico: ' + ((gridConfig && gridConfig.dynFog) ? 'ON' : 'OFF');
+    dynFogBtn.textContent = '👁️ Fog dinâmico: ' + ((gridConfig && gridConfig.dynFog) ? 'ON' : 'OFF');
     dynFogBtn.classList.toggle('active', !!(gridConfig && gridConfig.dynFog));
   }
   dynFogBtn.addEventListener('click', () => {
@@ -4241,7 +4244,7 @@
     const box = await tokenBox(url, size);
     const p = freeSpawnPoint(box.w, box.h);
     const { data, error } = await sb.from('tokens').insert({
-      scene_id: currentSceneId, src_url: url, x: p.x, y: p.y, size, z: topLayerZ(tokenData), rotation: 0, flip_x: false, active_state: 0, states: [], hide_name: true
+      scene_id: currentSceneId, src_url: url, x: p.x, y: p.y, size, z: topLayerZ(tokenData), rotation: 0, flip_x: false, active_state: 0, states: []
     }).select();
     if (error) throw error;
     if (data && data.length) { upsertTokenEl(data[0]); placeholder.style.display = 'none'; }
@@ -4305,7 +4308,7 @@
       attachLibDrop(b, fid);
       return b;
     };
-    libCrumbs.appendChild(mkCrumb('Raiz', null));
+    libCrumbs.appendChild(mkCrumb('🏠 Raiz', null));
     libPath(libFolderId).forEach((f) => {
       const sep = document.createElement('span'); sep.textContent = '›';
       libCrumbs.appendChild(sep);
@@ -4391,7 +4394,7 @@
     card.className = 'libCard folder'; card.title = f.name; card.draggable = true;
 
     const thumb = document.createElement('div');
-    thumb.className = 'libThumb'; thumb.innerHTML = '<svg class="uiIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h7l2 2h9v11H3z"/></svg>';
+    thumb.className = 'libThumb'; thumb.textContent = '📁';
     card.appendChild(thumb);
 
     let n = 0;
@@ -4473,12 +4476,12 @@
     if (kind === 'folder') { exclude.add(id); libDescendants(id).forEach((d) => exclude.add(d)); }
     libMoveSelect.innerHTML = '';
     const root = document.createElement('option');
-    root.value = ''; root.textContent = 'Raiz';
+    root.value = ''; root.textContent = '🏠 Raiz';
     libMoveSelect.appendChild(root);
     const walk = (parent, depth) => {
       [...libFolders.values()].filter((f) => (f.parent_id || null) === parent && !exclude.has(f.id)).sort(byName).forEach((f) => {
         const o = document.createElement('option');
-        o.value = f.id; o.textContent = '\u00A0\u00A0'.repeat(depth) + f.name;
+        o.value = f.id; o.textContent = '\u00A0\u00A0'.repeat(depth) + '📁 ' + f.name;
         libMoveSelect.appendChild(o);
         walk(f.id, depth + 1);
       });
@@ -4581,7 +4584,7 @@
   // ---------- abrir / fechar a gaveta ----------
   function setLibOpen(v) {
     libDrawer.classList.toggle('open', v);
-    libToggle.innerHTML = v ? '◀' : '<svg class="uiIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v15H4zM8 3v15m5-13v15m5-13v15"/></svg>';
+    libToggle.textContent = v ? '◀' : '📚';
     try { localStorage.setItem('tabletop_lib_open', v ? '1' : '0'); } catch (_) {}
     if (!v) { hideLibMenu(); libDrawer.classList.remove('drop-hot'); }
   }
@@ -4638,7 +4641,8 @@
       scene_id: currentSceneId, src_url: t.src_url, x: (t.x || 0) + 24, y: (t.y || 0) + 24, size: t.size || 96, z: topLayerZ(tokenData),
       rotation: t.rotation || 0, flip_x: !!t.flip_x, states: t.states || [], active_state: t.active_state || 0,
       name: t.name || null, tint: t.tint || null, tint_amount: t.tint_amount == null ? 0.5 : t.tint_amount, opacity: t.opacity == null ? 1 : t.opacity,
-      vision_enabled: !!t.vision_enabled, vision_radius: t.vision_radius || 400, hide_name: !!t.hide_name
+      vision_enabled: !!t.vision_enabled, vision_radius: t.vision_radius || 400,
+      hidden: !!t.hidden, name_hidden: !!t.name_hidden
     }).select();
     if (error) { alert('Erro ao duplicar: ' + error.message); return; }
     if (data && data.length) upsertTokenEl(data[0]);
@@ -4683,7 +4687,9 @@
   const tpRotNum = document.getElementById('tpRotNum');
   const tpZ = document.getElementById('tpZ');
   const tpFlip = document.getElementById('tpFlip');
-  const tpHideName = document.getElementById('tpHideName');
+  const tpLocked = document.getElementById('tpLocked');
+  const tpHidden = document.getElementById('tpHidden');
+  const tpNameHidden = document.getElementById('tpNameHidden');
   let propsTokenId = null;
   const propsPending = new Map();   // id -> { patch, timer }
 
@@ -4703,7 +4709,9 @@
     tpRot.value = tpRotNum.value = normDeg(tok.rotation || 0);
     tpZ.value = Math.round(tok.z || 0);
     tpFlip.checked = !!tok.flip_x;
-    tpHideName.checked = !!tok.hide_name;
+    tpLocked.checked = !!tok.locked;
+    tpHidden.checked = !!tok.hidden;
+    tpNameHidden.checked = !!tok.name_hidden;
   }
 
   function openTokenProps(id) {
@@ -4721,8 +4729,8 @@
   }
 
   // Aplica na hora (visual) e manda para o banco com um pequeno atraso, juntando as mudanças.
-  function applyTokenProps(patch) {
-    const id = propsTokenId;
+  function applyTokenProps(patch, forId) {
+    const id = forId || propsTokenId;
     const tok = id && tokenData.get(id);
     if (!tok) return;
     Object.assign(tok, patch);
@@ -4759,7 +4767,9 @@
     tpRotNum.value = v; tpRot.value = v; applyTokenProps({ rotation: v });
   });
   tpFlip.addEventListener('change', () => applyTokenProps({ flip_x: tpFlip.checked }));
-  tpHideName.addEventListener('change', () => applyTokenProps({ hide_name: tpHideName.checked }));
+  tpLocked.addEventListener('change', () => applyTokenProps({ locked: tpLocked.checked }));
+  tpHidden.addEventListener('change', () => applyTokenProps({ hidden: tpHidden.checked }));
+  tpNameHidden.addEventListener('change', () => applyTokenProps({ name_hidden: tpNameHidden.checked }));
 
   tpZ.addEventListener('change', () => {
     if (!propsTokenId) return;
@@ -4785,6 +4795,389 @@
   document.getElementById('tpDelete').addEventListener('click', () => { if (propsTokenId) deleteTokenWithConfirm(propsTokenId); });
 
 
+  // =====================================================================
+  //  BARRA SUPERIOR: menu "Editar", zoom, nomes dos tokens
+  // =====================================================================
+  const editMenuBtn = document.getElementById('editMenuBtn');
+  const editMenu = document.getElementById('editMenu');
+  const zoomLabel = document.getElementById('zoomLabel');
+  const toggleNamesBtn = document.getElementById('toggleNamesBtn');
+  const menuLock = document.getElementById('menuLock');
+  const menuHide = document.getElementById('menuHide');
+  const menuHideName = document.getElementById('menuHideName');
+
+  function closeEditMenu() { editMenu.classList.remove('open'); editMenuBtn.setAttribute('aria-expanded', 'false'); }
+  editMenuBtn.addEventListener('click', () => {
+    const open = editMenu.classList.toggle('open');
+    editMenuBtn.setAttribute('aria-expanded', String(open));
+  });
+  document.addEventListener('click', (e) => { if (!editMenu.contains(e.target) && !editMenuBtn.contains(e.target)) closeEditMenu(); });
+  editMenu.addEventListener('click', (e) => { if (e.target.closest('button')) closeEditMenu(); });
+
+  zoomLabel.addEventListener('click', () => { if (cameraLocked) return; scale = 1; applyZoom(); });
+
+  // Nomes dos tokens: preferência só de quem está olhando (não vai para os outros jogadores)
+  let namesVisible = true;
+  try { namesVisible = localStorage.getItem('tabletop_names_visible') !== '0'; } catch (_) {}
+  function syncNamesBtn() {
+    toggleNamesBtn.textContent = '🏷️ Nomes dos tokens: ' + (namesVisible ? 'ON' : 'OFF');
+    toggleNamesBtn.classList.toggle('active', !namesVisible);
+  }
+  syncNamesBtn();
+  toggleNamesBtn.addEventListener('click', () => {
+    namesVisible = !namesVisible;
+    try { localStorage.setItem('tabletop_names_visible', namesVisible ? '1' : '0'); } catch (_) {}
+    syncNamesBtn();
+    tokenData.forEach((t) => upsertTokenEl(t));
+  });
+
+  // =====================================================================
+  //  TOKEN TRAVADO / OCULTO / NOME OCULTO
+  // =====================================================================
+  menuLock.addEventListener('click', () => {
+    const t = contextTarget; closeContextMenu();
+    const tk = t && t.type === 'token' && tokenData.get(t.id);
+    if (tk) applyTokenProps({ locked: !tk.locked }, t.id);
+  });
+  menuHide.addEventListener('click', () => {
+    const t = contextTarget; closeContextMenu();
+    const tk = t && t.type === 'token' && tokenData.get(t.id);
+    if (tk) applyTokenProps({ hidden: !tk.hidden }, t.id);
+  });
+  menuHideName.addEventListener('click', () => {
+    const t = contextTarget; closeContextMenu();
+    const tk = t && t.type === 'token' && tokenData.get(t.id);
+    if (tk) applyTokenProps({ name_hidden: !tk.name_hidden }, t.id);
+  });
+
+  // Token travado não recebe clique (pointer-events: none); o botão direito do mestre acha ele pela geometria.
+  function lockedTokenAt(x, y) {
+    let best = null;
+    tokenEls.forEach((el, id) => {
+      const t = tokenData.get(id);
+      if (!t || !t.locked) return;
+      const r = el.getBoundingClientRect();
+      if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom && (!best || (t.z || 0) >= (best.z || 0))) best = t;
+    });
+    return best;
+  }
+  function inAnyEditor() {
+    const c = document.body.classList;
+    return c.contains('wall-editor-active') || c.contains('fog-editor-active') || c.contains('light-editor-active');
+  }
+  boardWrap.addEventListener('contextmenu', (e) => {
+    if (currentRole !== 'mestre' || currentTool !== 'select' || inAnyEditor()) return;
+    if (e.target.closest && e.target.closest('.token')) return;
+    const lt = lockedTokenAt(e.clientX, e.clientY);
+    if (!lt) return;
+    e.preventDefault(); e.stopPropagation();
+    openContextMenu('token', lt.id, e.clientX, e.clientY);
+  }, true);
+
+  // no toque: segurar o dedo sobre o token travado abre o mesmo menu
+  let lockPress = null;
+  function cancelLockPress() { if (lockPress) { clearTimeout(lockPress.timer); lockPress = null; } }
+  boardWrap.addEventListener('pointerdown', (e) => {
+    if (e.pointerType !== 'touch' || currentRole !== 'mestre' || currentTool !== 'select' || inAnyEditor()) return;
+    if (e.target.closest && e.target.closest('.token')) return;
+    const lt = lockedTokenAt(e.clientX, e.clientY);
+    if (!lt) return;
+    const sx = e.clientX, sy = e.clientY, id = lt.id;
+    cancelLockPress();
+    lockPress = { sx, sy, timer: setTimeout(() => { lockPress = null; openContextMenu('token', id, sx, sy); }, 600) };
+  }, true);
+  boardWrap.addEventListener('pointermove', (e) => {
+    if (lockPress && Math.hypot(e.clientX - lockPress.sx, e.clientY - lockPress.sy) > 10) cancelLockPress();
+  }, true);
+  boardWrap.addEventListener('pointerup', cancelLockPress, true);
+  boardWrap.addEventListener('pointercancel', cancelLockPress, true);
+
+  // =====================================================================
+  //  AMBIENTE DA CENA (hora do dia + clima). Fica em gridConfig.env, então
+  //  persiste em scenes.grid_config e vai para os jogadores pelo mesmo canal do grid.
+  // =====================================================================
+  const ENV_TIMES = {
+    dia:        { tint: '#ffffff', tintAmount: 0,    darkness: 0,    vignette: 0 },
+    amanhecer:  { tint: '#ffc7a1', tintAmount: 0.38, darkness: 0.04, vignette: 0.12 },
+    entardecer: { tint: '#ff8a4a', tintAmount: 0.55, darkness: 0.08, vignette: 0.2 },
+    anoitecer:  { tint: '#7b5fc9', tintAmount: 0.45, darkness: 0.14, vignette: 0.28 },
+    noite:      { tint: '#3550a8', tintAmount: 0.58, darkness: 0.22, vignette: 0.4 }
+  };
+  const ENV_WEATHER = {
+    none:   { tint: '#ffffff', amount: 0,    kind: null,   int: 0.6,  wind: 0,    lightning: false },
+    cloudy: { tint: '#9aa6b4', amount: 0.38, kind: null,   int: 0.6,  wind: 0,    lightning: false },
+    rain:   { tint: '#7d8da3', amount: 0.34, kind: 'rain', int: 0.55, wind: 0.15, lightning: false },
+    storm:  { tint: '#4b586b', amount: 0.55, kind: 'rain', int: 0.95, wind: 0.55, lightning: true },
+    snow:   { tint: '#d5e3ff', amount: 0.2,  kind: 'snow', int: 0.55, wind: 0.1,  lightning: false },
+    fog:    { tint: '#c3cad3', amount: 0.28, kind: 'fog',  int: 0.6,  wind: 0.1,  lightning: false },
+    ash:    { tint: '#6a5a50', amount: 0.32, kind: 'ash',  int: 0.5,  wind: 0.1,  lightning: false }
+  };
+  const ENV_DEFAULT = { time: 'dia', weather: 'none', tint: '#ffffff', tintAmount: 0, darkness: 0, vignette: 0, weatherIntensity: 0.6, wind: 0, lightning: false };
+
+  function clampN(v, lo, hi, d) { v = parseFloat(v); return isNaN(v) ? d : Math.min(hi, Math.max(lo, v)); }
+  function normalizeEnv(raw) {
+    if (!raw || typeof raw !== 'object') return Object.assign({}, ENV_DEFAULT);
+    return {
+      time: (ENV_TIMES[raw.time] || raw.time === 'custom') ? raw.time : 'custom',
+      weather: ENV_WEATHER[raw.weather] ? raw.weather : 'none',
+      tint: /^#[0-9a-f]{6}$/i.test(raw.tint || '') ? raw.tint : '#ffffff',
+      tintAmount: clampN(raw.tintAmount, 0, 1, 0),
+      darkness: clampN(raw.darkness, 0, 0.9, 0),
+      vignette: clampN(raw.vignette, 0, 1, 0),
+      weatherIntensity: clampN(raw.weatherIntensity, 0.1, 1, 0.6),
+      wind: clampN(raw.wind, -1, 1, 0),
+      lightning: raw.lightning === true || raw.lightning === 'true'
+    };
+  }
+
+  const envTint = document.getElementById('envTint');
+  const envDark = document.getElementById('envDark');
+  const envWeatherTint = document.getElementById('envWeatherTint');
+  const envVignette = document.getElementById('envVignette');
+  const envFlash = document.getElementById('envFlash');
+  const envVoid = document.getElementById('envVoid');
+
+  function applyEnvironment(forceOff) {
+    const e = forceOff ? Object.assign({}, ENV_DEFAULT) : normalizeEnv(gridConfig && gridConfig.env);
+    const W = ENV_WEATHER[e.weather];
+    envTint.style.backgroundColor = e.tint;
+    envTint.style.opacity = String(e.tintAmount);
+    envDark.style.opacity = String(e.darkness);
+    envWeatherTint.style.backgroundColor = W.tint;
+    envWeatherTint.style.opacity = W.amount ? String(Math.min(0.9, W.amount * (0.55 + e.weatherIntensity * 0.75))) : '0';
+    envVignette.style.opacity = String(e.vignette);
+    envVoid.style.display = (e.tintAmount > 0 || e.darkness > 0 || W.amount > 0) ? 'block' : 'none';
+    wxConfigure(e, W);
+    envKey = '';
+  }
+
+  // As 3 camadas de cor ficam dentro do tabuleiro (assim as luzes brilham POR CIMA da escuridão do clima);
+  // aqui elas são reposicionadas para cobrir sempre a tela inteira, em qualquer pan/zoom.
+  let envKey = '';
+  function envFrame() {
+    const W = window.innerWidth, H = window.innerHeight;
+    const key = boardX + '|' + boardY + '|' + scale + '|' + W + '|' + H;
+    if (key !== envKey) {
+      envKey = key;
+      const m = 240 / scale;
+      const l = -boardX / scale - m, t = -boardY / scale - m, w = W / scale + m * 2, h = H / scale + m * 2;
+      [envVoid, envTint, envDark, envWeatherTint].forEach((el) => {
+        el.style.left = l + 'px'; el.style.top = t + 'px'; el.style.width = w + 'px'; el.style.height = h + 'px';
+      });
+    }
+    requestAnimationFrame(envFrame);
+  }
+  requestAnimationFrame(envFrame);
+
+  // ---------- partículas de clima (canvas em coordenadas de tela) ----------
+  const wx = { canvas: document.getElementById('weatherCanvas'), ctx: null, kind: null, parts: [], blobs: [], raf: 0, last: 0,
+    wind: 0, intensity: 0.6, lightning: false, nextBolt: 0, w: 0, h: 0, dpr: 1 };
+
+  function wxResize() {
+    const dpr = Math.min(window.devicePixelRatio || 1, 1.5), w = window.innerWidth, h = window.innerHeight;
+    if (w === wx.w && h === wx.h && dpr === wx.dpr) return false;
+    wx.w = w; wx.h = h; wx.dpr = dpr;
+    wx.canvas.width = Math.round(w * dpr); wx.canvas.height = Math.round(h * dpr);
+    return true;
+  }
+
+  function wxMake(kind) {
+    const r = Math.random, W = wx.w, H = wx.h;
+    if (kind === 'rain') return { x: r() * (W + 120) - 60, y: r() * H, v: 700 + r() * 700, L: 10 + r() * 16, far: r() < 0.45 };
+    if (kind === 'snow') return { x: r() * W, y: r() * H, r: 0.9 + r() * 1.9, v: 35 + r() * 70, ph: r() * 6.28, sw: 0.5 + r() * 1.5 };
+    return { x: r() * W, y: r() * H, up: r() < 0.4, r: 0.8 + r() * 1.8, v: 14 + r() * 40, ph: r() * 6.28 };
+  }
+
+  // Ajusta a quantidade de partículas sem recomeçar tudo (o slider de intensidade não pisca)
+  function wxBuild() {
+    const k = wx.kind, it = wx.intensity;
+    const area = Math.max(0.5, Math.min(2.2, (wx.w * wx.h) / (1280 * 720)));
+    if (k === 'fog') {
+      const n = 7;
+      while (wx.blobs.length < n) wx.blobs.push({ x: Math.random() * wx.w, y: Math.random() * wx.h, r: 280 + Math.random() * 280, v: 6 + Math.random() * 16, a: 0.07 + Math.random() * 0.08 });
+      wx.blobs.length = n; wx.parts = [];
+      return;
+    }
+    wx.blobs = [];
+    let target = 0;
+    if (k === 'rain') target = (90 + 900 * it) * area;
+    else if (k === 'snow') target = (70 + 480 * it) * area;
+    else if (k === 'ash') target = (40 + 260 * it) * area;
+    target = Math.round(target);
+    while (wx.parts.length < target) wx.parts.push(wxMake(k));
+    wx.parts.length = Math.min(wx.parts.length, target);
+  }
+
+  function wxBolt() {
+    const seq = [0.8, 0, 0.5, 0, 0.3, 0];
+    let i = 0;
+    const step = () => {
+      envFlash.style.opacity = String(seq[i++]);
+      if (i < seq.length) setTimeout(step, i % 2 ? 55 : 80 + Math.random() * 70);
+    };
+    step();
+  }
+
+  function wxFrame(ts) {
+    wx.raf = requestAnimationFrame(wxFrame);
+    const dt = Math.min(0.05, Math.max(0.001, (ts - (wx.last || ts)) / 1000));
+    wx.last = ts;
+    if (wxResize()) { wx.parts = []; wxBuild(); }
+    const ctx = wx.ctx, W = wx.w, H = wx.h, wind = wx.wind;
+    ctx.setTransform(wx.dpr, 0, 0, wx.dpr, 0, 0);
+    ctx.clearRect(0, 0, W, H);
+
+    if (wx.kind === 'rain') {
+      const vxBase = wind * 380;
+      [true, false].forEach((far) => {
+        ctx.beginPath();
+        ctx.strokeStyle = far ? 'rgba(190,205,225,0.18)' : 'rgba(215,228,245,0.34)';
+        ctx.lineWidth = far ? 1 : 1.4;
+        wx.parts.forEach((p) => {
+          if (p.far !== far) return;
+          const f = far ? 0.8 : 1, vx = vxBase * f, vy = p.v * f;
+          p.x += vx * dt; p.y += vy * dt;
+          if (p.y > H + 30 || p.x < -80 || p.x > W + 80) { p.y = -20 - Math.random() * 40; p.x = Math.random() * (W + 120) - 60; }
+          const sp = Math.hypot(vx, vy) || 1;
+          ctx.moveTo(p.x - (vx / sp) * p.L, p.y - (vy / sp) * p.L);
+          ctx.lineTo(p.x, p.y);
+        });
+        ctx.stroke();
+      });
+    } else if (wx.kind === 'snow') {
+      ctx.fillStyle = 'rgba(255,255,255,0.85)';
+      ctx.beginPath();
+      wx.parts.forEach((p) => {
+        p.ph += dt * p.sw; p.y += p.v * dt; p.x += (wind * 140 + Math.sin(p.ph) * 22) * dt;
+        if (p.y > H + 6) { p.y = -6; p.x = Math.random() * W; }
+        if (p.x > W + 6) p.x = -6; else if (p.x < -6) p.x = W + 6;
+        ctx.moveTo(p.x + p.r, p.y); ctx.arc(p.x, p.y, p.r, 0, 6.2832);
+      });
+      ctx.fill();
+    } else if (wx.kind === 'ash') {
+      wx.parts.forEach((p) => {
+        p.ph += dt * 1.4;
+        p.y += (p.up ? -p.v : p.v * 0.5) * dt;
+        p.x += (wind * 90 + Math.sin(p.ph) * 18) * dt;
+        if (p.up && p.y < -6) { p.y = H + 6; p.x = Math.random() * W; }
+        if (!p.up && p.y > H + 6) { p.y = -6; p.x = Math.random() * W; }
+        if (p.x > W + 6) p.x = -6; else if (p.x < -6) p.x = W + 6;
+        ctx.fillStyle = p.up ? 'rgba(255,140,60,' + (0.55 + 0.35 * Math.sin(p.ph * 3)).toFixed(2) + ')' : 'rgba(175,168,160,0.55)';
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 6.2832); ctx.fill();
+      });
+    } else if (wx.kind === 'fog') {
+      wx.blobs.forEach((b) => {
+        b.x += (b.v + wind * 40) * dt;
+        if (b.x - b.r > W) b.x = -b.r; else if (b.x + b.r < 0) b.x = W + b.r;
+        const a = Math.min(0.4, b.a * (0.4 + wx.intensity * 1.0));
+        const g = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.r);
+        g.addColorStop(0, 'rgba(214,221,230,' + a.toFixed(3) + ')');
+        g.addColorStop(1, 'rgba(214,221,230,0)');
+        ctx.fillStyle = g;
+        ctx.fillRect(b.x - b.r, b.y - b.r, b.r * 2, b.r * 2);
+      });
+    }
+
+    if (wx.lightning && ts > wx.nextBolt) { wxBolt(); wx.nextBolt = ts + 5000 + Math.random() * 11000; }
+  }
+
+  function wxStop() {
+    if (wx.raf) cancelAnimationFrame(wx.raf);
+    wx.raf = 0; wx.parts = []; wx.blobs = [];
+    if (wx.ctx) wx.ctx.clearRect(0, 0, wx.canvas.width, wx.canvas.height);
+    envFlash.style.opacity = '0';
+  }
+
+  function wxConfigure(e, W) {
+    const kind = W.kind || null;
+    const kindChanged = kind !== wx.kind;
+    wx.kind = kind; wx.intensity = e.weatherIntensity; wx.wind = e.wind; wx.lightning = !!e.lightning;
+    if (!kind && !wx.lightning) { wxStop(); return; }
+    if (!wx.ctx) wx.ctx = wx.canvas.getContext && wx.canvas.getContext('2d');
+    if (!wx.ctx) return;
+    if (kindChanged) { wx.parts = []; wx.blobs = []; }
+    wxResize();
+    wxBuild();
+    if (!wx.raf) { wx.last = 0; wx.nextBolt = performance.now() + 2500 + Math.random() * 5000; wx.raf = requestAnimationFrame(wxFrame); }
+  }
+
+  // ---------- painel "Ambiente" ----------
+  const envPanel = document.getElementById('envPanel');
+  const envBtn = document.getElementById('envBtn');
+  const envTintInp = document.getElementById('envTintInp');
+  const envTintAmt = document.getElementById('envTintAmt');
+  const envTintAmtVal = document.getElementById('envTintAmtVal');
+  const envDarkInp = document.getElementById('envDarkInp');
+  const envDarkVal = document.getElementById('envDarkVal');
+  const envVigInp = document.getElementById('envVigInp');
+  const envVigVal = document.getElementById('envVigVal');
+  const envIntInp = document.getElementById('envIntInp');
+  const envIntVal = document.getElementById('envIntVal');
+  const envWindInp = document.getElementById('envWindInp');
+  const envWindVal = document.getElementById('envWindVal');
+  const envLightningInp = document.getElementById('envLightningInp');
+
+  function placeEnvPanel() {
+    const r = envBtn.getBoundingClientRect();
+    const w = envPanel.offsetWidth || 350;
+    envPanel.style.top = Math.max(8, r.bottom + 10) + 'px';
+    envPanel.style.left = Math.max(8, Math.min(r.left + r.width / 2 - w / 2, window.innerWidth - w - 8)) + 'px';
+    envPanel.style.transform = 'none';
+  }
+  function openEnvPanel() {
+    envPanel.classList.remove('hidden');
+    envBtn.classList.add('active');
+    placeEnvPanel();
+    syncEnvUI();
+  }
+  function closeEnvPanel() { envPanel.classList.add('hidden'); envBtn.classList.remove('active'); }
+  envBtn.addEventListener('click', () => { envPanel.classList.contains('hidden') ? openEnvPanel() : closeEnvPanel(); });
+  document.getElementById('envClose').addEventListener('click', closeEnvPanel);
+  window.addEventListener('resize', () => { if (!envPanel.classList.contains('hidden')) placeEnvPanel(); });
+
+  function syncEnvUI() {
+    const e = normalizeEnv(gridConfig && gridConfig.env);
+    envPanel.querySelectorAll('[data-time]').forEach((b) => b.classList.toggle('active', b.dataset.time === e.time));
+    envPanel.querySelectorAll('[data-weather]').forEach((b) => b.classList.toggle('active', b.dataset.weather === e.weather));
+    const set = (inp, v) => { if (String(inp.value) !== String(v)) inp.value = v; };
+    set(envTintInp, e.tint);
+    set(envTintAmt, Math.round(e.tintAmount * 100)); envTintAmtVal.textContent = Math.round(e.tintAmount * 100) + '%';
+    set(envDarkInp, Math.round(e.darkness * 100)); envDarkVal.textContent = Math.round(e.darkness * 100) + '%';
+    set(envVigInp, Math.round(e.vignette * 100)); envVigVal.textContent = Math.round(e.vignette * 100) + '%';
+    set(envIntInp, Math.round(e.weatherIntensity * 100)); envIntVal.textContent = Math.round(e.weatherIntensity * 100) + '%';
+    set(envWindInp, Math.round(e.wind * 100)); envWindVal.textContent = Math.round(e.wind * 100);
+    envLightningInp.checked = e.lightning;
+  }
+
+  function setEnv(patch) {
+    if (currentRole !== 'mestre' || !currentSceneId) return;
+    const e = normalizeEnv(Object.assign({}, normalizeEnv(gridConfig.env), patch));
+    gridConfig.env = e;
+    applyEnvironment();
+    syncEnvUI();
+    saveGrid();
+  }
+
+  envPanel.querySelectorAll('[data-time]').forEach((b) => b.addEventListener('click', () => {
+    setEnv(Object.assign({ time: b.dataset.time }, ENV_TIMES[b.dataset.time]));
+  }));
+  envPanel.querySelectorAll('[data-weather]').forEach((b) => b.addEventListener('click', () => {
+    const W = ENV_WEATHER[b.dataset.weather];
+    setEnv({ weather: b.dataset.weather, weatherIntensity: W.int, wind: W.wind, lightning: W.lightning });
+  }));
+  envTintInp.addEventListener('input', () => {
+    const cur = normalizeEnv(gridConfig.env);
+    setEnv({ tint: envTintInp.value, time: 'custom', tintAmount: cur.tintAmount > 0 ? cur.tintAmount : 0.5 });
+  });
+  envTintAmt.addEventListener('input', () => setEnv({ tintAmount: envTintAmt.value / 100, time: 'custom' }));
+  envDarkInp.addEventListener('input', () => setEnv({ darkness: envDarkInp.value / 100, time: 'custom' }));
+  envVigInp.addEventListener('input', () => setEnv({ vignette: envVigInp.value / 100, time: 'custom' }));
+  envIntInp.addEventListener('input', () => setEnv({ weatherIntensity: envIntInp.value / 100 }));
+  envWindInp.addEventListener('input', () => setEnv({ wind: envWindInp.value / 100 }));
+  envLightningInp.addEventListener('change', () => setEnv({ lightning: envLightningInp.checked }));
+  document.getElementById('envReset').addEventListener('click', () => setEnv(ENV_DEFAULT));
+
+
   async function enterRoom(roomId) {
     currentRoomId = roomId;
     lobbyOverlay.classList.add('hidden');
@@ -4795,9 +5188,6 @@
 
     const { data: memberData } = await sb.from('room_members').select('role').eq('room_id', roomId).eq('user_id', currentUserId).maybeSingle();
     currentRole = memberData ? memberData.role : 'jogador';
-    document.body.classList.remove('player-preview');
-    if (playerPreviewBtn) playerPreviewBtn.textContent = '◉ Ver como player';
-    topBar.classList.remove('preview-mode');
     document.body.classList.toggle('jogador', currentRole !== 'mestre');
     roleBadge.textContent = currentRole === 'mestre' ? 'Mestre' : 'Jogador';
     roleBadge.classList.remove('hidden');
@@ -4854,7 +5244,7 @@
 
     roomListContainer.innerHTML = '';
     if (!rooms || rooms.length === 0) {
-      roomListContainer.innerHTML = '<div class="lobbyEmpty"><div class="emptyIcon"><svg class="uiIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 2.7 5.5 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg></div><strong>Nenhuma mesa por aqui ainda.</strong><br>Crie sua primeira campanha ou entre usando um código.</div>';
+      roomListContainer.innerHTML = '<div class="lobbyEmpty"><div class="emptyIcon">✧</div><strong>Nenhuma mesa por aqui ainda.</strong><br>Crie sua primeira campanha ou entre usando um código.</div>';
       return;
     }
 
@@ -4864,7 +5254,7 @@
 
       const icon = document.createElement('div');
       icon.className = 'roomIcon';
-      icon.innerHTML = '<svg class="uiIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 2.7 5.5 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg>';
+      icon.textContent = '✦';
 
       const info = document.createElement('div');
       info.className = 'roomInfo';
@@ -4987,6 +5377,7 @@
     if (wallsChannel) sb.removeChannel(wallsChannel);
     if (lightsChannel) sb.removeChannel(lightsChannel);
     if (drawingsChannel) sb.removeChannel(drawingsChannel);
+    applyEnvironment(true); closeEnvPanel();
     lobbyOverlay.classList.remove('hidden');
     loadLobbyRooms();
   });
