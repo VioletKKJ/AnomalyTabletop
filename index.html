@@ -2875,6 +2875,8 @@
 
   boardWrap.addEventListener('pointerdown', (e) => {
     if (!e.ctrlKey || e.button !== 0 || currentTool !== 'select') return;
+    // Ctrl sobre um token continua permitindo arrastá-lo; a caixa só começa no espaço vazio.
+    if (e.target.closest('.token')) return;
     if (document.body.classList.contains('wall-editor-active') || document.body.classList.contains('fog-editor-active') || document.body.classList.contains('light-editor-active') || document.body.classList.contains('map-editor-active')) return;
     e.preventDefault();
     e.stopPropagation();
@@ -3346,7 +3348,6 @@
     let dragging = false, startX, startY, origX, origY, lastSent = 0, moved = false, longPressTimer = null;
 
     el.addEventListener('pointerdown', (e) => {
-      if (type === 'token' && e.ctrlKey) return;
       if (currentTool !== 'select') return;
       if (document.body.classList.contains('wall-editor-active') || document.body.classList.contains('fog-editor-active') || document.body.classList.contains('light-editor-active')) return;
       if (type === 'map' && (!document.body.classList.contains('map-editor-active') || currentRole !== 'mestre')) return;
@@ -3368,6 +3369,15 @@
       startX = e.clientX; startY = e.clientY;
       origX = parseFloat(el.style.left) || 0;
       origY = parseFloat(el.style.top) || 0;
+      // Ao arrastar qualquer token da seleção múltipla, preserva as posições relativas.
+      const groupDrag = type === 'token' && selectedTokenIds.has(itemId) && selectedTokenIds.size > 1;
+      const dragGroup = groupDrag
+        ? Array.from(selectedTokenIds).map(id => {
+            const itemEl = tokenEls.get(id);
+            return itemEl ? { id, el: itemEl, x: parseFloat(itemEl.style.left) || 0, y: parseFloat(itemEl.style.top) || 0 } : null;
+          }).filter(Boolean)
+        : [{ id: itemId, el, x: origX, y: origY }];
+      el._dragGroup = dragGroup;
 
       const px = e.clientX, py = e.clientY;
       longPressTimer = setTimeout(() => {
@@ -3385,17 +3395,25 @@
       const dy = (e.clientY - startY) / scale;
       if (Math.abs(e.clientX - startX) > 6 || Math.abs(e.clientY - startY) > 6) { moved = true; clearTimeout(longPressTimer); }
       const x = origX + dx, y = origY + dy;
-      el.style.left = x + 'px'; el.style.top = y + 'px';
-      if (type === 'token') libDragHover(e.clientX, e.clientY);
-      
+      const group = el._dragGroup || [{ id: itemId, el, x: origX, y: origY }];
+      group.forEach(item => {
+        const itemX = item.x + dx, itemY = item.y + dy;
+        item.el.style.left = itemX + 'px';
+        item.el.style.top = itemY + 'px';
+      });
+      if (type === 'token' && group.length === 1) libDragHover(e.clientX, e.clientY);
+
       const now = Date.now();
       if (now - lastSent > 100) {
         lastSent = now;
-        if (type === 'token') {
-          sb.rpc('move_token', { p_user_id: currentUserId, p_token_id: itemId, p_x: x, p_y: y }).then(({ error }) => { if (error) console.error(error); });
-        } else {
-          sb.rpc('move_map_element', { p_user_id: currentUserId, p_element_id: itemId, p_x: x, p_y: y }).then(({ error }) => { if (error) console.error(error); });
-        }
+        group.forEach(item => {
+          const itemX = item.x + dx, itemY = item.y + dy;
+          if (type === 'token') {
+            sb.rpc('move_token', { p_user_id: currentUserId, p_token_id: item.id, p_x: itemX, p_y: itemY }).then(({ error }) => { if (error) console.error(error); });
+          } else {
+            sb.rpc('move_map_element', { p_user_id: currentUserId, p_element_id: item.id, p_x: itemX, p_y: itemY }).then(({ error }) => { if (error) console.error(error); });
+          }
+        });
       }
     });
 
@@ -3403,16 +3421,21 @@
       clearTimeout(longPressTimer);
       if (!dragging) return;
       dragging = false; el.dragging = false; el.classList.remove('dragging'); el.lastDragEnd = Date.now();
+      const group = el._dragGroup || [{ id: itemId, el }];
+      delete el._dragGroup;
       if (type === 'token') {
         libDragHover(-1, -1);
-        if (e && e.type === 'pointerup' && moved && libHit(e.clientX, e.clientY)) { storeTokenInLibrary(itemId); return; }
+        if (group.length === 1 && e && e.type === 'pointerup' && moved && libHit(e.clientX, e.clientY)) { storeTokenInLibrary(itemId); return; }
       }
-      const x = parseFloat(el.style.left) || 0, y = parseFloat(el.style.top) || 0;
-      if (type === 'token') {
-        sb.rpc('move_token', { p_user_id: currentUserId, p_token_id: itemId, p_x: x, p_y: y }).then(({ error }) => { if (error) console.error(error); });
-      } else {
-        sb.rpc('move_map_element', { p_user_id: currentUserId, p_element_id: itemId, p_x: x, p_y: y }).then(({ error }) => { if (error) console.error(error); });
-      }
+      group.forEach(item => {
+        const x = parseFloat(item.el.style.left) || 0;
+        const y = parseFloat(item.el.style.top) || 0;
+        if (type === 'token') {
+          sb.rpc('move_token', { p_user_id: currentUserId, p_token_id: item.id, p_x: x, p_y: y }).then(({ error }) => { if (error) console.error(error); });
+        } else {
+          sb.rpc('move_map_element', { p_user_id: currentUserId, p_element_id: item.id, p_x: x, p_y: y }).then(({ error }) => { if (error) console.error(error); });
+        }
+      });
     }
     el.addEventListener('pointerup', end);
     el.addEventListener('pointercancel', end);
