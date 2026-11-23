@@ -203,6 +203,8 @@
 
   #tokensLayer { position: absolute; inset: 0; z-index: 10000; pointer-events: none; }
   #tokensLayer > * { pointer-events: auto; }
+  .token.multi-selected { outline: 2px solid #b565d8; outline-offset: 3px; filter: drop-shadow(0 0 5px rgba(181,101,216,.75)); }
+  #tokenSelectionBox { position: fixed; z-index: 50000; pointer-events: none; border: 1px solid rgba(181,101,216,.95); background: rgba(157,78,223,.16); border-radius: 3px; display: none; }
 
   /* Camada de Iluminação Dinâmica / Sombra */
   /* Escuridão ambiente (camada escura com "buracos" onde há luz) + brilho/bloom aditivo por cima.
@@ -2858,6 +2860,68 @@
     selectedEl = null;
   }
 
+  // Seleção múltipla por área: segure Ctrl e arraste sobre o tabuleiro.
+  const selectedTokenIds = new Set();
+  const tokenSelectionBox = document.createElement('div');
+  tokenSelectionBox.id = 'tokenSelectionBox';
+  document.body.appendChild(tokenSelectionBox);
+  let tokenBoxSelecting = false;
+  let tokenBoxStartX = 0, tokenBoxStartY = 0;
+
+  function clearTokenMultiSelection() {
+    selectedTokenIds.forEach(id => tokenEls.get(id)?.classList.remove('multi-selected'));
+    selectedTokenIds.clear();
+  }
+
+  boardWrap.addEventListener('pointerdown', (e) => {
+    if (!e.ctrlKey || e.button !== 0 || currentTool !== 'select') return;
+    if (document.body.classList.contains('wall-editor-active') || document.body.classList.contains('fog-editor-active') || document.body.classList.contains('light-editor-active') || document.body.classList.contains('map-editor-active')) return;
+    e.preventDefault();
+    e.stopPropagation();
+    tokenBoxSelecting = true;
+    tokenBoxStartX = e.clientX;
+    tokenBoxStartY = e.clientY;
+    tokenSelectionBox.style.display = 'block';
+    tokenSelectionBox.style.left = tokenBoxStartX + 'px';
+    tokenSelectionBox.style.top = tokenBoxStartY + 'px';
+    tokenSelectionBox.style.width = '0px';
+    tokenSelectionBox.style.height = '0px';
+    try { boardWrap.setPointerCapture(e.pointerId); } catch (_) {}
+  }, true);
+
+  boardWrap.addEventListener('pointermove', (e) => {
+    if (!tokenBoxSelecting) return;
+    const left = Math.min(tokenBoxStartX, e.clientX);
+    const top = Math.min(tokenBoxStartY, e.clientY);
+    tokenSelectionBox.style.left = left + 'px';
+    tokenSelectionBox.style.top = top + 'px';
+    tokenSelectionBox.style.width = Math.abs(e.clientX - tokenBoxStartX) + 'px';
+    tokenSelectionBox.style.height = Math.abs(e.clientY - tokenBoxStartY) + 'px';
+  }, true);
+
+  function finishTokenBoxSelection(e) {
+    if (!tokenBoxSelecting) return;
+    tokenBoxSelecting = false;
+    tokenSelectionBox.style.display = 'none';
+    const left = Math.min(tokenBoxStartX, e.clientX), right = Math.max(tokenBoxStartX, e.clientX);
+    const top = Math.min(tokenBoxStartY, e.clientY), bottom = Math.max(tokenBoxStartY, e.clientY);
+    clearTokenMultiSelection();
+    tokenEls.forEach((el, id) => {
+      const r = el.getBoundingClientRect();
+      if (r.right >= left && r.left <= right && r.bottom >= top && r.top <= bottom) {
+        const tok = tokenData.get(id);
+        if (tok && !tok.locked && !tok.hidden) {
+          selectedTokenIds.add(id);
+          el.classList.add('multi-selected');
+        }
+      }
+    });
+    if (selectedEl) selectedEl.classList.remove('selected');
+    selectedEl = null;
+  }
+  boardWrap.addEventListener('pointerup', finishTokenBoxSelection, true);
+  boardWrap.addEventListener('pointercancel', finishTokenBoxSelection, true);
+
   function reorderLayers(dataMap, elMap) {
     const items = Array.from(dataMap.values()).sort((a, b) =>
       ((a.z || 0) - (b.z || 0)) || String(a.id).localeCompare(String(b.id)));
@@ -3282,6 +3346,7 @@
     let dragging = false, startX, startY, origX, origY, lastSent = 0, moved = false, longPressTimer = null;
 
     el.addEventListener('pointerdown', (e) => {
+      if (type === 'token' && e.ctrlKey) return;
       if (currentTool !== 'select') return;
       if (document.body.classList.contains('wall-editor-active') || document.body.classList.contains('fog-editor-active') || document.body.classList.contains('light-editor-active')) return;
       if (type === 'map' && (!document.body.classList.contains('map-editor-active') || currentRole !== 'mestre')) return;
