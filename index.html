@@ -713,6 +713,111 @@
     }
   }
 
+  /* ===== Chat temporário + rolagem de dados (canto inferior esquerdo) ===== */
+  #chatDock { position: fixed; left: 12px; bottom: max(12px, env(safe-area-inset-bottom, 12px)); z-index: 44;
+    display: flex; flex-direction: column; align-items: flex-start; gap: 8px; pointer-events: none; transition: left .25s ease; }
+  #chatDock > * { pointer-events: auto; }
+  body.lib-open #chatDock { left: calc(min(320px, 100vw - 64px) + 24px); }
+  body.projetor #chatDock { display: none !important; }
+  #chatToggle { position: relative; width: 42px; height: 42px; min-width: 42px; padding: 0; justify-content: center; border-radius: 50%;
+    background: rgba(26, 28, 36, .92); border: 1px solid var(--panel-border); color: #cbd0df; box-shadow: 0 5px 20px rgba(0,0,0,.35); }
+  #chatToggle:hover { color: #fff; }
+  #chatToggle.active { border-color: rgba(157, 78, 223, .6); color: #fff; }
+  #chatBadge { position: absolute; top: -4px; right: -4px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px;
+    background: var(--accent-gradient); color: #fff; font-size: 10px; font-weight: 700; line-height: 18px; text-align: center; pointer-events: none; }
+  #chatPanel { width: min(340px, calc(100vw - 24px)); height: min(340px, 46vh); display: flex; flex-direction: column; overflow: hidden;
+    background: rgba(18, 19, 26, .88); border: 1px solid rgba(255, 255, 255, .08); border-radius: 16px;
+    backdrop-filter: blur(16px) saturate(1.2); box-shadow: 0 8px 30px rgba(0, 0, 0, .5);
+    transition: transform .22s cubic-bezier(.4, 0, .2, 1), opacity .22s; transform-origin: bottom left; }
+  #chatPanel.collapsed { transform: translateY(14px) scale(.96); opacity: 0; pointer-events: none; visibility: hidden; transition: transform .22s, opacity .22s, visibility 0s .22s; }
+  .chatHead { display: flex; align-items: center; gap: 4px; padding: 7px 8px 7px 12px; border-bottom: 1px solid rgba(255, 255, 255, .07); }
+  .chatHead .chatTitle { font-size: 13px; font-weight: 700; color: #f1eef7; }
+  .chatHead .chatHint { flex: 1; font-size: 10.5px; color: var(--text-dim); }
+  .chatHead button { width: 28px; height: 28px; padding: 0; justify-content: center; background: transparent; border-radius: 8px; color: #b9bdca; }
+  .chatHead button:hover, .chatHead button.on { background: rgba(157, 78, 223, .22); color: #fff; }
+  .chatLog { flex: 1; min-height: 0; overflow-y: auto; padding: 8px; display: flex; flex-direction: column; gap: 5px;
+    touch-action: pan-y; overscroll-behavior: contain; -webkit-user-select: text; user-select: text; }
+  .chatLog::-webkit-scrollbar { width: 6px; }
+  .chatLog::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, .12); border-radius: 3px; }
+  .chatSys { align-self: center; max-width: 94%; text-align: center; font-size: 11px; line-height: 1.45; color: var(--text-dim); padding: 2px 6px; }
+  .chatSys.err { color: #ff9c9c; }
+  .chatMsg { font-size: 12.5px; line-height: 1.4; padding: 6px 9px; border-radius: 11px; background: rgba(255, 255, 255, .045); overflow-wrap: anywhere; }
+  .chatMsg.me { background: rgba(157, 78, 223, .14); }
+  .chatMsg.failed { opacity: .55; }
+  .chatMsg .who { display: flex; align-items: baseline; gap: 6px; margin-bottom: 2px; }
+  .chatMsg .who b { font-size: 11.5px; color: #d9c2ef; font-weight: 700; }
+  .chatMsg .who .rl { font-size: 9px; letter-spacing: .5px; text-transform: uppercase; color: #ffd54f; }
+  .chatMsg .who .tm { margin-left: auto; font-size: 10px; color: var(--text-dim); }
+  .chatMsg .body { color: #e8e9f0; }
+  .chatMsg .rollHead { font-size: 11.5px; color: #cdb6e6; margin-bottom: 4px; }
+  .chatMsg .rollHead em { font-style: normal; color: var(--text-dim); margin-left: 6px; }
+  .rollGroups { display: flex; flex-wrap: wrap; align-items: center; gap: 5px 6px; }
+  .rollGroup { display: inline-flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+  .rollGroup .gl { font-size: 10px; color: var(--text-dim); margin-right: 1px; }
+  .rollOp { font-size: 12px; color: var(--text-dim); font-weight: 700; }
+  .rollNum { font-size: 13px; font-weight: 700; color: #e8e9f0; }
+  .rollEq { margin-left: auto; font-size: 20px; font-weight: 800; color: #fff; line-height: 1; padding-left: 6px; }
+  .miniDie { width: 30px; height: 30px; flex: none; }
+  .numChip { min-width: 24px; padding: 2px 6px; text-align: center; font-size: 12px; font-weight: 700; border-radius: 7px;
+    background: rgba(255, 255, 255, .07); border: 1px solid rgba(157, 78, 223, .45); }
+  .numChip.max, .miniDie.max { filter: drop-shadow(0 0 4px rgba(255, 213, 79, .6)); }
+  .numChip.max { border-color: #ffd54f; color: #ffd54f; }
+  .numChip.min { border-color: #ff5252; color: #ff8585; }
+  .numChip.drop, .miniDie.drop { opacity: .32; }
+  .numChip.drop { text-decoration: line-through; }
+  .chatTray { display: flex; flex-wrap: wrap; gap: 4px; padding: 6px 8px; border-top: 1px solid rgba(255, 255, 255, .07); }
+  .chatTray button { flex-direction: column; gap: 0; width: 34px; height: 40px; padding: 2px 0 0; justify-content: center; align-items: center;
+    background: rgba(255, 255, 255, .05); border-radius: 9px; font-size: 9.5px; color: #b9bdca; }
+  .chatTray button svg { width: 24px; height: 24px; }
+  .chatTray button:hover { background: rgba(157, 78, 223, .22); color: #fff; }
+  .chatInputRow { display: flex; gap: 6px; padding: 8px; border-top: 1px solid rgba(255, 255, 255, .07); }
+  #chatInput { flex: 1; min-width: 0; padding: 8px 11px; border-radius: 10px; border: 1px solid var(--panel-border); background: var(--bg);
+    color: var(--text); font-size: 13px; font-family: inherit; -webkit-user-select: text; user-select: text; }
+  #chatInput:focus { outline: none; border-color: var(--accent); }
+  #chatSend { width: 36px; height: 36px; padding: 0; justify-content: center; border-radius: 10px; }
+  @media (max-width: 760px) {
+    #chatPanel { height: min(300px, 42vh); }
+    body.lib-open #chatDock { display: none; }
+    body.fog-editor-active #chatDock, body.wall-editor-active #chatDock, body.light-editor-active #chatDock,
+    body.map-editor-active #chatDock, body.tool-draw #chatDock { display: none; }
+  }
+
+  /* --- formas de dado (SVG) --- */
+  .dShape { fill: rgba(30, 32, 46, .97); stroke: #b565d8; stroke-width: 3.2; stroke-linejoin: round; }
+  .dLine { fill: none; stroke: rgba(181, 101, 216, .38); stroke-width: 1.8; stroke-linejoin: round; stroke-linecap: round; }
+  .dRing { fill: none; stroke: rgba(181, 101, 216, .45); stroke-width: 1.6; stroke-dasharray: 3 5; }
+  .dNum { fill: #fff; font-weight: 800; text-anchor: middle; paint-order: stroke; stroke: rgba(10, 11, 15, .75); stroke-width: 3px; stroke-linejoin: round; }
+  .max .dShape { stroke: #ffd54f; }
+  .min .dShape { stroke: #ff5252; }
+  .drop .dShape { stroke: #6b6f82; }
+
+  /* --- animação na tela --- */
+  #diceStage { position: fixed; inset: 0; z-index: 60020; pointer-events: none; display: flex; align-items: center; justify-content: center; padding-bottom: 10vh; }
+  .rollBlock { display: flex; flex-direction: column; align-items: center; gap: 10px; max-width: min(92vw, 720px); transition: opacity .35s, transform .35s; }
+  .rollBlock.out { opacity: 0; transform: translateY(-10px); }
+  .diceRow { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+  .dieWrap { width: var(--ds, 72px); height: var(--ds, 72px); animation: dieDrop .75s cubic-bezier(.2, .75, .3, 1) both; animation-delay: var(--d, 0ms); }
+  .dieWrap svg { width: 100%; height: 100%; display: block; overflow: visible; filter: drop-shadow(0 6px 10px rgba(0, 0, 0, .55)); }
+  .dieWrap.settled svg { animation: dieLand .28s ease-out; }
+  .dieWrap.max svg { filter: drop-shadow(0 0 12px rgba(255, 213, 79, .85)); }
+  .dieWrap.min svg { filter: drop-shadow(0 0 12px rgba(255, 82, 82, .75)); }
+  .dieWrap.drop { opacity: .35; transition: opacity .3s; }
+  .dieMore { align-self: center; font-size: 15px; font-weight: 700; color: #cfd2de; padding: 0 4px; }
+  .rollMeta { font-size: 12px; letter-spacing: .3px; color: #d6d8e3; padding: 3px 11px; border-radius: 999px; background: rgba(10, 11, 15, .62); backdrop-filter: blur(6px); }
+  .rollSum { font-size: clamp(28px, 5vw, 42px); font-weight: 800; color: #fff; line-height: 1; text-shadow: 0 2px 14px rgba(0, 0, 0, .75);
+    opacity: 0; transform: translateY(8px) scale(.9); transition: opacity .25s, transform .25s; }
+  .rollSum.show { opacity: 1; transform: none; }
+  @keyframes dieDrop {
+    0%   { opacity: 0; transform: translateY(-70px) rotate(var(--rot, -420deg)) scale(.3); }
+    55%  { opacity: 1; transform: translateY(6px) rotate(14deg) scale(1.06); }
+    100% { opacity: 1; transform: none; }
+  }
+  @keyframes dieLand { 0% { transform: scale(1.16); } 100% { transform: scale(1); } }
+  @media (prefers-reduced-motion: reduce) {
+    .dieWrap { animation: none; }
+    .dieWrap.settled svg { animation: none; }
+  }
+
 </style>
 </head>
 <body>
@@ -1065,6 +1170,26 @@
     <button class="toolBtn" id="toolDrawBtn" data-tool="draw" title="Desenhar (Ctrl+Z desfaz)"><svg class="uiIcon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m4 16-.8 4.8L8 20l11-11-4-4L4 16Z"/><path d="m13.5 6.5 4 4"/></svg></button>
   </div>
   <button id="sideToolbarToggle" title="Esconder/mostrar ferramentas"><svg class="uiIcon" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button>
+
+  <!-- Chat temporário + dados (não salva nada no banco; só broadcast em tempo real) -->
+  <div id="diceStage" aria-hidden="true"></div>
+  <div id="chatDock" class="hidden">
+    <section id="chatPanel" aria-label="Chat">
+      <header class="chatHead">
+        <span class="chatTitle">Chat</span>
+        <span class="chatHint">temporário</span>
+        <button id="chatTrayBtn" type="button" title="Dados rápidos" aria-label="Dados rápidos"></button>
+        <button id="chatClearBtn" type="button" title="Limpar chat (só para você)" aria-label="Limpar chat"></button>
+      </header>
+      <div id="chatLog" class="chatLog"></div>
+      <div id="chatTray" class="chatTray hidden"></div>
+      <div class="chatInputRow">
+        <input id="chatInput" type="text" maxlength="300" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="send" placeholder="Mensagem ou 2d20+10…">
+        <button id="chatSend" class="primary" type="button" title="Enviar" aria-label="Enviar"></button>
+      </div>
+    </section>
+    <button id="chatToggle" type="button" title="Mostrar/ocultar chat" aria-label="Mostrar/ocultar chat"><span id="chatBadge" class="hidden">0</span></button>
+  </div>
 
   <div id="projBar"><span>Tela do projetor</span><button id="projFsBtn" type="button">Tela cheia</button></div>
 
@@ -5016,6 +5141,7 @@
   // ---------- abrir / fechar a gaveta ----------
   function setLibOpen(v) {
     libDrawer.classList.toggle('open', v);
+    document.body.classList.toggle('lib-open', !!v);
     libToggle.innerHTML = v ? ico('chevleft', 18) : ico('library', 18);
     try { localStorage.setItem('tabletop_lib_open', v ? '1' : '0'); } catch (_) {}
     if (!v) { hideLibMenu(); libDrawer.classList.remove('drop-hot'); }
@@ -5613,6 +5739,363 @@
   document.getElementById('envReset').addEventListener('click', () => setEnv(ENV_DEFAULT));
 
 
+  // =====================================================================
+  //  CHAT TEMPORÁRIO + DADOS
+  //  Nada vai para o banco: as mensagens trafegam só por broadcast do Realtime
+  //  e vivem na memória da página. Fechou/recarregou, sumiu.
+  // =====================================================================
+  const Chat = (function () {
+    ICONS.chat = '<path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1.1-4.6A8 8 0 1 1 21 12z"/>';
+    ICONS.dice = '<rect x="4" y="4" width="16" height="16" rx="3"/><circle cx="9" cy="9" r="1" fill="currentColor"/><circle cx="15" cy="9" r="1" fill="currentColor"/><circle cx="12" cy="12" r="1" fill="currentColor"/><circle cx="9" cy="15" r="1" fill="currentColor"/><circle cx="15" cy="15" r="1" fill="currentColor"/>';
+    ICONS.send = '<path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z"/>';
+
+    const $ = (id) => document.getElementById(id);
+    const dock = $('chatDock'), panel = $('chatPanel'), log = $('chatLog'), input = $('chatInput');
+    const toggle = $('chatToggle'), badge = $('chatBadge'), tray = $('chatTray'), stage = $('diceStage');
+    const trayBtn = $('chatTrayBtn'), clearBtn = $('chatClearBtn'), sendBtn = $('chatSend');
+
+    const MAX_MSGS = 200, MAX_DICE = 100, SHOW_DICE = 12;
+    const STORE_KEY = 'tabletop_chat_hidden';
+    const TRAY_DICE = [2, 3, 4, 6, 8, 10, 12, 20, 100];
+    const DICE_START = /^\s*[+-]?\s*\d*d(?:\d+|%)/i;   // "d20", "2d6+1"… ("dado" não casa)
+
+    let channel = null, ready = false, unread = 0, collapsed = false;
+    let history = [], histPos = -1;
+    const timers = new Set();
+
+    const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const later = (fn, ms) => { const t = setTimeout(() => { timers.delete(t); fn(); }, ms); timers.add(t); return t; };
+
+    // ---------- aleatório sem viés ----------
+    function rnd(n) {
+      if (!(window.crypto && crypto.getRandomValues)) return 1 + Math.floor(Math.random() * n);
+      const lim = Math.floor(0x100000000 / n) * n, buf = new Uint32Array(1);
+      let x;
+      do { crypto.getRandomValues(buf); x = buf[0]; } while (x >= lim);
+      return (x % n) + 1;
+    }
+
+    // ---------- formas dos dados ----------
+    function pts(n, r, cx, cy, rot) {
+      const a = [];
+      for (let i = 0; i < n; i++) { const t = rot + i * 2 * Math.PI / n; a.push((cx + r * Math.cos(t)).toFixed(1) + ',' + (cy + r * Math.sin(t)).toFixed(1)); }
+      return a.join(' ');
+    }
+    const UP = -Math.PI / 2;
+    // d2 moeda · d3/d4 triângulo · d6 quadrado · d8 losango · d10 pipa · d12 pentágono · d20 hexágono
+    // outros (d5, d7, d9, d11, d13…d19) polígono com o mesmo nº de lados · acima de d20 esfera
+    function dieSVG(sides, value, cls) {
+      let shape, lines = '', ty = 50;
+      if (sides === 2) {
+        shape = '<circle class="dShape" cx="50" cy="50" r="44"/>';
+        lines = '<circle class="dLine" cx="50" cy="50" r="34"/>';
+      } else if (sides === 3 || sides === 4) {
+        const p = pts(3, 50, 50, 57, UP);
+        shape = '<polygon class="dShape" points="' + p + '"/>';
+        if (sides === 4) lines = '<polyline class="dLine" points="50,7 50,57"/><polyline class="dLine" points="' + pts(3, 50, 50, 57, UP).split(' ')[1] + ' 50,57 ' + pts(3, 50, 50, 57, UP).split(' ')[2] + '"/>';
+        ty = 64;
+      } else if (sides === 6) {
+        shape = '<rect class="dShape" x="12" y="12" width="76" height="76" rx="15"/>';
+      } else if (sides === 8) {
+        shape = '<polygon class="dShape" points="50,4 94,50 50,96 6,50"/>';
+        lines = '<polygon class="dLine" points="50,24 74,50 50,76 26,50"/>';
+      } else if (sides === 10) {
+        shape = '<polygon class="dShape" points="50,3 91,38 50,97 9,38"/>';
+        lines = '<polyline class="dLine" points="9,38 50,56 91,38"/><polyline class="dLine" points="50,56 50,97"/>';
+        ty = 44;
+      } else if (sides === 12) {
+        shape = '<polygon class="dShape" points="' + pts(5, 48, 50, 54, UP) + '"/>';
+        lines = '<polygon class="dLine" points="' + pts(5, 25, 50, 54, Math.PI / 2) + '"/>';
+        ty = 54;
+      } else if (sides === 20) {
+        const v = pts(6, 47, 50, 50, UP).split(' ');
+        shape = '<polygon class="dShape" points="' + v.join(' ') + '"/>';
+        lines = '<polygon class="dLine" points="' + [v[0], v[2], v[4]].join(' ') + '"/>';
+      } else if (sides < 20) {
+        shape = '<polygon class="dShape" points="' + pts(sides, 47, 50, sides % 2 ? 54 : 50, UP) + '"/>';
+        if (sides % 2) ty = 54;
+      } else {
+        shape = '<circle class="dShape" cx="50" cy="50" r="43"/>';
+        lines = '<circle class="dRing" cx="50" cy="50" r="48"/>';
+      }
+      const txt = value == null ? '' : String(value);
+      const fs = txt.length >= 4 ? 18 : txt.length === 3 ? 23 : txt.length === 2 ? 31 : 38;
+      const num = value == null ? '' : '<text class="dNum" x="50" y="' + ty + '" dy=".35em" font-size="' + fs + '">' + esc(txt) + '</text>';
+      return '<svg class="' + (cls || '') + '" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' + shape + lines + num + '</svg>';
+    }
+
+    // ---------- parser: 2d20+10 · d% · 4d6kh3 · 2d20kl1 · 5d10dl1 ----------
+    function parseRoll(src) {
+      const re = /^\s*([+-])?\s*(?:(\d*)d(\d+|%)(?:(kh|kl|dh|dl|k)(\d*))?|(\d+))(?!\d)/i;
+      const terms = []; let rest = src, first = true, total = 0;
+      for (;;) {
+        const m = re.exec(rest);
+        if (!m || (!first && !m[1])) break;
+        const sign = m[1] === '-' ? -1 : 1;
+        if (m[3] !== undefined) {
+          const count = m[2] === '' ? 1 : parseInt(m[2], 10);
+          const sides = m[3] === '%' ? 100 : parseInt(m[3], 10);
+          if (count < 1 || count > MAX_DICE) return { error: 'Use de 1 a ' + MAX_DICE + ' dados por termo.' };
+          if (sides < 2 || sides > 1000) return { error: 'd' + sides + ' não existe: use de d2 a d1000.' };
+          let mode = null, n = 0;
+          if (m[4]) {
+            mode = m[4].toLowerCase(); if (mode === 'k') mode = 'kh';
+            n = m[5] ? parseInt(m[5], 10) : 1;
+            const keep = (mode === 'kh' || mode === 'kl') ? n : count - n;
+            if (keep < 1 || keep > count) return { error: 'Não dá para ' + (mode[0] === 'k' ? 'manter ' : 'descartar ') + n + ' de ' + count + ' dados.' };
+          }
+          total += count;
+          if (total > MAX_DICE) return { error: 'Máximo de ' + MAX_DICE + ' dados por rolagem.' };
+          terms.push({ type: 'dice', sign, count, sides, mode, n });
+        } else {
+          terms.push({ type: 'num', sign, value: parseInt(m[6], 10) });
+        }
+        rest = rest.slice(m[0].length); first = false;
+      }
+      if (!terms.some((t) => t.type === 'dice')) return { error: 'Nenhum dado na expressão. Exemplo: 2d20+10' };
+      return { terms, label: rest.trim().slice(0, 80) };
+    }
+
+    function executeRoll(p) {
+      const terms = p.terms.map((t) => {
+        if (t.type === 'num') return t;
+        const rolls = []; for (let i = 0; i < t.count; i++) rolls.push(rnd(t.sides));
+        const idx = rolls.map((_, i) => i).sort((a, b) => rolls[a] - rolls[b] || a - b);   // crescente
+        let keep = idx;
+        if (t.mode === 'kh') keep = idx.slice(-t.n);
+        else if (t.mode === 'kl') keep = idx.slice(0, t.n);
+        else if (t.mode === 'dh') keep = idx.slice(0, t.count - t.n);
+        else if (t.mode === 'dl') keep = idx.slice(t.n);
+        const set = new Set(keep);
+        return Object.assign({}, t, { rolls, kept: rolls.map((_, i) => set.has(i)) });
+      });
+      return { terms, label: p.label };
+    }
+
+    const rollTotal = (r) => r.terms.reduce((s, t) => s + t.sign * (t.type === 'num' ? t.value : t.rolls.reduce((a, v, i) => a + (t.kept[i] ? v : 0), 0)), 0);
+    const rollExpr = (r) => r.terms.map((t, i) => (t.sign < 0 ? '-' : (i ? '+' : '')) + (t.type === 'num' ? t.value : t.count + 'd' + t.sides + (t.mode ? t.mode + t.n : ''))).join('');
+
+    // dados chegam de outros clientes: valida tudo antes de desenhar
+    function cleanRoll(r) {
+      if (!r || !Array.isArray(r.terms) || !r.terms.length || r.terms.length > 20) return null;
+      let dice = 0; const terms = [];
+      for (const t of r.terms) {
+        const sign = t && t.sign === -1 ? -1 : 1;
+        if (t && t.type === 'num') {
+          const v = Number(t.value); if (!Number.isInteger(v) || v < 0 || v > 999999) return null;
+          terms.push({ type: 'num', sign, value: v });
+        } else if (t && t.type === 'dice') {
+          const sides = Number(t.sides); if (!Number.isInteger(sides) || sides < 2 || sides > 1000) return null;
+          if (!Array.isArray(t.rolls) || !t.rolls.length || t.rolls.length > MAX_DICE) return null;
+          dice += t.rolls.length; if (dice > MAX_DICE) return null;
+          const rolls = t.rolls.map(Number);
+          if (rolls.some((v) => !Number.isInteger(v) || v < 1 || v > sides)) return null;
+          const kept = rolls.map((_, i) => !(Array.isArray(t.kept) && t.kept[i] === false));
+          const mode = ['kh', 'kl', 'dh', 'dl'].includes(t.mode) ? t.mode : null;
+          const n = mode ? Math.max(1, Math.min(rolls.length, parseInt(t.n, 10) || 1)) : 0;
+          terms.push({ type: 'dice', sign, count: rolls.length, sides, mode, n, rolls, kept });
+        } else return null;
+      }
+      return dice ? { terms, label: String(r.label || '').slice(0, 80) } : null;
+    }
+
+    // ---------- animação na tela ----------
+    function clearStage() {
+      stage.querySelectorAll('.rollBlock').forEach((b) => { if (b._iv) clearInterval(b._iv); b.classList.add('out'); later(() => b.remove(), 360); });
+    }
+    function playDice(roll, name) {
+      clearStage();
+      const all = [];
+      roll.terms.forEach((t) => { if (t.type === 'dice') t.rolls.forEach((v, i) => all.push({ sides: t.sides, v, kept: t.kept[i] })); });
+      const shown = all.slice(0, SHOW_DICE), n = shown.length;
+      const size = Math.round(Math.min(n <= 3 ? 88 : n <= 6 ? 70 : 56, window.innerWidth * (n <= 3 ? .22 : n <= 6 ? .17 : .13)));
+      const block = document.createElement('div'); block.className = 'rollBlock';
+      const meta = document.createElement('div'); meta.className = 'rollMeta';
+      meta.textContent = name + ' · ' + rollExpr(roll) + (roll.label ? ' · ' + roll.label : '');
+      const row = document.createElement('div'); row.className = 'diceRow';
+      const step = n > 6 ? 55 : 95, settleBase = 720;
+      const els = shown.map((d, i) => {
+        const w = document.createElement('div'); w.className = 'dieWrap';
+        w.style.setProperty('--ds', size + 'px'); w.style.setProperty('--d', (i * step) + 'ms');
+        w.style.setProperty('--rot', (Math.random() < .5 ? -1 : 1) * (300 + Math.random() * 240) + 'deg');
+        w.innerHTML = dieSVG(d.sides, 1 + Math.floor(Math.random() * d.sides));
+        row.appendChild(w); return w;
+      });
+      if (all.length > n) { const more = document.createElement('div'); more.className = 'dieMore'; more.textContent = '+' + (all.length - n); row.appendChild(more); }
+      const sum = document.createElement('div'); sum.className = 'rollSum'; sum.textContent = '= ' + rollTotal(roll);
+      block.append(meta, row, sum); stage.appendChild(block);
+
+      const t0 = performance.now(), done = new Array(n).fill(false);
+      const settle = (i) => {
+        done[i] = true;
+        const d = shown[i], w = els[i], isCrit = d.sides >= 4;
+        const txt = w.querySelector('.dNum'); if (txt) txt.textContent = d.v;
+        w.classList.add('settled'); if (!d.kept) w.classList.add('drop');
+        if (d.kept && isCrit && d.v === d.sides) w.classList.add('max');
+        else if (d.kept && isCrit && d.v === 1) w.classList.add('min');
+      };
+      const lastAt = settleBase + (n - 1) * step;
+      block._iv = setInterval(() => {
+        const t = performance.now() - t0;
+        els.forEach((w, i) => {
+          if (done[i]) return;
+          if (t >= settleBase + i * step) { settle(i); return; }
+          const txt = w.querySelector('.dNum'); if (txt) txt.textContent = 1 + Math.floor(Math.random() * shown[i].sides);
+        });
+        if (t >= lastAt + 40) { clearInterval(block._iv); block._iv = null; sum.classList.add('show'); }
+      }, 65);
+      later(() => { block.classList.add('out'); later(() => block.remove(), 400); }, lastAt + 3000);
+    }
+
+    // ---------- mensagens ----------
+    function fmtTime(ts) {
+      const d = new Date(ts); if (isNaN(d)) return '';
+      return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+    }
+    function pushNode(node, mine) {
+      const near = log.scrollHeight - log.scrollTop - log.clientHeight < 70;
+      log.appendChild(node);
+      while (log.children.length > MAX_MSGS) log.removeChild(log.firstChild);
+      if (mine || near) log.scrollTop = log.scrollHeight;
+    }
+    function sys(text, err) {
+      const d = document.createElement('div'); d.className = 'chatSys' + (err ? ' err' : ''); d.textContent = text; pushNode(d, true);
+    }
+    function chipFor(t, i, big) {
+      const v = t.rolls[i], crit = t.sides >= 4 && t.kept[i];
+      const c = (t.kept[i] ? '' : ' drop') + (crit && v === t.sides ? ' max' : crit && v === 1 ? ' min' : '');
+      return big ? dieSVG(t.sides, v, 'miniDie' + c) : '<span class="numChip' + c + '">' + v + '</span>';
+    }
+    function rollHTML(r) {
+      const big = r.terms.reduce((s, t) => s + (t.rolls ? t.rolls.length : 0), 0) <= SHOW_DICE;
+      const parts = r.terms.map((t, i) => {
+        const op = i === 0 ? (t.sign < 0 ? '<span class="rollOp">−</span>' : '') : '<span class="rollOp">' + (t.sign < 0 ? '−' : '+') + '</span>';
+        if (t.type === 'num') return op + '<span class="rollNum">' + t.value + '</span>';
+        const chips = t.rolls.map((_, k) => chipFor(t, k, big)).join('');
+        return op + '<span class="rollGroup"><span class="gl">' + t.count + 'd' + t.sides + (t.mode ? t.mode + t.n : '') + '</span>' + chips + '</span>';
+      }).join('');
+      return '<div class="rollHead">' + esc(rollExpr(r)) + (r.label ? '<em>' + esc(r.label) + '</em>' : '') + '</div>' +
+        '<div class="rollGroups">' + parts + '<span class="rollEq">= ' + rollTotal(r) + '</span></div>';
+    }
+    function renderMsg(m, mine) {
+      const first = log.firstChild; if (first && first.classList && first.classList.contains('chatSys') && first.dataset.intro) first.remove();
+      const d = document.createElement('div'); d.className = 'chatMsg' + (mine ? ' me' : '');
+      const who = '<div class="who"><b>' + esc(m.name) + '</b>' + (m.role === 'mestre' ? '<span class="rl">mestre</span>' : '') + '<span class="tm">' + fmtTime(m.ts) + '</span></div>';
+      d.innerHTML = who + (m.kind === 'roll' ? rollHTML(m.roll) : '<div class="body"></div>');
+      if (m.kind !== 'roll') d.querySelector('.body').textContent = m.text;
+      pushNode(d, mine);
+      if (!mine && collapsed) { unread++; paintBadge(); }
+      return d;
+    }
+    function cleanMsg(p) {
+      if (!p || typeof p !== 'object') return null;
+      const base = { name: String(p.name || 'Jogador').slice(0, 40), role: p.role === 'mestre' ? 'mestre' : 'jogador', ts: Number(p.ts) || Date.now() };
+      if (p.kind === 'roll') { const roll = cleanRoll(p.roll); return roll ? Object.assign(base, { kind: 'roll', roll }) : null; }
+      if (p.kind === 'text') { const text = String(p.text || '').slice(0, 300); return text ? Object.assign(base, { kind: 'text', text }) : null; }
+      return null;
+    }
+
+    // ---------- enviar ----------
+    function myName() { try { return localStorage.getItem('tabletop_username') || 'Aventureiro'; } catch (_) { return 'Aventureiro'; } }
+    function deliver(m) {
+      const node = renderMsg(m, true);
+      if (m.kind === 'roll') playDice(m.roll, m.name);
+      if (!channel) { node.classList.add('failed'); return; }
+      Promise.resolve(channel.send({ type: 'broadcast', event: 'msg', payload: m }))
+        .then((res) => { if (res && res !== 'ok') node.classList.add('failed'); })
+        .catch(() => node.classList.add('failed'));
+    }
+    function submit() {
+      const raw = input.value.trim(); if (!raw) return;
+      input.value = ''; history.push(raw); if (history.length > 40) history.shift(); histPos = -1;
+      if (/^\/(limpar|clear)\s*$/i.test(raw)) { log.innerHTML = ''; return; }
+      if (/^\/(ajuda|help|\?)\s*$/i.test(raw)) { sys(helpText()); return; }
+      const cmd = raw.match(/^[\/!](?:r|roll|rolar)\b\s*(.*)$/i);
+      const src = cmd ? cmd[1] : (DICE_START.test(raw) ? raw : null);
+      const base = { name: myName(), role: currentRole === 'mestre' ? 'mestre' : 'jogador', ts: Date.now() };
+      if (src === null) { deliver(Object.assign(base, { kind: 'text', text: raw.slice(0, 300) })); return; }
+      const p = parseRoll(src);
+      if (p.error) { sys(p.error, true); return; }
+      deliver(Object.assign(base, { kind: 'roll', roll: executeRoll(p) }));
+    }
+    function helpText() {
+      return 'Dados: 2d20+10 · d100 · d% · 1d20+5 ataque · 4d6kh3 (mantém os 3 maiores) · 2d20kl1 (o menor) · 5d10dl1 (descarta o menor). ' +
+        'Funciona de d2 (moeda) até d1000, e também com /r. /limpar apaga o chat só para você.';
+    }
+
+    // ---------- bandeja de dados rápidos ----------
+    function buildTray() {
+      tray.innerHTML = '';
+      TRAY_DICE.forEach((s) => {
+        const b = document.createElement('button'); b.type = 'button'; b.title = 'd' + s;
+        b.innerHTML = dieSVG(s, null) + '<span>d' + s + '</span>';
+        b.addEventListener('click', () => trayAdd(s));
+        tray.appendChild(b);
+      });
+    }
+    function trayAdd(s) {
+      let v = input.value.trim();
+      if (v && !DICE_START.test(v) && !/^[\/!]r(?:oll|olar)?\b/i.test(v)) v = '';
+      const m = v.match(new RegExp('(^|[+])(\\d*)d' + s + '$', 'i'));
+      if (m) v = v.slice(0, v.length - m[0].length) + m[1] + ((m[2] === '' ? 1 : parseInt(m[2], 10)) + 1) + 'd' + s;
+      else v = v ? v + '+1d' + s : '1d' + s;
+      input.value = v; input.focus();
+    }
+
+    // ---------- abrir/ocultar ----------
+    function paintBadge() { badge.textContent = unread > 99 ? '99+' : unread; badge.classList.toggle('hidden', unread === 0); }
+    function applyState() {
+      panel.classList.toggle('collapsed', collapsed); toggle.classList.toggle('active', !collapsed);
+      toggle.setAttribute('aria-expanded', String(!collapsed));
+      if (!collapsed) { unread = 0; paintBadge(); log.scrollTop = log.scrollHeight; }
+    }
+    function setCollapsed(v) { collapsed = v; try { localStorage.setItem(STORE_KEY, v ? '1' : '0'); } catch (_) {} applyState(); }
+
+    // ---------- ligação com a sala ----------
+    function setup(roomId) {
+      teardown();
+      const first = document.createElement('div'); first.className = 'chatSys'; first.dataset.intro = '1';
+      first.textContent = 'Chat temporário: nada fica salvo. Role dados digitando 2d20+10, d100, 4d6kh3… (/ajuda)';
+      if (!projectorMode) { log.appendChild(first); dock.classList.remove('hidden'); }
+      channel = sb.channel('chat-' + roomId, { config: { broadcast: { self: false } } })
+        .on('broadcast', { event: 'msg' }, ({ payload }) => {
+          const m = cleanMsg(payload); if (!m) return;
+          if (!projectorMode) renderMsg(m, false);
+          if (m.kind === 'roll') playDice(m.roll, m.name);   // o projetor também mostra a animação
+        })
+        .subscribe((status) => { ready = status === 'SUBSCRIBED'; });
+    }
+    function teardown() {
+      if (channel) { sb.removeChannel(channel); channel = null; }
+      ready = false; unread = 0; paintBadge();
+      timers.forEach(clearTimeout); timers.clear();
+      stage.querySelectorAll('.rollBlock').forEach((b) => { if (b._iv) clearInterval(b._iv); b.remove(); });
+      log.innerHTML = ''; dock.classList.add('hidden');
+    }
+
+    // ---------- eventos ----------
+    trayBtn.innerHTML = ico('dice', 16); clearBtn.innerHTML = ico('trash', 15); sendBtn.innerHTML = ico('send', 16);
+    toggle.insertAdjacentHTML('afterbegin', ico('chat', 20));
+    buildTray();
+    try { collapsed = localStorage.getItem(STORE_KEY) === '1' || (localStorage.getItem(STORE_KEY) === null && window.innerWidth <= 760); } catch (_) {}
+    applyState();
+
+    toggle.addEventListener('click', () => setCollapsed(!collapsed));
+    trayBtn.addEventListener('click', () => { const h = tray.classList.toggle('hidden'); trayBtn.classList.toggle('on', !h); });
+    clearBtn.addEventListener('click', () => { log.innerHTML = ''; });
+    sendBtn.addEventListener('click', () => { submit(); input.focus(); });
+    input.addEventListener('keydown', (e) => {
+      e.stopPropagation();   // atalhos do tabuleiro (Esc, Ctrl+Z…) não devem disparar enquanto digita
+      if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); submit(); }
+      else if (e.key === 'ArrowUp' && history.length) { e.preventDefault(); histPos = histPos < 0 ? history.length - 1 : Math.max(0, histPos - 1); input.value = history[histPos]; }
+      else if (e.key === 'ArrowDown' && histPos >= 0) { e.preventDefault(); histPos++; input.value = histPos >= history.length ? '' : history[histPos]; if (histPos >= history.length) histPos = -1; }
+      else if (e.key === 'Escape') input.blur();
+    });
+    input.addEventListener('keyup', (e) => e.stopPropagation());
+
+    return { setup, teardown };
+  })();
+
   async function enterRoom(roomId) {
     document.body.classList.remove('player-preview');
     const previewButton = document.getElementById('playerPreviewBtn');
@@ -5654,6 +6137,7 @@
     await loadSceneContent(currentSceneId);
     subscribeRealtimeChannels(currentSceneId);
     setupCameraChannel(roomId);
+    Chat.setup(roomId);
 
     closeTokenProps();
     libFolderId = null; libFolders = new Map(); libItems = new Map(); libSearch.value = '';
@@ -5809,6 +6293,7 @@
   btnReturnLobby.addEventListener('click', () => {
     stopCameraLive(false); setCameraLocked(false);
     if (cameraChannel) { sb.removeChannel(cameraChannel); cameraChannel = null; }
+    Chat.teardown();
     if (roomSyncChannel) sb.removeChannel(roomSyncChannel);
     if (tokensChannel) sb.removeChannel(tokensChannel);
     if (mapElementsChannel) sb.removeChannel(mapElementsChannel);
