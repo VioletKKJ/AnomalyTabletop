@@ -2878,8 +2878,10 @@
     // Ctrl sobre um token continua permitindo arrastá-lo; a caixa só começa no espaço vazio.
     if (e.target.closest('.token')) return;
     if (document.body.classList.contains('wall-editor-active') || document.body.classList.contains('fog-editor-active') || document.body.classList.contains('light-editor-active') || document.body.classList.contains('map-editor-active')) return;
+    // Impede que o handler de câmera/pan, também em capture, receba este mesmo pointerdown.
     e.preventDefault();
     e.stopPropagation();
+    e.stopImmediatePropagation();
     tokenBoxSelecting = true;
     tokenBoxStartX = e.clientX;
     tokenBoxStartY = e.clientY;
