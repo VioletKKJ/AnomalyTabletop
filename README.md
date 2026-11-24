@@ -1,89 +1,113 @@
-# Atenção
-Esse projeto está sendo feito utilizando o claude, é puramente vibecoded, é só um TTS simples para jogar com uns amigos.
+# Anomaly VTT
 
+Uma mesa virtual de RPG (VTT) feita para jogar com amigos, diretamente pelo navegador. O projeto é pessoal e prioriza praticidade para sessões presenciais ou online em pequenos grupos.
 
-# Tabletop Web
-
-Um tabletop virtual (VTT) simples, gratuito e sem servidor próprio — feito para mesas de RPG entre amigos. Funciona no PC, celular e tablet, e sincroniza mapa e tokens em tempo real entre todos os jogadores usando o [Supabase](https://supabase.com) (plano gratuito).
-
-Não é um produto público: é um projeto pessoal, feito pra rodar com uma conta Supabase gratuita de um grupo de amigos.
+O frontend é uma página estática (\`index.html\`) hospedada pelo GitHub Pages. Banco de dados, autenticação própria, armazenamento de imagens e sincronização em tempo real são fornecidos pelo Supabase.
 
 ## Funcionalidades
 
-- **Mapas e tokens customizados**: importe qualquer PNG/JPG para usar como mapa ou token.
-- **Sincronização em tempo real**: tudo que o mestre ou os jogadores fazem aparece na hora para todo mundo.
-- **Contas simples**: login só com usuário e senha (sem e-mail). Quem entra primeiro numa mesa nova pode virar mestre; o mestre pode promover/trocar quem é mestre depois.
-- **Cenas**: cada cena guarda seu próprio mapa e seus próprios tokens. Trocar de cena (ex. "Padaria" → "Cidade") troca os dois juntos, instantaneamente.
-- **Tokens**: arrastar, redimensionar, girar, espelhar, trocar de camada (na frente/atrás de outros tokens) e trocar entre "estados" (variações de imagem do mesmo token — ex. de pé / caído).
-- **Menu de contexto**: botão direito (PC) ou toque longo (celular/tablet) no token abre um menu rápido com essas ações.
-- **Ferramentas de câmera**: modo "Selecionar" (move tokens, ainda navega a câmera) e modo "Mover" (só navega, não mexe em tokens) — pensado pra não esbarrar em tokens sem querer no toque.
-- **Zoom livre** (0.05x–10x) e pan com 1 dedo, pinça com 2 dedos no toque.
-- **Interface com barras colapsáveis**, pra sobrar mais espaço de mapa no celular.
+### Mesa e cenas
+- Criação de mesas, entrada por código e gerenciamento de participantes.
+- Papéis de mestre e jogador, com ferramentas exclusivas para o mestre.
+- Várias cenas por mesa, cada uma com seu próprio mapa e elementos.
+- Troca de cena sincronizada entre os participantes.
+- Exclusão de mesas e cenas com etapas de confirmação.
 
-## Como funciona (arquitetura)
+### Mapas e tokens
+- Importação de mapas, imagens e peças de cenário.
+- Tokens personalizados com suporte a estados/variações de imagem.
+- Mover, redimensionar, girar, espelhar e organizar tokens em camadas.
+- Seleção múltipla e movimentação conjunta de tokens.
+- Propriedades de token: nome, cor, opacidade, visibilidade, bloqueio e outras configurações.
+- Ocultar tokens e nomes dos jogadores.
+- Biblioteca para guardar e organizar tokens e recursos reutilizáveis.
 
-Não existe servidor próprio: o arquivo `tabletop-supabase.html` é uma página única (HTML + CSS + JavaScript) que fala direto com o Supabase pela internet.
+### Ferramentas de mapa
+- Grid configurável e ajuste de escala.
+- Névoa de guerra, incluindo ferramentas de edição.
+- Paredes e portas para delimitar áreas.
+- Iluminação e configurações de visão dos tokens.
+- Ferramenta de desenho com opções de cor e espessura, além de desfazer.
+- Régua para medir distâncias no mapa.
+- Elementos de ambiente: horário, clima, tonalidade e efeitos visuais.
 
-- **Banco de dados (Postgres)**: guarda contas, cenas, mapas e tokens.
-- **Realtime**: avisa todo mundo conectado assim que algo muda.
-- **Storage**: guarda as imagens de mapas e tokens.
-- **Funções RPC**: toda ação que precisa de permissão (trocar mapa, criar/apagar token, trocar de mestre etc.) passa por funções no próprio banco, que checam quem está pedindo antes de fazer qualquer coisa — mesmo alguém mexendo direto na API não consegue burlar as regras.
-- **Login próprio**: não usa o sistema de contas do Supabase (Auth) — usuário e senha ficam em tabelas próprias, com a senha protegida por hash (`pgcrypto`).
+### Câmera e apresentação
+- Zoom e movimentação livre da câmera.
+- Modos de seleção e movimentação da câmera.
+- Opções para centralizar a câmera dos jogadores e acompanhar a câmera do mestre.
+- Modo de projetor para exibir a mesa em outra tela.
+- Interface com barras e painéis recolhíveis, adaptada para computador, celular e tablet.
 
-Hospedar o `tabletop-supabase.html` no GitHub Pages é opcional — o arquivo funciona igual se aberto direto do computador, já que toda a "inteligência" mora no Supabase.
+### Comunicação e dados
+- Chat da mesa com mensagens sincronizadas.
+- Rolagem de dados com expressões e resultados exibidos no tabuleiro.
 
-## Como colocar no ar
+## Tecnologias e arquitetura
 
-### 1. Criar o projeto no Supabase
-1. Crie uma conta grátis em [supabase.com](https://supabase.com) (sem cartão) e um novo projeto.
-2. Em **Project Settings → API**, anote o **Project URL** e a **anon public key**.
+- **Frontend:** HTML, CSS e JavaScript em uma página única (\`index.html\`).
+- **Hospedagem:** GitHub Pages.
+- **Banco de dados:** PostgreSQL pelo Supabase.
+- **Sincronização:** Supabase Realtime para propagar alterações entre participantes.
+- **Arquivos:** Supabase Storage para imagens e recursos enviados.
+- **Operações protegidas:** funções RPC no banco para ações que exigem validação de permissões.
+- **Acesso:** sistema próprio de cadastro e login, separado do Supabase Auth.
 
-### 2. Rodar o script de banco de dados
-1. Abra o **SQL Editor** do projeto.
-2. Cole o conteúdo de `tabletop-supabase-setup.sql` inteiro e rode (▶ Run).
-   - O script é seguro de rodar mais de uma vez (usa `if not exists`/`or replace` em tudo).
-3. Em **Database → Extensions**, confirme que `pgcrypto` está ativado (o script já tenta ativar sozinho, mas vale conferir).
+As credenciais de conexão do Supabase são informadas na primeira configuração e ficam salvas no armazenamento local do navegador para permitir a reconexão automática naquele dispositivo. Cada participante precisa configurar a conexão e entrar com sua própria conta.
 
-### 3. Abrir o app
-1. Abra `tabletop-supabase.html` num navegador (local ou publicado — ver abaixo).
-2. Na primeira vez, cole a **Project URL** e a **anon public key** do passo 1.
-3. Crie sua conta (usuário + senha) e clique em **"👑 Virar mestre desta mesa"**.
-4. Mande o link/arquivo pros seus amigos — cada um cria a própria conta e já entra como jogador.
+## Estrutura do repositório
 
-### 4. (Opcional) Publicar no GitHub Pages
-1. Crie um repositório novo no GitHub (pode ser público — o arquivo não contém nenhuma senha ou chave fixa).
-2. Suba o `tabletop-supabase.html` renomeado para `index.html`.
-3. Em **Settings → Pages**, ative o GitHub Pages (branch `main`, pasta raiz).
-4. O link fica fixo no formato `https://seu-usuario.github.io/repositorio/`.
+- \`index.html\`: aplicação completa, incluindo interface, estilos e lógica do frontend.
+- \`SQL/schema_snapshot.sql\`: snapshot da estrutura do banco conectado, incluindo tabelas, funções, índices e políticas. Não contém os dados das mesas ou dos usuários.
+- \`SQL/\` e \`supabase/sql/\`: scripts SQL de alterações e funções específicas do banco.
 
-> Atualizações: toda vez que eu te mandar um `tabletop-supabase.html` novo, é só subir ele de novo com o mesmo nome (`index.html`) pra substituir — o link continua o mesmo.
+### Sobre o snapshot SQL
 
-## Estrutura do banco (resumo)
+O arquivo \`SQL/schema_snapshot.sql\` serve como documentação e referência do estado do banco no momento em que foi capturado. **Não execute esse snapshot cegamente em um banco existente.** Ele pode conflitar com objetos já criados e não substitui um processo de migração planejado.
 
-| Tabela | O que guarda |
-|---|---|
-| `auth_users` | Usuário e senha (hash). Nunca exposta pela API — só por dentro das funções de login. |
-| `profiles` | Nome e papel (mestre/jogador) de cada conta. |
-| `scenes` | Cada cena salva: nome e imagem do mapa. |
-| `board` | Estado atual da mesa: qual cena está ativa. |
-| `tokens` | Cada token: imagem, posição, tamanho, rotação, camada, estados etc. — todos ligados a uma cena. |
+Os scripts SQL individuais devem ser lidos e aplicados somente quando a alteração correspondente for necessária. As políticas de RLS existentes são intencionais e fazem parte do modelo de permissões do projeto.
 
-Toda escrita de verdade acontece por **funções RPC** (`login_user`, `signup_user`, `set_map`, `add_token`, `move_token`, `set_scene`, `set_role` etc.), nunca direto nas tabelas.
+## Executar e publicar
 
-## Limitações conhecidas (plano gratuito do Supabase)
+### 1. Configurar o Supabase
 
-- ~500 MB de banco, ~1 GB de armazenamento de imagens, ~10 GB de banda por mês — bem confortável pra um grupo de amigos, mesmo numa sessão de um dia inteiro.
-- O projeto Supabase **pausa sozinho** depois de ~7 dias sem uso (não perde dados, só precisa reativar no painel antes da próxima sessão).
+O projeto precisa de uma instância Supabase própria. Na configuração da aplicação, informe:
 
-## Roadmap / próximas ideias
+- **Project URL**
+- **Anon public key**
 
-- [x] Editor para recortar a imagem do token (hitbox, hoje é a imagem inteira)
-- [x] Grid e fog of war (névoa de guerra)
-- [x] Mais ferramentas na barra lateral (régua/medição, desenho)
-- [x] Opção de escala do mapa / múltiplos mapas lado a lado
-- [x] Tema visual (cinza + roxo)
-- [ ] Dados (rolagem)
+Esses valores podem ser encontrados nas configurações de API do projeto Supabase. A chave pública anon é destinada ao uso no frontend; nunca coloque uma chave \`service_role\` no \`index.html\` ou em qualquer arquivo público.
 
-## Aviso
+O banco também precisa conter o schema, as funções RPC, as políticas RLS e os buckets de Storage esperados pela versão atual da aplicação. Para reproduzir o ambiente, consulte os arquivos SQL do repositório e compare-os com o estado real do projeto antes de aplicar qualquer script.
 
-Este é um projeto pessoal/hobby, pensado pra um grupo pequeno de amigos. As regras de permissão protegem contra erros e uso casual, mas o modelo de segurança não foi feito pra resistir a um usuário mal-intencionado com conhecimento técnico — não é recomendado pra mesas com desconhecidos.
+### 2. Publicar pelo GitHub Pages
+
+1. Abra as configurações do repositório no GitHub.
+2. Em **Pages**, configure a publicação pela branch \`main\` e pela pasta raiz.
+3. Salve e aguarde a publicação.
+4. Acesse o endereço fornecido pelo GitHub Pages.
+
+O arquivo de entrada já se chama \`index.html\`, portanto não é necessário renomear arquivos. Atualizações publicadas na branch principal serão disponibilizadas pelo GitHub Pages após o processamento.
+
+### 3. Entrar na mesa
+
+1. Abra o endereço publicado.
+2. Informe a URL e a anon public key do Supabase, caso seja o primeiro acesso naquele navegador.
+3. Crie uma conta ou entre com uma conta existente.
+4. Crie uma mesa ou entre em uma mesa usando o código de acesso.
+5. Compartilhe o código da mesa com os demais participantes.
+
+## Observações e limitações conhecidas
+
+- O projeto é desenvolvido para uso pessoal com um grupo pequeno de amigos, não como um serviço público multiusuário.
+- A aplicação depende de conexão com a internet e da disponibilidade do Supabase.
+- Em alguns momentos, pode ser necessário atualizar a página (F5) para recuperar o funcionamento normal. Esse comportamento ainda merece investigação e não deve ser considerado uma solução definitiva.
+- O uso do plano gratuito do Supabase está sujeito aos limites e às regras vigentes da plataforma, que podem mudar.
+- Não compartilhe credenciais privadas nem coloque chaves administrativas no repositório.
+
+## Direção do projeto
+
+A prioridade é manter as ferramentas existentes estáveis e úteis durante as sessões. Novas funcionalidades devem ser adicionadas com cuidado para não comprometer os recursos já utilizados.
+
+---
+
+Projeto pessoal de VTT para campanhas de RPG entre amigos.
