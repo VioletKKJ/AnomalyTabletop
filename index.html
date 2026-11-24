@@ -179,6 +179,8 @@
 
   #connDot { width: 7px; height: 7px; border-radius: 50%; background: var(--danger); box-shadow: 0 0 6px var(--danger); transition: background .3s; flex-shrink: 0; }
   #connDot.ok { background: var(--ok); box-shadow: 0 0 6px var(--ok); }
+  #connDot.connecting { background: #f0b84b; box-shadow: 0 0 6px #f0b84b; }
+  #connDot.degraded { background: var(--danger); box-shadow: 0 0 7px var(--danger); }
 
   button, label.btn { background: var(--panel-border); color: var(--text); border: 1px solid transparent; border-radius: 8px;
     padding: 6px 10px; font-size: 12px; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; white-space: nowrap;
@@ -1654,6 +1656,37 @@
   let wallsChannel = null;
   let lightsChannel = null;
   let roomSyncChannel = null;
+  const realtimeChannelStates = new Map();
+  function updateRealtimeChannelState(name, status) {
+    realtimeChannelStates.set(name, status);
+    const entries = [...realtimeChannelStates.entries()];
+    const terminal = ['CHANNEL_ERROR', 'TIMED_OUT', 'CLOSED'];
+    const failed = entries.filter(([, value]) => terminal.includes(value));
+    const pending = entries.filter(([, value]) => value !== 'SUBSCRIBED' && !terminal.includes(value));
+    connDot.classList.remove('ok', 'connecting', 'degraded');
+    if (failed.length) {
+      connDot.classList.add('degraded');
+      connDot.title = 'Conexão instável: ' + failed.map(([key, value]) => key + ' (' + value + ')').join(', ');
+    } else if (pending.length) {
+      connDot.classList.add('connecting');
+      connDot.title = 'Conectando canais: ' + pending.map(([key]) => key).join(', ');
+    } else if (entries.length) {
+      connDot.classList.add('ok');
+      connDot.title = 'Todos os canais da mesa estão conectados';
+    } else {
+      connDot.title = 'Sem canais ativos';
+    }
+  }
+  function clearRealtimeChannelState(name) {
+    realtimeChannelStates.delete(name);
+    if (!realtimeChannelStates.size) {
+      connDot.classList.remove('ok', 'connecting', 'degraded');
+      connDot.title = 'Sem canais ativos';
+    } else {
+      const values = [...realtimeChannelStates.values()];
+      if (values.every(value => value === 'SUBSCRIBED')) updateRealtimeChannelState(name, 'SUBSCRIBED');
+    }
+  }
   let roleSyncTimer = null;
   let roleSyncInFlight = false;
   let cameraChannel = null;
@@ -4231,6 +4264,7 @@
     if (wallsChannel) sb.removeChannel(wallsChannel);
     if (lightsChannel) sb.removeChannel(lightsChannel);
     if (drawingsChannel) sb.removeChannel(drawingsChannel);
+    ['tokens', 'map_elements', 'fog_elements', 'walls', 'lights', 'drawings'].forEach(clearRealtimeChannelState);
     if (!sceneId) return;
 
     tokensChannel = sb.channel('tokens-' + sceneId)
@@ -4240,7 +4274,7 @@
         } else if (p.new) {
           upsertTokenEl(p.new);
         }
-      }).subscribe();
+      }).subscribe((status) => updateRealtimeChannelState('tokens', status));
 
     mapElementsChannel = sb.channel('map-elements-' + sceneId)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'map_elements', filter: `scene_id=eq.${sceneId}` }, (p) => {
@@ -4249,27 +4283,27 @@
         } else if (p.new) {
           upsertMapPieceEl(p.new);
         }
-      }).subscribe();
+      }).subscribe((status) => updateRealtimeChannelState('map_elements', status));
 
     fogElementsChannel = sb.channel('fog-elements-' + sceneId)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'fog_elements', filter: `scene_id=eq.${sceneId}` }, () => {
         loadFogElements();
-      }).subscribe();
+      }).subscribe((status) => updateRealtimeChannelState('fog_elements', status));
 
     wallsChannel = sb.channel('walls-' + sceneId)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'walls', filter: `scene_id=eq.${sceneId}` }, () => {
         loadWallElements();
-      }).subscribe();
+      }).subscribe((status) => updateRealtimeChannelState('walls', status));
 
     lightsChannel = sb.channel('lights-' + sceneId)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'lights', filter: `scene_id=eq.${sceneId}` }, () => {
         loadLights();
-      }).subscribe();
+      }).subscribe((status) => updateRealtimeChannelState('lights', status));
 
     drawingsChannel = sb.channel('drawings-' + sceneId)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'drawings' }, () => {
         if (!drawState) loadDrawings();
-      }).subscribe();
+      }).subscribe((status) => updateRealtimeChannelState('drawings', status));
   }
 
   const camPullBtn = document.getElementById('camPullBtn');
@@ -4328,6 +4362,7 @@
   function setupCameraChannel(roomId) {
     stopCameraLive(true);
     if (cameraChannel) sb.removeChannel(cameraChannel);
+    clearRealtimeChannelState('camera');
     setCameraLocked(false);
     cameraChannel = sb.channel('camera-' + roomId, { config: { broadcast: { self: false } } })
       .on('broadcast', { event: 'camera' }, ({ payload }) => handleCameraMessage(payload))
@@ -4342,7 +4377,10 @@
         if (currentRole !== 'mestre') return;
         if (camLive) sendCamera(true, 'live'); else startCameraLive();
       })
-      .subscribe((status) => { if (status === 'SUBSCRIBED' && projectorMode) startProjectorHello(); });
+      .subscribe((status) => {
+        updateRealtimeChannelState('camera', status);
+        if (status === 'SUBSCRIBED' && projectorMode) startProjectorHello();
+      });
   }
 
   // Projetor: chama o mestre a cada 3s até receber a primeira câmera
@@ -6161,10 +6199,14 @@
           if (!projectorMode) renderMsg(m, false);
           if (m.kind === 'roll') playDice(m.roll, m.name);   // o projetor também mostra a animação
         })
-        .subscribe((status) => { ready = status === 'SUBSCRIBED'; });
+        .subscribe((status) => {
+          ready = status === 'SUBSCRIBED';
+          updateRealtimeChannelState('chat', status);
+        });
     }
     function teardown() {
       if (channel) { sb.removeChannel(channel); channel = null; }
+      clearRealtimeChannelState('chat');
       ready = false; unread = 0; paintBadge();
       timers.forEach(clearTimeout); timers.clear();
       stage.querySelectorAll('.rollBlock').forEach((b) => { if (b._iv) clearInterval(b._iv); b.remove(); });
@@ -6239,6 +6281,7 @@
     if (currentRole === 'mestre') loadLibrary();
 
     if (roomSyncChannel) sb.removeChannel(roomSyncChannel);
+    clearRealtimeChannelState('room');
     roomSyncChannel = sb.channel('room-sync-' + roomId)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'rooms', filter: `id=eq.${roomId}` }, async (payload) => {
         if (payload.new && payload.new.active_scene_id !== currentSceneId) {
@@ -6247,7 +6290,7 @@
           subscribeRealtimeChannels(currentSceneId);
         }
       })
-      .subscribe((status) => { if (status === 'SUBSCRIBED') connDot.classList.add('ok'); });
+      .subscribe((status) => updateRealtimeChannelState('room', status));
 
     startRoomRoleSync(roomId);
   }
@@ -6394,14 +6437,17 @@
     currentRole = null;
     stopCameraLive(false); setCameraLocked(false);
     if (cameraChannel) { sb.removeChannel(cameraChannel); cameraChannel = null; }
+    clearRealtimeChannelState('camera');
     Chat.teardown();
     if (roomSyncChannel) { sb.removeChannel(roomSyncChannel); roomSyncChannel = null; }
+    clearRealtimeChannelState('room');
     if (tokensChannel) sb.removeChannel(tokensChannel);
     if (mapElementsChannel) sb.removeChannel(mapElementsChannel);
     if (fogElementsChannel) sb.removeChannel(fogElementsChannel);
     if (wallsChannel) sb.removeChannel(wallsChannel);
     if (lightsChannel) sb.removeChannel(lightsChannel);
     if (drawingsChannel) sb.removeChannel(drawingsChannel);
+    ['tokens', 'map_elements', 'fog_elements', 'walls', 'lights', 'drawings'].forEach(clearRealtimeChannelState);
     applyEnvironment(true); closeEnvPanel();
     lobbyOverlay.classList.remove('hidden');
     loadLobbyRooms();
