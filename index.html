@@ -6389,11 +6389,13 @@
   btnReturnLobby.addEventListener('click', () => {
     clearInterval(roleSyncTimer);
     roleSyncTimer = null;
-    roleSyncInFlight = false;
+    currentRoomId = null;
+    currentSceneId = null;
+    currentRole = null;
     stopCameraLive(false); setCameraLocked(false);
     if (cameraChannel) { sb.removeChannel(cameraChannel); cameraChannel = null; }
     Chat.teardown();
-    if (roomSyncChannel) sb.removeChannel(roomSyncChannel);
+    if (roomSyncChannel) { sb.removeChannel(roomSyncChannel); roomSyncChannel = null; }
     if (tokensChannel) sb.removeChannel(tokensChannel);
     if (mapElementsChannel) sb.removeChannel(mapElementsChannel);
     if (fogElementsChannel) sb.removeChannel(fogElementsChannel);
