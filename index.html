@@ -342,6 +342,7 @@
     box-shadow: 0 0 12px var(--light-color); display: flex; align-items: center; justify-content: center; font-size: 14px; }
   body:not(.light-editor-active) .light-marker { display: none; }
   .light-marker.selected-light { outline: 3px solid var(--accent); outline-offset: 3px; box-shadow: 0 0 16px var(--accent), 0 0 12px var(--light-color); }
+  .light-marker.linked-light { border-style: dashed; cursor: pointer; }
 
   #lightContextMenu { position: fixed; z-index: 60002; background: var(--panel); border: 1px solid var(--panel-border);
     border-radius: 12px; padding: 8px; display: none; min-width: 195px; max-width: calc(100vw - 16px);
@@ -964,6 +965,12 @@
       <label>Cor da Luz</label>
       <input type="color" id="lightColorInp" value="#ffaa44">
 
+      <label for="lightTokenSelect">Vincular a um token</label>
+      <select id="lightTokenSelect" style="width:100%; margin:6px 0 4px;">
+        <option value="">Luz independente</option>
+      </select>
+      <p style="margin:2px 0 8px; font-size:11px;">Quando vinculada, a luz acompanha o centro do token automaticamente.</p>
+
       <div class="row" style="margin-top:16px;">
         <button id="btnDeleteLight" class="danger">Apagar Luz</button>
         <button id="btnCloseLightModal" class="primary">Concluir</button>
@@ -1508,6 +1515,7 @@
   const lightRadiusRange = document.getElementById('lightRadiusRange');
   const lightRadiusVal = document.getElementById('lightRadiusVal');
   const lightColorInp = document.getElementById('lightColorInp');
+  const lightTokenSelect = document.getElementById('lightTokenSelect');
   const btnDeleteLight = document.getElementById('btnDeleteLight');
   const btnCloseLightModal = document.getElementById('btnCloseLightModal');
   let activeEditingLightId = null;
@@ -2610,6 +2618,77 @@
     }
   }
 
+  function populateLightTokenSelect(light) {
+    if (!lightTokenSelect) return;
+    lightTokenSelect.innerHTML = '';
+    const independent = document.createElement('option');
+    independent.value = '';
+    independent.textContent = 'Luz independente';
+    lightTokenSelect.appendChild(independent);
+
+    Array.from(tokenData.values())
+      .sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'pt-BR'))
+      .forEach((tok) => {
+        const option = document.createElement('option');
+        option.value = tok.id;
+        option.textContent = tok.name || ('Token ' + String(tok.id).slice(0, 8));
+        lightTokenSelect.appendChild(option);
+      });
+
+    if (light.token_id && !tokenData.has(light.token_id)) {
+      const missing = document.createElement('option');
+      missing.value = light.token_id;
+      missing.textContent = 'Token não encontrado';
+      lightTokenSelect.appendChild(missing);
+    }
+    lightTokenSelect.value = light.token_id || '';
+  }
+
+  async function setLightTokenBinding(lightId, tokenId) {
+    if (currentRole !== 'mestre' || !lightId) return;
+    const light = cachedLights.find(item => String(item.id) === String(lightId));
+    if (!light) return;
+
+    const patch = { token_id: tokenId || null };
+    if (tokenId) {
+      const token = tokenData.get(tokenId);
+      if (!token) {
+        alert('Não foi possível vincular: token não encontrado nesta cena.');
+        lightTokenSelect.value = light.token_id || '';
+        return;
+      }
+      const tokenEl = tokenEls.get(tokenId);
+      const left = tokenEl ? (parseFloat(tokenEl.style.left) || 0) : (+token.x || 0);
+      const top = tokenEl ? (parseFloat(tokenEl.style.top) || 0) : (+token.y || 0);
+      const width = tokenEl && tokenEl.offsetWidth ? tokenEl.offsetWidth : (+token.size || 64);
+      const height = tokenEl && tokenEl.offsetHeight ? tokenEl.offsetHeight : (+token.size || 64);
+      patch.x = left + width / 2;
+      patch.y = top + height / 2;
+    } else {
+      const pos = getResolvedLightPosition(light);
+      patch.x = pos.x;
+      patch.y = pos.y;
+    }
+
+    const { error } = await sb.from('lights').update(patch).eq('id', light.id);
+    if (error) {
+      alert('Não foi possível alterar o vínculo da luz: ' + error.message);
+      lightTokenSelect.value = light.token_id || '';
+      return;
+    }
+    Object.assign(light, patch);
+    computeLighting();
+    const marker = Array.from(lightsEditLayer.querySelectorAll('.light-marker'))
+      .find(el => String(el.dataset.lightId) === String(light.id));
+    if (marker) {
+      const pos = getResolvedLightPosition(light);
+      marker.style.left = pos.x + 'px';
+      marker.style.top = pos.y + 'px';
+      marker.classList.toggle('linked-light', !!light.token_id);
+      marker.title = light.token_id ? 'Luz vinculada a token' : 'Luz independente';
+    }
+  }
+
   function openLightModal(light) {
     // se já havia outra luz aberta, salva ela antes de trocar
     if (activeEditingLightId && String(activeEditingLightId) !== String(light.id)) saveActiveLight();
@@ -2620,8 +2699,13 @@
     lightIntensityRange.value = I;
     lightIntensityVal.textContent = I.toFixed(2);
     lightColorInp.value = light.color || '#ffaa44';
+    populateLightTokenSelect(light);
     lightModal.classList.remove('hidden');
   }
+
+  lightTokenSelect.addEventListener('change', () => {
+    if (activeEditingLightId) setLightTokenBinding(activeEditingLightId, lightTokenSelect.value || null);
+  });
 
   // Preview ao vivo: mexeu no controle, a luz muda na hora (salva ao clicar em Concluir)
   lightRadiusRange.addEventListener('input', () => {
@@ -2700,9 +2784,12 @@
     marker.dataset.lightId = l.id;
     const isSelected = Array.from(selectedLightIds).some(x => String(x) === String(l.id));
     marker.classList.toggle('selected-light', isSelected);
-    marker.style.left = l.x + 'px';
-    marker.style.top = l.y + 'px';
+    marker.classList.toggle('linked-light', !!l.token_id);
+    const pos = getResolvedLightPosition(l);
+    marker.style.left = pos.x + 'px';
+    marker.style.top = pos.y + 'px';
     marker.style.setProperty('--light-color', l.color);
+    marker.title = l.token_id ? 'Luz vinculada a token' : 'Luz independente';
     marker.innerHTML = ico('bulb', 16);
 
     marker.addEventListener('contextmenu', (e) => {
@@ -2718,6 +2805,11 @@
       e.preventDefault();
       if (currentRole !== 'mestre') return;
       closeLightContextMenu();
+      if (l.token_id) {
+        selectOnlyLight(l.id);
+        openLightModal(cachedLights.find(item => String(item.id) === String(l.id)) || l);
+        return;
+      }
 
       const multiKey = e.ctrlKey || e.metaKey || e.shiftKey;
       if (multiKey) {
@@ -2828,6 +2920,37 @@
     return pts;
   }
 
+  function getResolvedLightPosition(light) {
+    if (!light || !light.token_id) return { x: +light.x || 0, y: +light.y || 0 };
+    const token = tokenData.get(light.token_id);
+    if (!token) return { x: +light.x || 0, y: +light.y || 0 };
+    const tokenEl = tokenEls.get(light.token_id);
+    const left = tokenEl ? (parseFloat(tokenEl.style.left) || 0) : (+token.x || 0);
+    const top = tokenEl ? (parseFloat(tokenEl.style.top) || 0) : (+token.y || 0);
+    const width = tokenEl && tokenEl.offsetWidth ? tokenEl.offsetWidth : (+token.size || 64);
+    const height = tokenEl && tokenEl.offsetHeight ? tokenEl.offsetHeight : (+token.size || 64);
+    return { x: left + width / 2, y: top + height / 2 };
+  }
+
+  let attachedLightRefreshFrame = 0;
+  function scheduleAttachedLightRefresh() {
+    if (attachedLightRefreshFrame) return;
+    attachedLightRefreshFrame = requestAnimationFrame(() => {
+      attachedLightRefreshFrame = 0;
+      const markers = Array.from(lightsEditLayer.querySelectorAll('.light-marker'));
+      (cachedLights || []).forEach(light => {
+        if (!light.token_id) return;
+        const pos = getResolvedLightPosition(light);
+        const marker = markers.find(el => String(el.dataset.lightId) === String(light.id));
+        if (marker) {
+          marker.style.left = pos.x + 'px';
+          marker.style.top = pos.y + 'px';
+        }
+      });
+      computeLighting();
+    });
+  }
+
   // Recalcula as sombras de todas as luzes (chamado sempre que luz/parede/porta muda)
   function computeLighting() {
     const blockers = currentBlockers = [];
@@ -2835,7 +2958,11 @@
       const isSolid = (w.wall_type === 'wall') || (w.wall_type === 'door' && !w.is_open);
       if (isSolid) blockers.push({ x1: +w.x1, y1: +w.y1, x2: +w.x2, y2: +w.y2 });
     });
-    lightPolys = (cachedLights || []).map(l => ({ light: l, pts: visibilityPolygon(l, blockers) }));
+    lightPolys = (cachedLights || []).map(l => {
+      const pos = getResolvedLightPosition(l);
+      const resolved = { ...l, x: pos.x, y: pos.y };
+      return { light: resolved, pts: visibilityPolygon(resolved, blockers) };
+    });
     markLightingDirty();
   }
 
@@ -3314,12 +3441,14 @@
 
     // mantém o painel de propriedades em dia se o token mudar por outro caminho (ex.: alça de resize)
     if (propsTokenId === tok.id && !tokenPropsPanel.contains(document.activeElement)) fillTokenProps(tok);
+    scheduleAttachedLightRefresh();
   }
 
   function removeTokenEl(id) {
     const el = tokenEls.get(id);
     if (el) { el.remove(); tokenEls.delete(id); tokenData.delete(id); }
     if (propsTokenId === id) closeTokenProps();
+    scheduleAttachedLightRefresh();
   }
 
   function upsertMapPieceEl(piece) {
@@ -3627,6 +3756,7 @@
         item.el.style.left = itemX + 'px';
         item.el.style.top = itemY + 'px';
       });
+      if (type === 'token') scheduleAttachedLightRefresh();
       if (type === 'token' && group.length === 1) libDragHover(e.clientX, e.clientY);
 
       const now = Date.now();
@@ -3690,6 +3820,7 @@
       const url = type === 'token' ? imageForToken(item) : item.src_url;
       const ar = aspectRatios.get(url) || 1;
       applyElementSize(el, newSize, ar);
+      if (type === 'token') scheduleAttachedLightRefresh();
 
       const now = Date.now();
       if (now - lastSent > 100) {
