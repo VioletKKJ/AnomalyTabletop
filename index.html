@@ -291,6 +291,8 @@
     #sideToolbar { right: 8px !important; top: 62px !important; padding: 6px !important; }
     #sideToolbar button, #sideToolbar label.btn { width: 38px !important; height: 38px !important; min-width: 38px !important; min-height: 38px !important; }
     #sideToolbarToggle { right: 8px !important; width: 38px !important; height: 38px !important; }
+    /* O menu dos três pontos abre um pouco mais à direita para não ficar cortado no celular. */
+    #topBar #moreActionsMenu { right: -8px !important; }
   }
 
   #drawPanel button { min-width: 34px; height: 34px; padding: 0 8px; justify-content: center; }
@@ -3177,7 +3179,7 @@
   }
   requestAnimationFrame(lightingTick);
 
-  function applyZoom() { const zl = document.getElementById('zoomLabel'); if (zl) zl.textContent = Math.round(scale * 100) + '%'; board.style.transform = `scale(${scale})`; board.style.setProperty('--inv-zoom', String(1 / scale)); if (typeof renderRuler === 'function') renderRuler(); }
+  function applyZoom() { const zl = document.getElementById('zoomLabel'); if (zl) zl.textContent = Math.round(scale * 100) + '%'; updateBoardTransform(); board.style.setProperty('--inv-zoom', String(1 / scale)); if (typeof renderRuler === 'function') renderRuler(); }
 
   function applyElementSize(el, size, ar) {
     let w, h;
@@ -4323,10 +4325,15 @@
   const middlePanPointers = new Map();
   let panStartX, panStartY, panOrigX = 0, panOrigY = 0, lastPinchDist = null;
 
-  function boardLocalStyle() {
-    board.style.left = boardX + 'px';
-    board.style.top = boardY + 'px';
+  function updateBoardTransform() {
+    // Mantém pan e zoom no compositor, evitando recalcular layout a cada movimento da câmera.
+    board.style.transform = `translate3d(${boardX}px, ${boardY}px, 0) scale(${scale})`;
   }
+
+  function boardLocalStyle() {
+    updateBoardTransform();
+  }
+  updateBoardTransform();
 
   boardWrap.addEventListener('dragstart', (e) => e.preventDefault());
 
