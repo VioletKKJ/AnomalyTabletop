@@ -1657,8 +1657,7 @@
   let lightsChannel = null;
   let roomSyncChannel = null;
   const realtimeChannelStates = new Map();
-  function updateRealtimeChannelState(name, status) {
-    realtimeChannelStates.set(name, status);
+  function renderRealtimeChannelStatus() {
     const entries = [...realtimeChannelStates.entries()];
     const terminal = ['CHANNEL_ERROR', 'TIMED_OUT', 'CLOSED'];
     const failed = entries.filter(([, value]) => terminal.includes(value));
@@ -1677,15 +1676,13 @@
       connDot.title = 'Sem canais ativos';
     }
   }
+  function updateRealtimeChannelState(name, status) {
+    realtimeChannelStates.set(name, status);
+    renderRealtimeChannelStatus();
+  }
   function clearRealtimeChannelState(name) {
     realtimeChannelStates.delete(name);
-    if (!realtimeChannelStates.size) {
-      connDot.classList.remove('ok', 'connecting', 'degraded');
-      connDot.title = 'Sem canais ativos';
-    } else {
-      const values = [...realtimeChannelStates.values()];
-      if (values.every(value => value === 'SUBSCRIBED')) updateRealtimeChannelState(name, 'SUBSCRIBED');
-    }
+    renderRealtimeChannelStatus();
   }
   let roleSyncTimer = null;
   let roleSyncInFlight = false;
