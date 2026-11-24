@@ -119,7 +119,6 @@ CREATE TABLE public.lights (
   token_id uuid,
   CONSTRAINT lights_pkey PRIMARY KEY (id),
   CONSTRAINT lights_scene_id_fkey FOREIGN KEY (scene_id) REFERENCES scenes(id) ON DELETE CASCADE,
-  CONSTRAINT lights_token_id_fkey FOREIGN KEY (token_id) REFERENCES tokens(id) ON DELETE CASCADE
 );
 
 CREATE TABLE public.map_elements (
@@ -158,6 +157,10 @@ CREATE TABLE public.tokens (
   CONSTRAINT tokens_pkey PRIMARY KEY (id),
   CONSTRAINT tokens_scene_id_fkey FOREIGN KEY (scene_id) REFERENCES scenes(id) ON DELETE CASCADE
 );
+
+ALTER TABLE public.lights
+  ADD CONSTRAINT lights_token_id_fkey
+  FOREIGN KEY (token_id) REFERENCES tokens(id) ON DELETE CASCADE;
 
 CREATE TABLE public.walls (
   id uuid DEFAULT gen_random_uuid() NOT NULL,
