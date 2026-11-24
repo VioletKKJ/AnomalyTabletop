@@ -3962,7 +3962,10 @@
     currentRole = nextRole;
 
     // Uma troca real de função encerra qualquer prévia local e reaplica as permissões visuais.
-    if (changed) document.body.classList.remove('player-preview');
+    if (changed) {
+      document.body.classList.remove('player-preview');
+      if (playerPreviewBtn) playerPreviewBtn.textContent = 'Ver como player';
+    }
     document.body.classList.toggle('jogador', nextRole !== 'mestre');
 
     if (roleBadge) {
@@ -3982,6 +3985,9 @@
       if (scenesOverlay) scenesOverlay.classList.add('hidden');
       if (gridOverlay) gridOverlay.classList.add('hidden');
       if (tokenVisionModal) tokenVisionModal.classList.add('hidden');
+      if (document.body.classList.contains('fog-editor-active')) closeFogEditorBtn.click();
+      if (document.body.classList.contains('wall-editor-active')) closeWallEditorBtn.click();
+      if (document.body.classList.contains('light-editor-active')) closeLightEditorBtn.click();
       closeTokenProps();
       closeEnvPanel();
     }
