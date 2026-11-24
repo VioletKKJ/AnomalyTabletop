@@ -1654,6 +1654,8 @@
   let wallsChannel = null;
   let lightsChannel = null;
   let roomSyncChannel = null;
+  let roleSyncTimer = null;
+  let roleSyncInFlight = false;
   let cameraChannel = null;
   let cameraLocked = false;
   let scale = 1;
@@ -3954,10 +3956,89 @@
     });
   }
 
+  function applyRoomRole(role) {
+    const nextRole = role === 'mestre' ? 'mestre' : 'jogador';
+    const changed = currentRole !== nextRole;
+    currentRole = nextRole;
+
+    // Uma troca real de função encerra qualquer prévia local e reaplica as permissões visuais.
+    if (changed) document.body.classList.remove('player-preview');
+    document.body.classList.toggle('jogador', nextRole !== 'mestre');
+
+    if (roleBadge) {
+      roleBadge.textContent = nextRole === 'mestre' ? 'Mestre' : 'Jogador';
+      roleBadge.classList.remove('hidden');
+    }
+    if (managePlayersBtn) managePlayersBtn.classList.toggle('hidden', nextRole !== 'mestre');
+    if (openFogEditorBtn) openFogEditorBtn.classList.toggle('hidden', nextRole !== 'mestre');
+    if (openWallEditorBtn) openWallEditorBtn.classList.toggle('hidden', nextRole !== 'mestre');
+    if (openLightEditorBtn) openLightEditorBtn.classList.toggle('hidden', nextRole !== 'mestre');
+
+    if (changed && nextRole === 'mestre') {
+      loadLibrary();
+    } else if (changed) {
+      // Fecha painéis que poderiam continuar abertos depois de perder permissões de mestre.
+      if (playersOverlay) playersOverlay.classList.add('hidden');
+      if (scenesOverlay) scenesOverlay.classList.add('hidden');
+      if (gridOverlay) gridOverlay.classList.add('hidden');
+      if (tokenVisionModal) tokenVisionModal.classList.add('hidden');
+      closeTokenProps();
+      closeEnvPanel();
+    }
+  }
+
+  async function refreshRoomRole(roomId = currentRoomId) {
+    if (!sb || !roomId || roomId !== currentRoomId || !currentUserId || projectorMode || roleSyncInFlight) return;
+    roleSyncInFlight = true;
+    try {
+      const { data, error } = await sb.from('room_members')
+        .select('role')
+        .eq('room_id', roomId)
+        .eq('user_id', currentUserId)
+        .maybeSingle();
+
+      if (roomId !== currentRoomId) return;
+      if (error) {
+        console.warn('[Anomaly VTT] Não foi possível verificar a função na mesa:', error);
+        return;
+      }
+      if (!data) {
+        clearInterval(roleSyncTimer);
+        roleSyncTimer = null;
+        alert('Seu acesso a esta mesa não está mais ativo. Você será levado de volta ao lobby.');
+        btnReturnLobby.click();
+        return;
+      }
+      if (data.role !== currentRole) applyRoomRole(data.role);
+    } finally {
+      roleSyncInFlight = false;
+    }
+  }
+
+  function startRoomRoleSync(roomId) {
+    clearInterval(roleSyncTimer);
+    roleSyncTimer = null;
+    if (!roomId || projectorMode) return;
+    roleSyncTimer = setInterval(() => {
+      if (document.visibilityState === 'visible') refreshRoomRole(roomId);
+    }, 5000);
+  }
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && currentRoomId) refreshRoomRole();
+  });
+  window.addEventListener('focus', () => {
+    if (currentRoomId) refreshRoomRole();
+  });
+
   async function openPlayersPanel() {
     playersList.innerHTML = 'Carregando...';
     playersOverlay.classList.remove('hidden');
-    const { data: members } = await sb.from('room_members').select('user_id, role, profiles(display_name)').eq('room_id', currentRoomId);
+    const { data: members, error } = await sb.from('room_members').select('user_id, role, profiles(display_name)').eq('room_id', currentRoomId);
+    if (error) {
+      playersList.textContent = 'Não foi possível carregar os jogadores: ' + error.message;
+      return;
+    }
     playersList.innerHTML = '';
     (members || []).forEach((m) => {
       const row = document.createElement('div'); row.className = 'playerRow';
@@ -3967,8 +4048,19 @@
         const btn = document.createElement('button');
         btn.textContent = m.role === 'mestre' ? 'Tornar jogador' : 'Tornar mestre';
         btn.addEventListener('click', async () => {
-          await sb.from('room_members').update({ role: m.role === 'mestre' ? 'jogador' : 'mestre' }).eq('room_id', currentRoomId).eq('user_id', m.user_id);
-          openPlayersPanel();
+          if (currentRole !== 'mestre') return;
+          const nextRole = m.role === 'mestre' ? 'jogador' : 'mestre';
+          btn.disabled = true;
+          const { error: updateError } = await sb.from('room_members')
+            .update({ role: nextRole })
+            .eq('room_id', currentRoomId)
+            .eq('user_id', m.user_id);
+          if (updateError) {
+            alert('Não foi possível alterar a função: ' + updateError.message);
+            btn.disabled = false;
+            return;
+          }
+          await openPlayersPanel();
         });
         row.appendChild(btn);
       }
@@ -6107,16 +6199,12 @@
     const { data: roomData } = await sb.from('rooms').select('*').eq('id', roomId).single();
     if (roomData) currentRoomTitle.textContent = roomData.name;
 
-    const { data: memberData } = await sb.from('room_members').select('role').eq('room_id', roomId).eq('user_id', currentUserId).maybeSingle();
+    const { data: memberData, error: memberError } = await sb.from('room_members').select('role').eq('room_id', roomId).eq('user_id', currentUserId).maybeSingle();
+    if (memberError) throw memberError;
     currentRole = memberData ? memberData.role : 'jogador';
     if (projectorMode) currentRole = 'jogador'; // projetor = visão de jogador, só exibe
-    document.body.classList.toggle('jogador', currentRole !== 'mestre');
-    roleBadge.textContent = projectorMode ? 'Projetor' : (currentRole === 'mestre' ? 'Mestre' : 'Jogador');
-    roleBadge.classList.remove('hidden');
-    if (managePlayersBtn) managePlayersBtn.classList.toggle('hidden', currentRole !== 'mestre');
-    if (openFogEditorBtn) openFogEditorBtn.classList.toggle('hidden', currentRole !== 'mestre');
-    if (openWallEditorBtn) openWallEditorBtn.classList.toggle('hidden', currentRole !== 'mestre');
-    if (openLightEditorBtn) openLightEditorBtn.classList.toggle('hidden', currentRole !== 'mestre');
+    applyRoomRole(currentRole);
+    if (projectorMode) roleBadge.textContent = 'Projetor';
 
     currentSceneId = roomData ? roomData.active_scene_id : null;
 
@@ -6154,6 +6242,8 @@
         }
       })
       .subscribe((status) => { if (status === 'SUBSCRIBED') connDot.classList.add('ok'); });
+
+    startRoomRoleSync(roomId);
   }
 
   async function loadLobbyRooms() {
@@ -6291,6 +6381,9 @@
   });
 
   btnReturnLobby.addEventListener('click', () => {
+    clearInterval(roleSyncTimer);
+    roleSyncTimer = null;
+    roleSyncInFlight = false;
     stopCameraLive(false); setCameraLocked(false);
     if (cameraChannel) { sb.removeChannel(cameraChannel); cameraChannel = null; }
     Chat.teardown();
