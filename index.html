@@ -1677,6 +1677,8 @@
     }
   }
   function updateRealtimeChannelState(name, status) {
+    // CLOSED também é emitido ao remover um canal intencionalmente.
+    if (status === 'CLOSED') return;
     realtimeChannelStates.set(name, status);
     renderRealtimeChannelStatus();
   }
