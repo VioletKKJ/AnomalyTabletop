@@ -2870,6 +2870,8 @@
   let lightPolys = [];       // [{ light, pts: [x0,y0,x1,y1,...] }]
   let currentBlockers = [];
   let lightingDirty = true, lightingKey = '', lightingWasActive = false;
+  // Durante pan/zoom, os canvas acompanham o tabuleiro via compositor. Adia o redesenho caro até a câmera estabilizar.
+  let lightingDeferUntil = 0;
 
   function markLightingDirty() { lightingDirty = true; }
 
@@ -3093,6 +3095,7 @@
 
   function lightingTick() {
     requestAnimationFrame(lightingTick);
+    if (Date.now() < lightingDeferUntil) return;
     const ambient = (gridConfig && gridConfig.ambient) || 0;
     const dynFog = !!(gridConfig && gridConfig.dynFog);
     const isMaster = currentRole === 'mestre';
@@ -3179,7 +3182,7 @@
   }
   requestAnimationFrame(lightingTick);
 
-  function applyZoom() { const zl = document.getElementById('zoomLabel'); if (zl) zl.textContent = Math.round(scale * 100) + '%'; updateBoardTransform(); board.style.setProperty('--inv-zoom', String(1 / scale)); if (typeof renderRuler === 'function') renderRuler(); }
+  function applyZoom() { const zl = document.getElementById('zoomLabel'); if (zl) zl.textContent = Math.round(scale * 100) + '%'; updateBoardTransform(); board.style.setProperty('--inv-zoom', String(1 / scale)); if (rulerA && rulerB && typeof renderRuler === 'function') renderRuler(); }
 
   function applyElementSize(el, size, ar) {
     let w, h;
@@ -4328,6 +4331,9 @@
   function updateBoardTransform() {
     // Mantém pan e zoom no compositor, evitando recalcular layout a cada movimento da câmera.
     board.style.transform = `translate3d(${boardX}px, ${boardY}px, 0) scale(${scale})`;
+    // A imagem atual das luzes/visão é escalada junto com o tabuleiro enquanto o gesto está ativo.
+    // O cálculo completo dos canvas é retomado pouco depois que o usuário soltar a câmera.
+    lightingDeferUntil = Date.now() + 120;
   }
 
   function boardLocalStyle() {
@@ -4396,7 +4402,7 @@
         scale = Math.min(10, Math.max(0.05, oldScale * (dist / lastPinchDist)));
         boardX = midX - (scale / oldScale) * (midX - boardX);
         boardY = midY - (scale / oldScale) * (midY - boardY);
-        applyZoom(); boardLocalStyle();
+        applyZoom();
       }
       lastPinchDist = dist;
     }
@@ -4421,7 +4427,7 @@
     const cx = e.clientX - rect.left, cy = e.clientY - rect.top, oldScale = scale;
     scale = Math.min(10, Math.max(0.05, scale * (e.deltaY < 0 ? 1.1 : 0.9)));
     boardX = cx - (scale / oldScale) * (cx - boardX); boardY = cy - (scale / oldScale) * (cy - boardY);
-    applyZoom(); boardLocalStyle();
+    applyZoom();
   }, { passive: false });
 
   function applyBarState() {
