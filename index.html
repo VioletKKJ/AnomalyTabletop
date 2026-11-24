@@ -2960,7 +2960,10 @@
     });
     lightPolys = (cachedLights || []).map(l => {
       const pos = getResolvedLightPosition(l);
-      const resolved = { ...l, x: pos.x, y: pos.y };
+      // Mantém raio, cor e intensidade ligados ao objeto original para previews ao vivo.
+      const resolved = Object.create(l);
+      resolved.x = pos.x;
+      resolved.y = pos.y;
       return { light: resolved, pts: visibilityPolygon(resolved, blockers) };
     });
     markLightingDirty();
