@@ -4322,7 +4322,6 @@
   }
 
   function subscribeRealtimeChannels(sceneId) {
-    cancelRealtimeRecovery('scene');
     if (tokensChannel) sb.removeChannel(tokensChannel);
     if (mapElementsChannel) sb.removeChannel(mapElementsChannel);
     if (fogElementsChannel) sb.removeChannel(fogElementsChannel);
@@ -4425,7 +4424,6 @@
   }
 
   function setupCameraChannel(roomId) {
-    cancelRealtimeRecovery('camera');
     stopCameraLive(true);
     if (cameraChannel) sb.removeChannel(cameraChannel);
     clearRealtimeChannelState('camera');
@@ -6255,7 +6253,6 @@
 
     // ---------- ligação com a sala ----------
     function setup(roomId) {
-      cancelRealtimeRecovery('chat');
       teardown();
       const first = document.createElement('div'); first.className = 'chatSys'; first.dataset.intro = '1';
       first.textContent = 'Chat temporário: nada fica salvo. Role dados digitando 2d20+10, d100, 4d6kh3… (/ajuda)';
@@ -6272,7 +6269,6 @@
         });
     }
     function teardown() {
-      cancelRealtimeRecovery('chat');
       if (channel) { sb.removeChannel(channel); channel = null; }
       clearRealtimeChannelState('chat');
       ready = false; unread = 0; paintBadge();
@@ -6305,7 +6301,6 @@
   })();
 
   function setupRoomSyncChannel(roomId) {
-    cancelRealtimeRecovery('room');
     if (roomSyncChannel) sb.removeChannel(roomSyncChannel);
     clearRealtimeChannelState('room');
     roomSyncChannel = sb.channel('room-sync-' + roomId)
@@ -6320,6 +6315,7 @@
   }
 
   async function enterRoom(roomId) {
+    cancelAllRealtimeRecovery();
     document.body.classList.remove('player-preview');
     const previewButton = document.getElementById('playerPreviewBtn');
     if (previewButton) previewButton.textContent = 'Ver como player';
