@@ -119,7 +119,7 @@ CREATE TABLE public.lights (
   token_id uuid,
   CONSTRAINT lights_pkey PRIMARY KEY (id),
   CONSTRAINT lights_scene_id_fkey FOREIGN KEY (scene_id) REFERENCES scenes(id) ON DELETE CASCADE,
-  CONSTRAINT lights_token_id_fkey FOREIGN KEY (token_id) REFERENCES tokens(id) ON DELETE SET NULL
+  CONSTRAINT lights_token_id_fkey FOREIGN KEY (token_id) REFERENCES tokens(id) ON DELETE CASCADE
 );
 
 CREATE TABLE public.map_elements (
