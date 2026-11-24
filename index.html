@@ -1657,6 +1657,45 @@
   let lightsChannel = null;
   let roomSyncChannel = null;
   const realtimeChannelStates = new Map();
+  const realtimeRecoveryTimers = new Map();
+  const realtimeRecoveryAttempts = new Map();
+  let sceneRecoveryPending = false;
+  let roomRecoveryPending = false;
+  let sceneRecoveryLoading = false;
+  const sceneRealtimeNames = ['tokens', 'map_elements', 'fog_elements', 'walls', 'lights', 'drawings'];
+  function recoveryGroupFor(name) { return sceneRealtimeNames.includes(name) ? 'scene' : name; }
+  function cancelRealtimeRecovery(group) {
+    const timer = realtimeRecoveryTimers.get(group);
+    if (timer) clearTimeout(timer);
+    realtimeRecoveryTimers.delete(group);
+    realtimeRecoveryAttempts.delete(group);
+  }
+  function cancelAllRealtimeRecovery() {
+    for (const timer of realtimeRecoveryTimers.values()) clearTimeout(timer);
+    realtimeRecoveryTimers.clear(); realtimeRecoveryAttempts.clear();
+    sceneRecoveryPending = false; roomRecoveryPending = false; sceneRecoveryLoading = false;
+  }
+  function scheduleRealtimeRecovery(name) {
+    if (!currentRoomId || !sb) return;
+    const group = recoveryGroupFor(name);
+    if (realtimeRecoveryTimers.has(group)) return;
+    if (group === 'scene') sceneRecoveryPending = true;
+    if (group === 'room') roomRecoveryPending = true;
+    const delays = [2000, 5000, 10000, 20000, 30000];
+    const attempt = realtimeRecoveryAttempts.get(group) || 0;
+    const delay = delays[Math.min(attempt, delays.length - 1)];
+    realtimeRecoveryAttempts.set(group, attempt + 1);
+    const roomAtSchedule = currentRoomId, sceneAtSchedule = currentSceneId;
+    const timer = setTimeout(() => {
+      realtimeRecoveryTimers.delete(group);
+      if (!currentRoomId || currentRoomId !== roomAtSchedule) return;
+      if (group === 'scene') { if (currentSceneId === sceneAtSchedule) subscribeRealtimeChannels(sceneAtSchedule); }
+      else if (group === 'camera') setupCameraChannel(roomAtSchedule);
+      else if (group === 'chat') Chat.setup(roomAtSchedule);
+      else if (group === 'room') setupRoomSyncChannel(roomAtSchedule);
+    }, delay);
+    realtimeRecoveryTimers.set(group, timer);
+  }
   function renderRealtimeChannelStatus() {
     const entries = [...realtimeChannelStates.entries()];
     const terminal = ['CHANNEL_ERROR', 'TIMED_OUT', 'CLOSED'];
@@ -1681,6 +1720,32 @@
     if (status === 'CLOSED') return;
     realtimeChannelStates.set(name, status);
     renderRealtimeChannelStatus();
+    if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') { scheduleRealtimeRecovery(name); return; }
+    if (status !== 'SUBSCRIBED') return;
+    const group = recoveryGroupFor(name);
+    if (group === 'scene') {
+      const allReady = sceneRealtimeNames.every(channelName => realtimeChannelStates.get(channelName) === 'SUBSCRIBED');
+      if (allReady) {
+        cancelRealtimeRecovery('scene');
+        if (sceneRecoveryPending && !sceneRecoveryLoading && currentSceneId) {
+          const recoveredSceneId = currentSceneId;
+          sceneRecoveryPending = false; sceneRecoveryLoading = true;
+          loadSceneContent(recoveredSceneId).catch(err => console.warn('Falha ao sincronizar cena após reconexão:', err)).finally(() => { sceneRecoveryLoading = false; });
+        }
+      }
+    } else {
+      cancelRealtimeRecovery(group);
+      if (group === 'room' && roomRecoveryPending) {
+        roomRecoveryPending = false;
+        const recoveredRoomId = currentRoomId;
+        sb.from('rooms').select('active_scene_id').eq('id', recoveredRoomId).maybeSingle().then(({ data, error }) => {
+          if (error) { console.warn('Falha ao conferir cena após reconexão:', error); return; }
+          if (currentRoomId !== recoveredRoomId || !data || !data.active_scene_id || data.active_scene_id === currentSceneId) return;
+          currentSceneId = data.active_scene_id;
+          loadSceneContent(currentSceneId).then(() => subscribeRealtimeChannels(currentSceneId)).catch(err => console.warn('Falha ao recuperar cena atual:', err));
+        });
+      }
+    }
   }
   function clearRealtimeChannelState(name) {
     realtimeChannelStates.delete(name);
@@ -4257,6 +4322,7 @@
   }
 
   function subscribeRealtimeChannels(sceneId) {
+    cancelRealtimeRecovery('scene');
     if (tokensChannel) sb.removeChannel(tokensChannel);
     if (mapElementsChannel) sb.removeChannel(mapElementsChannel);
     if (fogElementsChannel) sb.removeChannel(fogElementsChannel);
@@ -4359,6 +4425,7 @@
   }
 
   function setupCameraChannel(roomId) {
+    cancelRealtimeRecovery('camera');
     stopCameraLive(true);
     if (cameraChannel) sb.removeChannel(cameraChannel);
     clearRealtimeChannelState('camera');
@@ -6188,6 +6255,7 @@
 
     // ---------- ligação com a sala ----------
     function setup(roomId) {
+      cancelRealtimeRecovery('chat');
       teardown();
       const first = document.createElement('div'); first.className = 'chatSys'; first.dataset.intro = '1';
       first.textContent = 'Chat temporário: nada fica salvo. Role dados digitando 2d20+10, d100, 4d6kh3… (/ajuda)';
@@ -6204,6 +6272,7 @@
         });
     }
     function teardown() {
+      cancelRealtimeRecovery('chat');
       if (channel) { sb.removeChannel(channel); channel = null; }
       clearRealtimeChannelState('chat');
       ready = false; unread = 0; paintBadge();
@@ -6234,6 +6303,21 @@
 
     return { setup, teardown };
   })();
+
+  function setupRoomSyncChannel(roomId) {
+    cancelRealtimeRecovery('room');
+    if (roomSyncChannel) sb.removeChannel(roomSyncChannel);
+    clearRealtimeChannelState('room');
+    roomSyncChannel = sb.channel('room-sync-' + roomId)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'rooms', filter: 'id=eq.' + roomId }, async (payload) => {
+        if (payload.new && payload.new.active_scene_id !== currentSceneId) {
+          currentSceneId = payload.new.active_scene_id;
+          await loadSceneContent(currentSceneId);
+          subscribeRealtimeChannels(currentSceneId);
+        }
+      })
+      .subscribe((status) => updateRealtimeChannelState('room', status));
+  }
 
   async function enterRoom(roomId) {
     document.body.classList.remove('player-preview');
@@ -6279,17 +6363,7 @@
     renderLibrary();
     if (currentRole === 'mestre') loadLibrary();
 
-    if (roomSyncChannel) sb.removeChannel(roomSyncChannel);
-    clearRealtimeChannelState('room');
-    roomSyncChannel = sb.channel('room-sync-' + roomId)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'rooms', filter: `id=eq.${roomId}` }, async (payload) => {
-        if (payload.new && payload.new.active_scene_id !== currentSceneId) {
-          currentSceneId = payload.new.active_scene_id;
-          await loadSceneContent(currentSceneId);
-          subscribeRealtimeChannels(currentSceneId);
-        }
-      })
-      .subscribe((status) => updateRealtimeChannelState('room', status));
+    setupRoomSyncChannel(roomId);
 
     startRoomRoleSync(roomId);
   }
@@ -6431,6 +6505,7 @@
   btnReturnLobby.addEventListener('click', () => {
     clearInterval(roleSyncTimer);
     roleSyncTimer = null;
+    cancelAllRealtimeRecovery();
     currentRoomId = null;
     currentSceneId = null;
     currentRole = null;
