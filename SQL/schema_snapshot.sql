@@ -1,6 +1,6 @@
 -- =====================================================================
 -- ANOMALY VTT - SUPABASE DATABASE SNAPSHOT
--- Capturado do projeto conectado em 2026-11-19.
+-- Capturado do projeto conectado em 2026-11-24.
 --
 -- Snapshot de estrutura, sem dados de usuários/senhas/mesas/tokens/arquivos.
 -- Inclui tabelas, constraints, funções RPC, policies RLS e índices.
@@ -116,8 +116,10 @@ CREATE TABLE public.lights (
   color text DEFAULT '#ffaa33'::text,
   intensity double precision DEFAULT 1.0,
   z bigint DEFAULT 0,
+  token_id uuid,
   CONSTRAINT lights_pkey PRIMARY KEY (id),
-  CONSTRAINT lights_scene_id_fkey FOREIGN KEY (scene_id) REFERENCES scenes(id) ON DELETE CASCADE
+  CONSTRAINT lights_scene_id_fkey FOREIGN KEY (scene_id) REFERENCES scenes(id) ON DELETE CASCADE,
+  CONSTRAINT lights_token_id_fkey FOREIGN KEY (token_id) REFERENCES tokens(id) ON DELETE SET NULL
 );
 
 CREATE TABLE public.map_elements (
@@ -218,6 +220,7 @@ CREATE POLICY "Upload tabletop" ON storage.objects AS permissive FOR INSERT TO p
 -- 4. Índices adicionais (PK/UNIQUE são criados pelas constraints)
 
 CREATE INDEX drawings_scene_idx ON public.drawings USING btree (scene_id);
+CREATE INDEX idx_lights_token_id ON public.lights USING btree (token_id) WHERE (token_id IS NOT NULL);
 
 -- 5. Funções do schema public
 
