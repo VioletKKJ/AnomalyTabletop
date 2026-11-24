@@ -2959,13 +2959,16 @@
       if (isSolid) blockers.push({ x1: +w.x1, y1: +w.y1, x2: +w.x2, y2: +w.y2 });
     });
     lightPolys = (cachedLights || []).map(l => {
+      const linkedToken = l.token_id ? tokenData.get(l.token_id) : null;
+      // Um token oculto não deve revelar sua posição aos jogadores por meio da iluminação.
+      if (linkedToken && linkedToken.hidden && document.body.classList.contains('jogador')) return null;
       const pos = getResolvedLightPosition(l);
       // Mantém raio, cor e intensidade ligados ao objeto original para previews ao vivo.
       const resolved = Object.create(l);
       resolved.x = pos.x;
       resolved.y = pos.y;
       return { light: resolved, pts: visibilityPolygon(resolved, blockers) };
-    });
+    }).filter(Boolean);
     markLightingDirty();
   }
 
