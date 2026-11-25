@@ -6492,7 +6492,7 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
     async function refresh(){
       if(!room||!sb||projectorMode)return;const id=++seq;
       try{const data=await rpc('items_list',{p_room_id:room});if(id!==seq||!room)return;const next=Array.isArray(data)?data:[],old=new Map(items.map(x=>[x.id,x.shared_at]));items=next;
-        if(!master()){if(!eo.classList.contains('hidden'))closeEdit();if(!so.classList.contains('hidden'))closeShare();if(loaded){const fresh=next.filter(x=>old.get(x.id)!==x.shared_at&&isNew(x));if(fresh.length===1)showLibToast('Você recebeu um item: '+fresh[0].name);else if(fresh.length>1)showLibToast('Você recebeu '+fresh.length+' itens');}Object.keys(seen).forEach(k=>{if(!next.some(x=>x.id===k))delete seen[k];});saveSeen();}
+        if(!master()){if(mirror){sendMirror('close');mirror=false;V.mirror.classList.remove('on');}if(!eo.classList.contains('hidden'))closeEdit();if(!so.classList.contains('hidden'))closeShare();if(loaded){const fresh=next.filter(x=>old.get(x.id)!==x.shared_at&&isNew(x));if(fresh.length===1)showLibToast('Você recebeu um item: '+fresh[0].name);else if(fresh.length>1)showLibToast('Você recebeu '+fresh.length+' itens');}Object.keys(seen).forEach(k=>{if(!next.some(x=>x.id===k))delete seen[k];});saveSeen();}
         loaded=true;err.textContent='';syncViewer();render();badgeUpdate();
       }catch(e){if(id!==seq)return;err.textContent=errorText(e);render();}
     }
