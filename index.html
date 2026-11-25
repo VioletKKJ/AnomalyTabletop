@@ -43,8 +43,8 @@
     box-shadow: 0 28px 90px rgba(0,0,0,.55), inset 0 1px rgba(255,255,255,.04); backdrop-filter: blur(18px); }
   .lobbyHeader { display:flex; align-items:center; justify-content:space-between; gap:18px; padding-bottom:24px; border-bottom:1px solid rgba(255,255,255,.07); }
   .lobbyBrand { display:flex; align-items:center; gap:14px; min-width:0; }
-  .lobbyBrandMark { width:52px; height:52px; display:grid; place-items:center; flex:none; border-radius:16px; color:#fff; font-size:25px;
-    background:linear-gradient(145deg,#8d45c7,#45256e); box-shadow:0 8px 28px rgba(130,65,190,.3); }
+  .lobbyBrandMark { width:58px; height:58px; display:grid; place-items:center; flex:none; overflow:hidden; border-radius:16px; }
+  .lobbyBrandMark img { display:block; width:100%; height:100%; object-fit:contain; }
   .lobbyBrand h1 { font-size:clamp(23px,3vw,32px); margin:0; font-weight:850; letter-spacing:1.5px;
     background:linear-gradient(120deg,#f0d9ff,#ad70df 65%,#8f9fe8); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
   .lobbyBrand .subtitle { color:var(--text-dim); font-size:13px; margin:5px 0 0; text-align:left; }
@@ -882,7 +882,7 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
     <div class="lobbyCard">
       <header class="lobbyHeader">
         <div class="lobbyBrand">
-          <div class="lobbyBrandMark"><svg class="uiIcon" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.5l2.3 7.2 7.2 2.3-7.2 2.3L12 21.5l-2.3-7.2L2.5 12l7.2-2.3z" fill="currentColor"/></svg></div>
+          <div class="lobbyBrandMark"><img src="assets/images/Nomy.png" alt="Nomy"></div>
           <div>
             <h1>ANOMALY VTT</h1>
             <div class="subtitle">Seu espaço para criar histórias.</div>
