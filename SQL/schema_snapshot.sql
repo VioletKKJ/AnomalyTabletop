@@ -1,6 +1,6 @@
 -- =====================================================================
 -- ANOMALY VTT - SUPABASE DATABASE SNAPSHOT
--- Capturado do projeto conectado em 2026-11-24.
+-- Capturado do projeto conectado em 2026-11-24; atualizado com itens compartilhados em 2026-11-25.
 --
 -- Snapshot de estrutura, sem dados de usuários/senhas/mesas/tokens/arquivos.
 -- Inclui tabelas, constraints, funções RPC, policies RLS e índices.
