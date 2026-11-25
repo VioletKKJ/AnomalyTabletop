@@ -41,6 +41,9 @@ O frontend é uma página estática (\`index.html\`) hospedada pelo GitHub Pages
 ### Comunicação e dados
 - Chat da mesa com mensagens sincronizadas.
 - Rolagem de dados com expressões e resultados exibidos no tabuleiro.
+- Itens compartilhados pelo mestre com todos os jogadores ou com uma pessoa específica.
+- Visualizador 2.5D para examinar imagens com rotação, inclinação, zoom, perspectiva, sombra e brilho.
+- Espelhamento da inspeção de itens no modo projetor.
 
 ## Tecnologias e arquitetura
 
@@ -58,6 +61,7 @@ As credenciais de conexão do Supabase são informadas na primeira configuraçã
 
 - \`index.html\`: aplicação completa, incluindo interface, estilos e lógica do frontend.
 - \`SQL/schema_snapshot.sql\`: snapshot da estrutura do banco conectado, incluindo tabelas, funções, índices e políticas. Não contém os dados das mesas ou dos usuários.
+- \`SQL/shared_items.sql\`: criação da tabela e das RPCs do sistema de itens compartilhados.
 - \`SQL/\` e \`supabase/sql/\`: scripts SQL de alterações e funções específicas do banco.
 
 ### Sobre o snapshot SQL
@@ -100,7 +104,7 @@ O arquivo de entrada já se chama \`index.html\`, portanto não é necessário r
 
 - O projeto é desenvolvido para uso pessoal com um grupo pequeno de amigos, não como um serviço público multiusuário.
 - A aplicação depende de conexão com a internet e da disponibilidade do Supabase.
-- Em alguns momentos, pode ser necessário atualizar a página (F5) para recuperar o funcionamento normal. Esse comportamento ainda merece investigação e não deve ser considerado uma solução definitiva.
+- Os canais Realtime contam com monitoramento e tentativa de reconexão automática. Se uma falha persistir, ainda pode ser necessário atualizar a página.
 - O uso do plano gratuito do Supabase está sujeito aos limites e às regras vigentes da plataforma, que podem mudar.
 - Não compartilhe credenciais privadas nem coloque chaves administrativas no repositório.
 
