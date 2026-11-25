@@ -906,3 +906,114 @@ begin
 end;
 $function$
 
+
+-- 6. Itens compartilhados
+-- Tabela protegida por RLS sem policies. Leitura/escrita somente pelas RPCs items_*.
+CREATE TABLE public.shared_items (
+  id uuid DEFAULT gen_random_uuid() NOT NULL,
+  room_id uuid NOT NULL,
+  name text NOT NULL,
+  description text,
+  image_url text NOT NULL,
+  is_shared boolean DEFAULT false NOT NULL,
+  target_user_id uuid,
+  shared_at timestamp with time zone,
+  created_by uuid,
+  created_at timestamp with time zone DEFAULT now() NOT NULL,
+  updated_at timestamp with time zone DEFAULT now() NOT NULL,
+  CONSTRAINT shared_items_pkey PRIMARY KEY (id),
+  CONSTRAINT shared_items_room_id_fkey FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE,
+  CONSTRAINT shared_items_target_user_id_fkey FOREIGN KEY (target_user_id) REFERENCES profiles(id) ON DELETE CASCADE,
+  CONSTRAINT shared_items_created_by_fkey FOREIGN KEY (created_by) REFERENCES profiles(id) ON DELETE SET NULL
+);
+ALTER TABLE public.shared_items ENABLE ROW LEVEL SECURITY;
+CREATE INDEX idx_shared_items_room ON public.shared_items USING btree (room_id);
+
+CREATE OR REPLACE FUNCTION public._lib_is_room_master(p_user_id uuid,p_room_id uuid)
+ RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER
+ SET search_path TO 'public','extensions'
+AS $function$
+  select exists (select 1 from room_members where room_id=p_room_id and user_id=p_user_id and role='mestre');
+$function$;
+
+CREATE OR REPLACE FUNCTION public._items_is_member(p_user_id uuid,p_room_id uuid)
+ RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER
+ SET search_path TO 'public','extensions'
+AS $function$
+  select exists (select 1 from room_members where room_id=p_room_id and user_id=p_user_id);
+$function$;
+
+CREATE OR REPLACE FUNCTION public.items_list(p_user_id uuid,p_room_id uuid)
+ RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER
+ SET search_path TO 'public','extensions'
+AS $function$
+declare v_master boolean;
+begin
+  if p_user_id is null or p_room_id is null or not public._items_is_member(p_user_id,p_room_id) then
+    raise exception 'Você não participa desta mesa.' using errcode='42501';
+  end if;
+  v_master:=public._lib_is_room_master(p_user_id,p_room_id);
+  return coalesce((select jsonb_agg(to_jsonb(i) order by i.created_at,i.id)
+    from public.shared_items i where i.room_id=p_room_id
+    and (v_master or (i.is_shared and (i.target_user_id is null or i.target_user_id=p_user_id)))),'[]'::jsonb);
+end;
+$function$;
+
+CREATE OR REPLACE FUNCTION public.items_save(p_user_id uuid,p_room_id uuid,p_item_id uuid,p_name text,p_description text,p_image_url text)
+ RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER
+ SET search_path TO 'public','extensions'
+AS $function$
+declare v_name text; v_desc text; v_row public.shared_items;
+begin
+  if p_user_id is null or p_room_id is null or not public._lib_is_room_master(p_user_id,p_room_id) then
+    raise exception 'Somente o mestre pode gerenciar itens.' using errcode='42501';
+  end if;
+  v_name:=left(btrim(coalesce(p_name,'')),60);
+  if v_name='' then raise exception 'Dê um nome ao item.' using errcode='22023'; end if;
+  v_desc:=nullif(left(btrim(coalesce(p_description,'')),1500),'');
+  if p_image_url is null or p_image_url !~* '^https?://' then raise exception 'Imagem inválida.' using errcode='22023'; end if;
+  if p_item_id is null then
+    insert into public.shared_items(room_id,name,description,image_url,created_by) values(p_room_id,v_name,v_desc,p_image_url,p_user_id) returning * into v_row;
+  else
+    update public.shared_items set name=v_name,description=v_desc,image_url=p_image_url,updated_at=now() where id=p_item_id and room_id=p_room_id returning * into v_row;
+    if not found then raise exception 'Item não encontrado.' using errcode='P0002'; end if;
+  end if;
+  return to_jsonb(v_row);
+end;
+$function$;
+
+CREATE OR REPLACE FUNCTION public.items_share(p_user_id uuid,p_item_id uuid,p_shared boolean,p_target uuid)
+ RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER
+ SET search_path TO 'public','extensions'
+AS $function$
+declare v_room uuid; v_on boolean:=coalesce(p_shared,false); v_row public.shared_items;
+begin
+  select room_id into v_room from public.shared_items where id=p_item_id;
+  if v_room is null or not public._lib_is_room_master(p_user_id,v_room) then raise exception 'Somente o mestre pode compartilhar itens.' using errcode='42501'; end if;
+  if v_on and p_target is not null and not public._items_is_member(p_target,v_room) then raise exception 'O jogador escolhido não participa desta mesa.' using errcode='22023'; end if;
+  update public.shared_items set is_shared=v_on,target_user_id=case when v_on then p_target else null end,shared_at=case when v_on then now() else shared_at end,updated_at=now() where id=p_item_id returning * into v_row;
+  return to_jsonb(v_row);
+end;
+$function$;
+
+CREATE OR REPLACE FUNCTION public.items_delete(p_user_id uuid,p_item_id uuid)
+ RETURNS void LANGUAGE plpgsql SECURITY DEFINER
+ SET search_path TO 'public','extensions'
+AS $function$
+declare v_room uuid;
+begin
+  select room_id into v_room from public.shared_items where id=p_item_id;
+  if v_room is null or not public._lib_is_room_master(p_user_id,v_room) then raise exception 'Somente o mestre pode apagar itens.' using errcode='42501'; end if;
+  delete from public.shared_items where id=p_item_id;
+end;
+$function$;
+
+REVOKE EXECUTE ON FUNCTION public._items_is_member(uuid,uuid) FROM public,anon,authenticated;
+REVOKE EXECUTE ON FUNCTION public.items_list(uuid,uuid) FROM public;
+REVOKE EXECUTE ON FUNCTION public.items_save(uuid,uuid,uuid,text,text,text) FROM public;
+REVOKE EXECUTE ON FUNCTION public.items_share(uuid,uuid,boolean,uuid) FROM public;
+REVOKE EXECUTE ON FUNCTION public.items_delete(uuid,uuid) FROM public;
+GRANT EXECUTE ON FUNCTION public.items_list(uuid,uuid) TO anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.items_save(uuid,uuid,uuid,text,text,text) TO anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.items_share(uuid,uuid,boolean,uuid) TO anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.items_delete(uuid,uuid) TO anon,authenticated;
