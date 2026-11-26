@@ -6958,6 +6958,7 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
 
     function setup(id) { reset(); roomId = id; load(); renderList(); }
     function reset() {
+      if (shared && isMaster()) send('media_stop', {});
       closeViewer(); closePanel();
       shared = null; sharedNonce = 0; unseen = false; roomId = null; lib = []; refreshNotice();
     }
@@ -7169,6 +7170,7 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
     clearInterval(roleSyncTimer);
     roleSyncTimer = null;
     cancelAllRealtimeRecovery();
+    Media.reset();
     currentRoomId = null;
     currentSceneId = null;
     currentRole = null;
@@ -7177,7 +7179,6 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
     clearRealtimeChannelState('camera');
     Items.teardown();
     Chat.teardown();
-    Media.reset();
     if (roomSyncChannel) { sb.removeChannel(roomSyncChannel); roomSyncChannel = null; }
     clearRealtimeChannelState('room');
     if (tokensChannel) sb.removeChannel(tokensChannel);
