@@ -1384,9 +1384,9 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
       <strong>Mídia</strong>
       <button id="mdClose" type="button" title="Fechar"><svg class="uiIcon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
     </div>
-    <p class="mdNote">Cole um link direto de imagem, vídeo ou áudio (grátis) ou envie um arquivo de até 20 MB. A biblioteca fica salva neste navegador.</p>
+    <p class="mdNote">Adicione links diretos, YouTube ou Google Drive, ou envie um arquivo para transmissão temporária. Arquivos enviados ao VTT são apagados ao encerrar a transmissão. Links externos não ocupam o armazenamento da mesa.</p>
     <input type="text" id="mdTitle" maxlength="80" placeholder="Título (opcional)" autocomplete="off">
-    <input type="text" id="mdUrl" placeholder="https://…/arquivo.mp4" autocomplete="off" autocapitalize="off" spellcheck="false">
+    <input type="text" id="mdUrl" placeholder="Link direto, YouTube ou Google Drive…" autocomplete="off" autocapitalize="off" spellcheck="false">
     <div class="mdRow2">
       <select id="mdType" aria-label="Tipo">
         <option value="">Tipo: automático</option>
@@ -1400,7 +1400,7 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
       <button id="mdAdd" class="primary" type="button">Adicionar</button>
     </div>
     <div id="mdStatus"></div>
-    <input type="text" id="mdSearch" placeholder="Buscar na biblioteca…" autocomplete="off">
+    <input type="text" id="mdSearch" placeholder="Buscar links salvos neste navegador…" autocomplete="off">
     <div id="mdList"></div>
   </div>
   <div id="mediaViewer" class="hidden" role="dialog" aria-label="Mídia compartilhada">
@@ -6685,7 +6685,7 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
       video: ['mp4', 'webm', 'mov', 'm4v', 'ogv'],
       audio: ['mp3', 'wav', 'ogg', 'oga', 'm4a', 'aac', 'flac', 'opus']
     };
-    const MAX_UPLOAD = 20 * 1024 * 1024;
+    const MAX_UPLOAD = 45 * 1024 * 1024;
 
     let lib = [], roomId = null;
     let shared = null, sharedNonce = 0;
@@ -6724,9 +6724,13 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
       if (!/^[\w-]{1,64}$/.test(id) || !url || !TYPES[o.type]) return null;
       const it = { id, title: String(o.title || 'Mídia').slice(0, 80), url, type: o.type };
       if (typeof o.path === 'string' && /^media\/[\w.-]{1,80}$/.test(o.path)) it.path = o.path;
+      if (typeof o.embedUrl === 'string') {
+        const embed = safeUrl(o.embedUrl);
+        if (embed && (/^https:\/\/www\.youtube-nocookie\.com\/embed\//.test(embed) || /^https:\/\/drive\.google\.com\/file\/d\/[\w-]+\/preview/.test(embed))) it.embedUrl = embed;
+      }
       return it;
     }
-    const pub = (it) => ({ id: it.id, title: it.title, url: it.url, type: it.type });
+    const pub = (it) => ({ id: it.id, title: it.title, url: it.url, type: it.type, path: it.path || null, embedUrl: it.embedUrl || null });
 
     function mk(tag, cls, html) { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; }
     function status(msg, err) { mdStatus.textContent = msg || ''; mdStatus.classList.toggle('err', !!err); }
@@ -6797,13 +6801,39 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
       }
     }
 
-    function addFromUrl() {
-      const url = safeUrl(mdUrl.value);
-      if (!url) { status('Informe um link http(s) válido.', true); return; }
+    function parseExternalMedia(raw) {
+      const url = safeUrl(raw);
+      if (!url) return null;
+      try {
+        const u = new URL(url), host = u.hostname.toLowerCase();
+        let id = '', embedUrl = '';
+        if (host === 'youtu.be' || host.endsWith('youtube.com') || host.endsWith('youtube-nocookie.com')) {
+          if (host === 'youtu.be') id = u.pathname.split('/').filter(Boolean)[0] || '';
+          else if (u.pathname === '/watch') id = u.searchParams.get('v') || '';
+          else if (/^\/(shorts|embed|live)\//.test(u.pathname)) id = u.pathname.split('/')[2] || '';
+          if (!/^[\w-]{6,20}$/.test(id)) return null;
+          embedUrl = 'https://www.youtube-nocookie.com/embed/' + id + '?autoplay=1&rel=0';
+          return { url, type: 'video', embedUrl, provider: 'YouTube' };
+        }
+        if (host === 'drive.google.com' || host === 'docs.google.com') {
+          const m = u.pathname.match(/\/file\/d\/([\w-]+)/) || u.pathname.match(/\/document\/d\/([\w-]+)/) || u.pathname.match(/\/presentation\/d\/([\w-]+)/) || u.pathname.match(/\/spreadsheets\/d\/([\w-]+)/);
+          id = (m && m[1]) || u.searchParams.get('id') || '';
+          if (!/^[\w-]{10,}$/.test(id)) return null;
+          embedUrl = 'https://drive.google.com/file/d/' + id + '/preview';
+          return { url, type: 'video', embedUrl, provider: 'Google Drive' };
+        }
+      } catch (_) {}
       const type = mdType.value || detect(url);
-      if (!type) { status('Não consegui identificar o tipo. Escolha Imagem, Vídeo ou Áudio.', true); return; }
-      addItem({ id: uid(), title: (mdTitle.value.trim() || nameFromUrl(url)).slice(0, 80), url, type });
-      mdUrl.value = ''; mdTitle.value = ''; status('Mídia adicionada.');
+      return type ? { url, type, provider: 'Link externo' } : null;
+    }
+    function addFromUrl() {
+      const parsed = parseExternalMedia(mdUrl.value);
+      if (!parsed) { status('Link não reconhecido. Use um link direto de imagem/vídeo/áudio, YouTube ou Google Drive.', true); return; }
+      const it = { id: uid(), title: (mdTitle.value.trim() || nameFromUrl(parsed.url)).slice(0, 80), url: parsed.url, type: parsed.type };
+      if (parsed.embedUrl) it.embedUrl = parsed.embedUrl;
+      addItem(it);
+      mdUrl.value = ''; mdTitle.value = ''; mdType.value = '';
+      status((parsed.provider || 'Mídia') + ' adicionado à lista local. Clique em Compartilhar para transmitir.');
     }
     mdAdd.addEventListener('click', addFromUrl);
     mdUrl.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter') { e.preventDefault(); addFromUrl(); } });
@@ -6816,7 +6846,7 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
       if (!f) return;
       const type = mdType.value || detect(f.name, f.type);
       if (!type) { status('Formato não reconhecido. Escolha o tipo manualmente.', true); return; }
-      if (f.size > MAX_UPLOAD) { status('Arquivo acima de 20 MB. Use um link externo para economizar o armazenamento.', true); return; }
+      if (f.size > MAX_UPLOAD) { status('Arquivo acima de 45 MB. No plano atual, o limite do Storage é 50 MB por arquivo. Use YouTube, Drive ou link externo.', true); return; }
       status('Enviando…');
       try {
         const ext = ((f.name.split('.').pop() || 'bin').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 5)) || 'bin';
@@ -6826,7 +6856,9 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
         const { data } = sb.storage.from('tabletop').getPublicUrl(path);
         const it = clean({ id: uid(), title: (mdTitle.value.trim() || f.name.replace(/\.[^.]+$/, '')).slice(0, 80), url: data.publicUrl, type, path });
         if (!it) throw new Error('resposta inválida do armazenamento');
-        addItem(it); mdTitle.value = ''; status('Arquivo adicionado.');
+        mdTitle.value = ''; mdType.value = '';
+        share(it);
+        status('Arquivo enviado e transmitido temporariamente. Ele será apagado ao encerrar a transmissão.');
       } catch (err) { status('Falha no envio: ' + (err.message || err), true); }
     });
 
@@ -6882,8 +6914,17 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
         const v = document.createElement('video');
         v.controls = true; v.playsInline = true; v.preload = 'metadata'; v.setAttribute('playsinline', '');
         v.addEventListener('error', () => showError(LOAD_ERR));
-        v.src = it.url; mvBody.appendChild(v);
-        v.play().catch(() => {});
+        if (it.embedUrl) {
+          const frame = document.createElement('iframe');
+          frame.src = it.embedUrl; frame.title = it.title; frame.allow = 'autoplay; encrypted-media; picture-in-picture; fullscreen';
+          frame.allowFullscreen = true; frame.referrerPolicy = 'strict-origin-when-cross-origin';
+          frame.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-presentation allow-forms');
+          frame.style.cssText = 'width:100%;height:100%;min-height:240px;border:0;border-radius:10px;background:#000';
+          mvBody.appendChild(frame);
+        } else {
+          v.src = it.url; mvBody.appendChild(v);
+          v.play().catch(() => {});
+        }
       } else {
         const card = mk('div', 'mvAudio');
         card.appendChild(mk('div', 'mvBig', ico('music', 56)));
@@ -6924,11 +6965,22 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
       if (!send('media_share', { item: shared, n: sharedNonce })) status('Sem conexão com a mesa: os jogadores ainda não receberam.', true);
       openViewer(it); renderList();
     }
-    function stopShare() {
+    async function stopShare() {
       if (!shared) return;
+      const ending = shared;
       shared = null; sharedNonce = 0;
       send('media_stop', {});
       closeViewer(); renderList();
+      if (ending.path) {
+        try {
+          const { error } = await sb.storage.from('tabletop').remove([ending.path]);
+          if (error) throw error;
+          status('Transmissão encerrada e arquivo temporário apagado.');
+        } catch (e) {
+          console.warn('Falha ao apagar arquivo temporário:', e);
+          status('Transmissão encerrada, mas o arquivo temporário não pôde ser apagado automaticamente. Verifique o Storage.', true);
+        }
+      }
     }
     function onShare(p) {
       if (isMaster() || projectorMode || !p) return;
@@ -6958,7 +7010,13 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
 
     function setup(id) { reset(); roomId = id; load(); renderList(); }
     function reset() {
-      if (shared && isMaster()) send('media_stop', {});
+      const ending = shared;
+      if (ending && isMaster()) {
+        send('media_stop', {});
+        if (ending.path) sb.storage.from('tabletop').remove([ending.path]).then(({ error }) => {
+          if (error) console.warn('Falha ao limpar mídia temporária ao sair da mesa:', error);
+        });
+      }
       closeViewer(); closePanel();
       shared = null; sharedNonce = 0; unseen = false; roomId = null; lib = []; refreshNotice();
     }
