@@ -841,6 +841,62 @@
 .ivLayer.gloss{-webkit-mask-image:var(--ivmask);mask-image:var(--ivmask);-webkit-mask-size:100% 100%;mask-size:100% 100%;background-image:radial-gradient(circle at var(--gx,50%) var(--gy,30%),rgba(255,255,255,var(--go,.4)),transparent 58%)}
 .ivInfo{width:min(640px,calc(100% - 24px));max-height:26vh;margin:0 auto 6px;padding:10px 14px;overflow-y:auto;touch-action:pan-y;border-radius:12px;border:1px solid rgba(255,255,255,.08);background:rgba(18,19,26,.72);backdrop-filter:blur(10px)}.ivDesc{font-size:13px;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere;-webkit-user-select:text;user-select:text}.ivHint{text-align:center;font-size:10.5px;color:var(--text-dim);padding:2px 12px max(10px,env(safe-area-inset-bottom,10px))}
 body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:none!important}body.projetor .ivDesc{font-size:18px}body.projetor .ivTitle{font-size:24px}@media(prefers-reduced-motion:reduce){#itemViewer{animation:none}.ivScene{transition:none}}
+
+  /* ===== Sistema de Mídia ===== */
+  #mediaPanel { position: fixed; top: 70px; left: 50%; transform: translateX(-50%); width: min(380px, calc(100vw - 16px));
+    max-height: calc(100vh - 90px); overflow-y: auto; z-index: 40; padding: 12px 14px 14px;
+    background: rgba(24, 25, 34, 0.97); border: 1px solid rgba(255, 255, 255, 0.09); border-radius: 14px;
+    box-shadow: 0 16px 44px rgba(0, 0, 0, 0.55); backdrop-filter: blur(16px); }
+  #mediaPanel .mdHead { display: flex; align-items: center; gap: 8px; }
+  #mediaPanel .mdHead strong { flex: 1; font-size: 14px; }
+  #mediaPanel .mdHead button { min-height: 28px; padding: 3px 10px; }
+  #mediaPanel .mdNote { margin: 4px 0 8px; font-size: 11px; line-height: 1.45; color: var(--text-dim); }
+  #mediaPanel input[type=text], #mediaPanel select { width: 100%; padding: 8px 10px; margin: 0 0 6px; border-radius: 8px;
+    border: 1px solid var(--panel-border); background: var(--bg); color: var(--text); font-size: 12px; -webkit-user-select: text; user-select: text; }
+  #mediaPanel input[type=text]:focus, #mediaPanel select:focus { outline: none; border-color: var(--accent); }
+  #mediaPanel .mdRow2 { display: flex; gap: 6px; margin-bottom: 6px; }
+  #mediaPanel .mdRow2 > * { flex: 1; justify-content: center; margin: 0; min-width: 0; }
+  #mdStatus { min-height: 16px; font-size: 11px; color: var(--text-dim); margin-bottom: 6px; }
+  #mdStatus.err { color: var(--danger); }
+  #mdList { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
+  .mdEmpty { text-align: center; color: var(--text-dim); font-size: 12px; padding: 18px 8px; line-height: 1.5; }
+  .mdItem { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding: 8px 9px; border-radius: 10px;
+    background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.07); }
+  .mdItem.live { border-color: rgba(157, 78, 223, 0.7); background: rgba(157, 78, 223, 0.14); }
+  .mdIc { display: inline-flex; color: #d9c2ef; }
+  .mdName { flex: 1; min-width: 0; font-size: 12.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: text; }
+  .mdActs { width: 100%; display: flex; gap: 5px; }
+  .mdActs button { min-height: 30px; padding: 4px 9px; justify-content: center; }
+  .mdActs button.primary, .mdActs button.danger.txt { flex: 1; }
+  #mediaViewer { position: fixed; inset: 0; z-index: 60015; display: flex; flex-direction: column;
+    background: rgba(6, 7, 11, 0.93); backdrop-filter: blur(8px); }
+  .mvHead { display: flex; align-items: center; gap: 8px; padding: max(10px, env(safe-area-inset-top, 10px)) 12px 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.07); flex-wrap: wrap; }
+  .mvHead .mvIcon { display: inline-flex; color: #d9c2ef; }
+  .mvTitle { flex: 1; min-width: 80px; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mvTools { display: inline-flex; align-items: center; gap: 4px; }
+  .mvTools button { min-width: 34px; min-height: 34px; padding: 0 8px; justify-content: center; }
+  .mvTools .mvZoom { min-width: 44px; text-align: center; font-size: 12px; color: var(--text-dim); font-variant-numeric: tabular-nums; }
+  .mvBody { flex: 1; min-height: 0; position: relative; display: flex; align-items: center; justify-content: center;
+    overflow: hidden; padding: 10px; padding-bottom: max(10px, env(safe-area-inset-bottom, 10px)); touch-action: none; }
+  .mvBody img { max-width: 100%; max-height: 100%; object-fit: contain; transform-origin: center; will-change: transform;
+    touch-action: none; -webkit-user-drag: none; cursor: grab; }
+  .mvBody video { max-width: 100%; max-height: 100%; width: 100%; background: #000; border-radius: 10px; }
+  .mvAudio { width: min(420px, 100%); display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 28px 20px;
+    border-radius: 18px; background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08); }
+  .mvAudio .mvBig { color: #d9c2ef; }
+  .mvAudio .mvAudioName { font-size: 15px; font-weight: 700; text-align: center; overflow-wrap: anywhere; }
+  .mvAudio audio { width: 100%; }
+  .mvError { color: #ff9c9c; font-size: 13px; text-align: center; padding: 20px; max-width: 360px; line-height: 1.5; }
+  #mediaNotice { position: fixed; right: 12px; bottom: max(12px, env(safe-area-inset-bottom, 12px)); z-index: 45;
+    max-width: min(300px, calc(100vw - 24px)); padding: 9px 14px; border-radius: 999px; font-size: 12px; font-weight: 600;
+    color: #fff; background: var(--accent-gradient); border: 1px solid rgba(255, 255, 255, 0.18);
+    box-shadow: 0 6px 22px rgba(123, 44, 191, 0.5); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #mediaNotice.unseen { animation: mediaPulse 1.4s ease-in-out infinite; }
+  @keyframes mediaPulse { 0%, 100% { box-shadow: 0 6px 22px rgba(123, 44, 191, 0.5); } 50% { box-shadow: 0 0 0 6px rgba(157, 78, 223, 0.35), 0 6px 22px rgba(123, 44, 191, 0.7); } }
+  @media (prefers-reduced-motion: reduce) { #mediaNotice.unseen { animation: none; } }
+  body.projetor #mediaPanel, body.projetor #mediaViewer, body.projetor #mediaNotice { display: none !important; }
+
 </style>
 </head>
 <body>
@@ -1085,6 +1141,10 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
             <button id="openMapEditorBtn" class="mestre-only" type="button"><span>Mapa</span><span class="sub">Peças, imagens e GIFs do cenário</span></button>
           </div>
         </div>
+        <button id="mediaBtn" class="navBtn" type="button" title="Mídia: imagens, vídeos e áudios para os jogadores">
+          <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="m10 9 5 3-5 3z"/></svg>
+          <span class="lbl">Mídia</span>
+        </button>
         <button id="envBtn" class="navBtn" type="button" title="Ambiente da cena: hora do dia e clima">
           <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
           <span class="lbl">Ambiente</span>
@@ -1315,6 +1375,45 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
     <button id="boardContextToggleLive" class="mestre-only" type="button">Câmera ao vivo</button>
   </div>
 
+
+
+
+  <!-- Sistema de Mídia -->
+  <div id="mediaPanel" class="hidden mestre-only" role="dialog" aria-label="Biblioteca de mídia">
+    <div class="mdHead">
+      <strong>Mídia</strong>
+      <button id="mdClose" type="button" title="Fechar"><svg class="uiIcon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+    <p class="mdNote">Cole um link direto de imagem, vídeo ou áudio (grátis) ou envie um arquivo de até 20 MB. A biblioteca fica salva neste navegador.</p>
+    <input type="text" id="mdTitle" maxlength="80" placeholder="Título (opcional)" autocomplete="off">
+    <input type="text" id="mdUrl" placeholder="https://…/arquivo.mp4" autocomplete="off" autocapitalize="off" spellcheck="false">
+    <div class="mdRow2">
+      <select id="mdType" aria-label="Tipo">
+        <option value="">Tipo: automático</option>
+        <option value="image">Imagem</option>
+        <option value="video">Vídeo</option>
+        <option value="audio">Áudio</option>
+      </select>
+      <label class="btn" title="Enviar um arquivo do aparelho">Arquivo
+        <input type="file" id="mdFile" accept="image/*,video/mp4,video/webm,video/quicktime,audio/*">
+      </label>
+      <button id="mdAdd" class="primary" type="button">Adicionar</button>
+    </div>
+    <div id="mdStatus"></div>
+    <input type="text" id="mdSearch" placeholder="Buscar na biblioteca…" autocomplete="off">
+    <div id="mdList"></div>
+  </div>
+  <div id="mediaViewer" class="hidden" role="dialog" aria-label="Mídia compartilhada">
+    <div class="mvHead">
+      <span id="mvIcon" class="mvIcon"></span>
+      <strong id="mvTitle" class="mvTitle"></strong>
+      <span id="mvTools" class="mvTools"></span>
+      <button id="mvStop" class="danger mestre-only hidden" type="button">Encerrar para todos</button>
+      <button id="mvClose" type="button">Fechar</button>
+    </div>
+    <div id="mvBody" class="mvBody"></div>
+  </div>
+  <button id="mediaNotice" class="hidden" type="button"></button>
 
 
   <!-- Efeitos de ambiente em tela cheia (clima, vinheta, relâmpago) -->
@@ -4257,6 +4356,7 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
       if (document.body.classList.contains('light-editor-active')) closeLightEditorBtn.click();
       closeTokenProps();
       closeEnvPanel();
+      Media.closePanel();
     }
     if (currentRoomId) Items.refresh();
   }
@@ -4609,6 +4709,9 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
         applyEnvironment();
       })
       .on('broadcast', { event: 'item_view' }, ({ payload }) => Items.onMirror(payload))
+      .on('broadcast', { event: 'media_share' }, ({ payload }) => Media.onShare(payload))
+      .on('broadcast', { event: 'media_stop' }, () => Media.onStop())
+      .on('broadcast', { event: 'media_hello' }, () => Media.onHello())
       .on('broadcast', { event: 'projector_hello' }, () => {
         if (currentRole !== 'mestre') return;
         if (camLive) sendCamera(true, 'live'); else startCameraLive();
@@ -4616,6 +4719,7 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
       .subscribe((status) => {
         updateRealtimeChannelState('camera', status);
         if (status === 'SUBSCRIBED' && projectorMode) startProjectorHello();
+        if (status === 'SUBSCRIBED') Media.hello();
         if (status === 'SUBSCRIBED' && currentRole === 'mestre') Items.resyncMirror();
       });
   }
@@ -6555,6 +6659,312 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
     return{setup,teardown,refresh,onMirror,resyncMirror};
   })();
 
+
+  // =====================================================================
+  //  SISTEMA DE MÍDIA
+  //  Biblioteca no localStorage do mestre; compartilhamento por broadcast
+  //  no cameraChannel (sem banco, sem canal novo).
+  // =====================================================================
+  const Media = (function () {
+    ICONS.media = '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="m10 9 5 3-5 3z" fill="currentColor"/>';
+    ICONS.music = '<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>';
+    ICONS.image = '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-5-5L5 21"/>';
+    ICONS.film = '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 4v16M17 4v16M3 9h4M3 15h4M17 9h4M17 15h4"/>';
+    ICONS.minus = '<path d="M5 12h14"/>';
+    ICONS.plus = '<path d="M12 5v14M5 12h14"/>';
+
+    const $ = (id) => document.getElementById(id);
+    const panel = $('mediaPanel'), btn = $('mediaBtn'), viewer = $('mediaViewer'), notice = $('mediaNotice');
+    const mvTitle = $('mvTitle'), mvIcon = $('mvIcon'), mvTools = $('mvTools'), mvBody = $('mvBody'), mvStop = $('mvStop');
+    const mdTitle = $('mdTitle'), mdUrl = $('mdUrl'), mdType = $('mdType'), mdFile = $('mdFile'), mdAdd = $('mdAdd');
+    const mdStatus = $('mdStatus'), mdSearch = $('mdSearch'), mdList = $('mdList');
+
+    const TYPES = { image: { icon: 'image' }, video: { icon: 'film' }, audio: { icon: 'music' } };
+    const EXT = {
+      image: ['png', 'jpg', 'jpeg', 'webp', 'gif', 'avif', 'bmp', 'svg'],
+      video: ['mp4', 'webm', 'mov', 'm4v', 'ogv'],
+      audio: ['mp3', 'wav', 'ogg', 'oga', 'm4a', 'aac', 'flac', 'opus']
+    };
+    const MAX_UPLOAD = 20 * 1024 * 1024;
+
+    let lib = [], roomId = null;
+    let shared = null, sharedNonce = 0;
+    let viewing = null, unseen = false, lastHelloReply = 0;
+
+    const isMaster = () => currentRole === 'mestre';
+    const key = () => 'tabletop_media_' + roomId;
+    const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+
+    function safeUrl(u) {
+      try {
+        const x = new URL(String(u || '').trim(), location.href);
+        if (x.protocol !== 'https:' && x.protocol !== 'http:') return null;
+        if (x.username || x.password) return null;
+        if (x.protocol === 'http:') x.protocol = 'https:';
+        return x.href;
+      } catch (_) { return null; }
+    }
+    function detect(nameOrUrl, mime) {
+      const m = String(mime || '').toLowerCase();
+      if (m.startsWith('image/')) return 'image';
+      if (m.startsWith('video/')) return 'video';
+      if (m.startsWith('audio/')) return 'audio';
+      let path = String(nameOrUrl || '');
+      try { path = new URL(path, location.href).pathname; } catch (_) {}
+      const ext = (path.split('.').pop() || '').toLowerCase();
+      return Object.keys(EXT).find((t) => EXT[t].includes(ext)) || null;
+    }
+    function nameFromUrl(url) {
+      try { const p = decodeURIComponent(new URL(url).pathname.split('/').pop() || ''); return p.replace(/\.[^.]+$/, '') || 'Mídia'; } catch (_) { return 'Mídia'; }
+    }
+    function clean(o) {
+      if (!o || typeof o !== 'object') return null;
+      const id = String(o.id || '');
+      const url = safeUrl(o.url);
+      if (!/^[\w-]{1,64}$/.test(id) || !url || !TYPES[o.type]) return null;
+      const it = { id, title: String(o.title || 'Mídia').slice(0, 80), url, type: o.type };
+      if (typeof o.path === 'string' && /^media\/[\w.-]{1,80}$/.test(o.path)) it.path = o.path;
+      return it;
+    }
+    const pub = (it) => ({ id: it.id, title: it.title, url: it.url, type: it.type });
+
+    function mk(tag, cls, html) { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; }
+    function status(msg, err) { mdStatus.textContent = msg || ''; mdStatus.classList.toggle('err', !!err); }
+
+    function load() {
+      try { const a = JSON.parse(localStorage.getItem(key()) || '[]'); lib = Array.isArray(a) ? a.map(clean).filter(Boolean) : []; }
+      catch (_) { lib = []; }
+    }
+    function save() {
+      try { localStorage.setItem(key(), JSON.stringify(lib)); }
+      catch (_) { status('Não foi possível salvar a biblioteca neste navegador.', true); }
+    }
+    function addItem(it) { lib.push(it); save(); mdSearch.value = ''; renderList(); }
+
+    function iconBtn(name, title, fn, cls) {
+      const b = mk('button', cls || '', ico(name, 15)); b.type = 'button'; b.title = title; b.setAttribute('aria-label', title);
+      b.addEventListener('click', fn); return b;
+    }
+    function renderList() {
+      const q = mdSearch.value.trim().toLowerCase();
+      mdList.innerHTML = '';
+      const items = lib.filter((i) => !q || i.title.toLowerCase().includes(q));
+      if (!items.length) {
+        mdList.appendChild(mk('div', 'mdEmpty', q ? 'Nada encontrado.' : 'Nenhuma mídia ainda. Adicione um link ou envie um arquivo.'));
+        return;
+      }
+      items.forEach((it) => {
+        const live = !!(shared && shared.id === it.id);
+        const row = mk('div', 'mdItem' + (live ? ' live' : ''));
+        const ic = mk('span', 'mdIc', ico(TYPES[it.type].icon, 18));
+        const nm = mk('span', 'mdName'); nm.textContent = it.title; nm.title = 'Clique para renomear';
+        nm.addEventListener('click', () => rename(it));
+        const acts = mk('div', 'mdActs');
+        acts.appendChild(iconBtn('eye', 'Ver só para mim', () => openViewer(it)));
+        const sh = mk('button', live ? 'danger txt' : 'primary'); sh.type = 'button';
+        sh.textContent = live ? 'Parar' : 'Compartilhar';
+        sh.addEventListener('click', () => (live ? stopShare() : share(it)));
+        acts.appendChild(sh);
+        if (!q) {
+          acts.appendChild(iconBtn('chevup', 'Subir', () => move(it, -1)));
+          acts.appendChild(iconBtn('chevdown', 'Descer', () => move(it, 1)));
+        }
+        acts.appendChild(iconBtn('trash', 'Excluir', () => remove(it), 'danger'));
+        row.append(ic, nm, acts);
+        mdList.appendChild(row);
+      });
+    }
+    function rename(it) {
+      const n = prompt('Novo título:', it.title);
+      if (n === null || !n.trim()) return;
+      it.title = n.trim().slice(0, 80); save(); renderList();
+    }
+    function move(it, d) {
+      const i = lib.indexOf(it), j = i + d;
+      if (i < 0 || j < 0 || j >= lib.length) return;
+      [lib[i], lib[j]] = [lib[j], lib[i]]; save(); renderList();
+    }
+    async function remove(it) {
+      if (!confirm('Excluir "' + it.title + '" da biblioteca?' + (it.path ? ' O arquivo enviado também será apagado do armazenamento.' : ''))) return;
+      if (shared && shared.id === it.id) stopShare();
+      if (viewing && viewing.id === it.id) closeViewer();
+      lib = lib.filter((x) => x !== it); save(); renderList();
+      if (it.path) {
+        try {
+          const { error } = await sb.storage.from('tabletop').remove([it.path]);
+          if (error) throw error;
+        } catch (e) { console.warn('Falha ao apagar arquivo de mídia:', e); status('Mídia removida da biblioteca, mas o arquivo não pôde ser apagado do Storage.', true); }
+      }
+    }
+
+    function addFromUrl() {
+      const url = safeUrl(mdUrl.value);
+      if (!url) { status('Informe um link http(s) válido.', true); return; }
+      const type = mdType.value || detect(url);
+      if (!type) { status('Não consegui identificar o tipo. Escolha Imagem, Vídeo ou Áudio.', true); return; }
+      addItem({ id: uid(), title: (mdTitle.value.trim() || nameFromUrl(url)).slice(0, 80), url, type });
+      mdUrl.value = ''; mdTitle.value = ''; status('Mídia adicionada.');
+    }
+    mdAdd.addEventListener('click', addFromUrl);
+    mdUrl.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter') { e.preventDefault(); addFromUrl(); } });
+    mdTitle.addEventListener('keydown', (e) => e.stopPropagation());
+    mdSearch.addEventListener('keydown', (e) => e.stopPropagation());
+    mdSearch.addEventListener('input', renderList);
+
+    mdFile.addEventListener('change', async (e) => {
+      const f = e.target.files[0]; mdFile.value = '';
+      if (!f) return;
+      const type = mdType.value || detect(f.name, f.type);
+      if (!type) { status('Formato não reconhecido. Escolha o tipo manualmente.', true); return; }
+      if (f.size > MAX_UPLOAD) { status('Arquivo acima de 20 MB. Use um link externo para economizar o armazenamento.', true); return; }
+      status('Enviando…');
+      try {
+        const ext = ((f.name.split('.').pop() || 'bin').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 5)) || 'bin';
+        const path = 'media/' + Date.now() + '-' + Math.random().toString(36).slice(2, 8) + '.' + ext;
+        const { error } = await sb.storage.from('tabletop').upload(path, f, { contentType: f.type || undefined, cacheControl: '31536000' });
+        if (error) throw error;
+        const { data } = sb.storage.from('tabletop').getPublicUrl(path);
+        const it = clean({ id: uid(), title: (mdTitle.value.trim() || f.name.replace(/\.[^.]+$/, '')).slice(0, 80), url: data.publicUrl, type, path });
+        if (!it) throw new Error('resposta inválida do armazenamento');
+        addItem(it); mdTitle.value = ''; status('Arquivo adicionado.');
+      } catch (err) { status('Falha no envio: ' + (err.message || err), true); }
+    });
+
+    function stopPlayback() {
+      mvBody.querySelectorAll('video,audio').forEach((m) => { try { m.pause(); m.removeAttribute('src'); m.load(); } catch (_) {} });
+    }
+    function showError(msg) { mvBody.innerHTML = ''; mvBody.appendChild(mk('div', 'mvError', msg)); }
+    const LOAD_ERR = 'Não foi possível carregar esta mídia. O link pode estar inválido, expirado ou bloqueado pelo site de origem.';
+
+    function buildImage(it) {
+      const img = new Image(); img.draggable = false; img.alt = it.title;
+      let z = 1, tx = 0, ty = 0;
+      const lbl = mk('span', 'mvZoom', '100%');
+      const apply = () => { img.style.transform = 'translate(' + tx + 'px,' + ty + 'px) scale(' + z + ')'; lbl.textContent = Math.round(z * 100) + '%'; };
+      const setZ = (n) => { z = Math.min(8, Math.max(0.25, n)); apply(); };
+      const reset = () => { z = 1; tx = ty = 0; apply(); };
+      const bMinus = iconBtn('minus', 'Reduzir', () => setZ(z / 1.25));
+      const bPlus = iconBtn('plus', 'Ampliar', () => setZ(z * 1.25));
+      const bFit = mk('button', '', 'Ajustar'); bFit.type = 'button'; bFit.addEventListener('click', reset);
+      mvTools.append(bMinus, lbl, bPlus, bFit);
+
+      mvBody.addEventListener('wheel', (e) => { e.preventDefault(); setZ(z * (e.deltaY < 0 ? 1.15 : 1 / 1.15)); }, { passive: false });
+      const pts = new Map();
+      img.addEventListener('pointerdown', (e) => { try { img.setPointerCapture(e.pointerId); } catch (_) {} pts.set(e.pointerId, { x: e.clientX, y: e.clientY }); });
+      img.addEventListener('pointermove', (e) => {
+        const p = pts.get(e.pointerId); if (!p) return;
+        if (pts.size === 2) {
+          const a = [...pts.values()], d0 = Math.hypot(a[0].x - a[1].x, a[0].y - a[1].y);
+          p.x = e.clientX; p.y = e.clientY;
+          const b = [...pts.values()], d1 = Math.hypot(b[0].x - b[1].x, b[0].y - b[1].y);
+          if (d0 > 0) setZ(z * d1 / d0);
+        } else {
+          tx += e.clientX - p.x; ty += e.clientY - p.y; p.x = e.clientX; p.y = e.clientY; apply();
+        }
+      });
+      const up = (e) => pts.delete(e.pointerId);
+      img.addEventListener('pointerup', up); img.addEventListener('pointercancel', up);
+      img.addEventListener('dblclick', reset);
+      img.addEventListener('error', () => showError(LOAD_ERR));
+      img.src = it.url;
+      mvBody.appendChild(img);
+    }
+
+    function openViewer(it) {
+      stopPlayback();
+      viewing = it;
+      mvTitle.textContent = it.title; mvTitle.title = it.title;
+      mvIcon.innerHTML = ico(TYPES[it.type].icon, 18);
+      mvBody.innerHTML = ''; mvTools.innerHTML = '';
+      if (it.type === 'image') {
+        buildImage(it);
+      } else if (it.type === 'video') {
+        const v = document.createElement('video');
+        v.controls = true; v.playsInline = true; v.preload = 'metadata'; v.setAttribute('playsinline', '');
+        v.addEventListener('error', () => showError(LOAD_ERR));
+        v.src = it.url; mvBody.appendChild(v);
+        v.play().catch(() => {});
+      } else {
+        const card = mk('div', 'mvAudio');
+        card.appendChild(mk('div', 'mvBig', ico('music', 56)));
+        const nm = mk('div', 'mvAudioName'); nm.textContent = it.title; card.appendChild(nm);
+        const a = document.createElement('audio');
+        a.controls = true; a.preload = 'metadata';
+        a.addEventListener('error', () => showError(LOAD_ERR));
+        a.src = it.url; card.appendChild(a); mvBody.appendChild(card);
+        a.play().catch(() => {});
+      }
+      mvStop.classList.toggle('hidden', !(isMaster() && shared && shared.id === it.id));
+      viewer.classList.remove('hidden');
+      unseen = false; refreshNotice();
+    }
+    function closeViewer() {
+      stopPlayback(); mvBody.innerHTML = ''; mvTools.innerHTML = '';
+      viewer.classList.add('hidden'); viewing = null; refreshNotice();
+    }
+    function refreshNotice() {
+      const show = !!shared && viewer.classList.contains('hidden') && !projectorMode;
+      notice.classList.toggle('hidden', !show);
+      notice.classList.toggle('unseen', show && unseen);
+      if (show) { notice.innerHTML = ico(TYPES[shared.type].icon, 15) + ' '; notice.append(document.createTextNode((unseen ? 'Nova mídia: ' : 'Mídia: ') + shared.title)); }
+    }
+    notice.addEventListener('click', () => { if (shared) openViewer(shared); });
+    $('mvClose').addEventListener('click', closeViewer);
+    mvStop.addEventListener('click', () => stopShare());
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !viewer.classList.contains('hidden')) closeViewer(); });
+
+    function send(event, payload) {
+      if (!cameraChannel || realtimeChannelStates.get('camera') !== 'SUBSCRIBED') return false;
+      cameraChannel.send({ type: 'broadcast', event, payload });
+      return true;
+    }
+    function share(it) {
+      if (!isMaster()) return;
+      shared = pub(it); sharedNonce = Date.now();
+      if (!send('media_share', { item: shared, n: sharedNonce })) status('Sem conexão com a mesa: os jogadores ainda não receberam.', true);
+      openViewer(it); renderList();
+    }
+    function stopShare() {
+      if (!shared) return;
+      shared = null; sharedNonce = 0;
+      send('media_stop', {});
+      closeViewer(); renderList();
+    }
+    function onShare(p) {
+      if (isMaster() || projectorMode || !p) return;
+      const it = clean(p.item); if (!it) return;
+      const n = Number(p.n) || 0;
+      if (shared && sharedNonce === n && shared.id === it.id) return;
+      const viewerWasOpen = !viewer.classList.contains('hidden');
+      shared = it; sharedNonce = n; unseen = true;
+      if (viewerWasOpen) openViewer(it); else refreshNotice();
+    }
+    function onStop() {
+      if (isMaster() || projectorMode) return;
+      const had = !!shared; shared = null; sharedNonce = 0; unseen = false;
+      if (had && viewing) closeViewer(); else refreshNotice();
+    }
+    function onHello() {
+      if (!isMaster()) return;
+      const now = Date.now(); if (now - lastHelloReply < 1500) return; lastHelloReply = now;
+      if (shared) send('media_share', { item: shared, n: sharedNonce }); else send('media_stop', {});
+    }
+    function hello() { if (!isMaster() && !projectorMode) send('media_hello', {}); }
+
+    function openPanel() { if (!isMaster()) return; panel.classList.remove('hidden'); btn.classList.add('active'); status(''); renderList(); }
+    function closePanel() { panel.classList.add('hidden'); btn.classList.remove('active'); }
+    btn.addEventListener('click', () => (panel.classList.contains('hidden') ? openPanel() : closePanel()));
+    $('mdClose').addEventListener('click', closePanel);
+
+    function setup(id) { reset(); roomId = id; load(); renderList(); }
+    function reset() {
+      closeViewer(); closePanel();
+      shared = null; sharedNonce = 0; unseen = false; roomId = null; lib = []; refreshNotice();
+    }
+    return { setup, reset, closePanel, onShare, onStop, onHello, hello };
+  })();
+
+
   function setupRoomSyncChannel(roomId) {
     if (roomSyncChannel) sb.removeChannel(roomSyncChannel);
     clearRealtimeChannelState('room');
@@ -6609,6 +7019,7 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
     setupCameraChannel(roomId);
     Chat.setup(roomId);
     Items.setup(roomId);
+    Media.setup(roomId);
 
     closeTokenProps();
     libFolderId = null; libFolders = new Map(); libItems = new Map(); libSearch.value = '';
@@ -6766,6 +7177,7 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
     clearRealtimeChannelState('camera');
     Items.teardown();
     Chat.teardown();
+    Media.reset();
     if (roomSyncChannel) { sb.removeChannel(roomSyncChannel); roomSyncChannel = null; }
     clearRealtimeChannelState('room');
     if (tokensChannel) sb.removeChannel(tokensChannel);
