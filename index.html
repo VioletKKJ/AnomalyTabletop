@@ -6790,10 +6790,11 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
     }
     async function remove(it) {
       if (!confirm('Excluir "' + it.title + '" da biblioteca?' + (it.path ? ' O arquivo enviado também será apagado do armazenamento.' : ''))) return;
-      if (shared && shared.id === it.id) stopShare();
+      const wasLive = !!(shared && shared.id === it.id);
+      if (wasLive) await stopShare();
       if (viewing && viewing.id === it.id) closeViewer();
       lib = lib.filter((x) => x !== it); save(); renderList();
-      if (it.path) {
+      if (it.path && !wasLive) {
         try {
           const { error } = await sb.storage.from('tabletop').remove([it.path]);
           if (error) throw error;
@@ -6972,6 +6973,8 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
       send('media_stop', {});
       closeViewer(); renderList();
       if (ending.path) {
+        lib = lib.filter((entry) => entry.path !== ending.path);
+        save(); renderList();
         try {
           const { error } = await sb.storage.from('tabletop').remove([ending.path]);
           if (error) throw error;
