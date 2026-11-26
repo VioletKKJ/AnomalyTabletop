@@ -6922,12 +6922,12 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
           const el = mediaElement();
           if (el) {
             try {
-              if (p.action === 'play') { el.currentTime = target; el.play().catch(() => {}); }
+              if (p.action === 'play') { el.currentTime = target; el.play().then(clearPlaybackGate).catch(showPlaybackGate); }
               else if (p.action === 'pause') { el.currentTime = target; el.pause(); }
               else if (p.action === 'seek') el.currentTime = target;
               else if (p.action === 'state') {
                 if (Math.abs((el.currentTime || 0) - target) > 0.85) el.currentTime = target;
-                if (p.playing && el.paused) el.play().catch(() => {});
+                if (p.playing && el.paused) el.play().then(clearPlaybackGate).catch(showPlaybackGate);
                 if (!p.playing && !el.paused) el.pause();
               }
             } catch (_) {}
@@ -6942,7 +6942,10 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
     function startSyncHeartbeat() {
       if (syncHeartbeat) clearInterval(syncHeartbeat);
       if (!isMaster() || !shared || !['video', 'audio'].includes(shared.type)) return;
-      syncHeartbeat = setInterval(() => sendSync('state', Date.now() + 250, playbackTime()), 3500);
+      syncHeartbeat = setInterval(() => {
+        if (shared && shared.embedUrl && shared.embedUrl.includes('youtube.com') && !ytPlayerReady) return;
+        send('media_sync', { id: shared.id, action: 'state', time: playbackTime(), playing: playbackActive(), at: Date.now() + 250 });
+      }, 3500);
     }
     function bindSyncedMedia(el) {
       if (!el) return;
@@ -6967,12 +6970,18 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
           events: {
             onReady: () => {
               ytPlayerReady = true;
-              if (ytPendingSync) { const pending = ytPendingSync; ytPendingSync = null; applySync(pending); }
+              if (ytPendingSync) {
+                const pending = ytPendingSync; ytPendingSync = null;
+                if (isMaster()) {
+                  const delay = Math.max(0, (Number(pending.at) || Date.now()) - Date.now());
+                  setTimeout(() => { if (!ytPlayer || !ytPlayerReady) return; try { ytPlayer.seekTo(Number(pending.time) || 0, true); if (pending.action === 'play') ytPlayer.playVideo(); else if (pending.action === 'pause') ytPlayer.pauseVideo(); } catch (_) {} }, delay);
+                } else applySync(pending);
+              }
               if (isMaster()) startSyncHeartbeat();
             },
             onStateChange: (event) => {
               if (!isMaster() || applyingRemoteSync || !shared || shared.id !== it.id) return;
-              if (event.data === YT.PlayerState.PLAYING) sendSync('play', Date.now() + 250, playbackTime());
+              if (event.data === YT.PlayerState.PLAYING) { clearPlaybackGate(); sendSync('play', Date.now() + 250, playbackTime()); }
               else if (event.data === YT.PlayerState.PAUSED) sendSync('pause', Date.now() + 250, playbackTime());
             },
             onError: () => showError(LOAD_ERR)
@@ -6981,6 +6990,18 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
       }).catch((e) => showError(e.message || LOAD_ERR));
     }
     function showError(msg) { mvBody.innerHTML = ''; mvBody.appendChild(mk('div', 'mvError', msg)); }
+    function clearPlaybackGate() { const gate = mvBody.querySelector('.mvPlaybackGate'); if (gate) gate.remove(); }
+    function showPlaybackGate() {
+      if (isMaster() || mvBody.querySelector('.mvPlaybackGate')) return;
+      const gate = mk('button', 'mvPlaybackGate', 'Toque para habilitar a reprodução');
+      gate.type = 'button'; gate.style.cssText = 'position:absolute;z-index:20;left:50%;top:50%;transform:translate(-50%,-50%);padding:14px 18px;background:rgba(30,25,40,.94);border:1px solid #9d4edf;border-radius:12px;color:#fff;white-space:normal;max-width:85%;text-align:center;box-shadow:0 8px 30px #0009';
+      gate.addEventListener('click', () => {
+        if (ytPlayer && ytPlayerReady) { try { ytPlayer.playVideo(); clearPlaybackGate(); } catch (_) {} }
+        else { const el = mediaElement(); if (el) el.play().then(clearPlaybackGate).catch(() => {}); }
+      });
+      if (getComputedStyle(mvBody).position === 'static') mvBody.style.position = 'relative';
+      mvBody.appendChild(gate);
+    }
     const LOAD_ERR = 'Não foi possível carregar esta mídia. O link pode estar inválido, expirado ou bloqueado pelo site de origem.';
 
     function buildImage(it) {
@@ -7084,13 +7105,16 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
         if (it.embedUrl && it.embedUrl.includes('drive.google.com')) status('Google Drive não permite sincronização precisa dos controles. Para cutscenes sincronizadas, use YouTube ou um link direto de vídeo.', true);
         else {
           const startAt = Date.now() + 2500;
-          send('media_sync', { id: shared.id, action: 'play', time: 0, at: startAt });
+          const initialSync = { id: shared.id, action: 'play', time: 0, at: startAt };
+          send('media_sync', initialSync);
+          if (it.embedUrl && it.embedUrl.includes('youtube.com') && !ytPlayerReady) ytPendingSync = initialSync;
           clearTimeout(syncStartTimer);
           syncStartTimer = setTimeout(() => {
             if (!shared || shared.id !== it.id) return;
             const el = mediaElement();
             if (ytPlayer && ytPlayerReady) { try { ytPlayer.seekTo(0, true); ytPlayer.playVideo(); } catch (_) {} }
-            else if (el) { el.currentTime = 0; el.play().catch(() => status('O navegador bloqueou a reprodução automática. Clique em reproduzir no player do mestre.', true)); }
+            else if (el) { el.currentTime = 0; el.play().catch(() => status('O navegador bloqueou a reprodução automática no seu player.', true)); }
+            else if (it.embedUrl && it.embedUrl.includes('youtube.com')) ytPendingSync = { action: 'play', time: 0, at: startAt };
           }, Math.max(0, startAt - Date.now()));
           startSyncHeartbeat();
         }
