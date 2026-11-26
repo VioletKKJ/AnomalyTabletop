@@ -4712,6 +4712,7 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
       .on('broadcast', { event: 'media_share' }, ({ payload }) => Media.onShare(payload))
       .on('broadcast', { event: 'media_stop' }, () => Media.onStop())
       .on('broadcast', { event: 'media_hello' }, () => Media.onHello())
+      .on('broadcast', { event: 'media_sync' }, ({ payload }) => Media.onSync(payload))
       .on('broadcast', { event: 'projector_hello' }, () => {
         if (currentRole !== 'mestre') return;
         if (camLive) sendCamera(true, 'live'); else startCameraLive();
@@ -6690,6 +6691,8 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
     let lib = [], roomId = null;
     let shared = null, sharedNonce = 0;
     let viewing = null, unseen = false, lastHelloReply = 0;
+    let syncHeartbeat = null, syncStartTimer = null, ytPlayer = null, ytApiPromise = null, ytPendingSync = null, applyingRemoteSync = false;
+    let ytPlayerReady = false, lastSyncSent = 0;
 
     const isMaster = () => currentRole === 'mestre';
     const key = () => 'tabletop_media_' + roomId;
@@ -6864,7 +6867,118 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
     });
 
     function stopPlayback() {
+      clearTimeout(syncStartTimer); syncStartTimer = null;
+      if (syncHeartbeat) { clearInterval(syncHeartbeat); syncHeartbeat = null; }
+      if (ytPlayer) { try { ytPlayer.destroy(); } catch (_) {} ytPlayer = null; }
+      ytPlayerReady = false; ytPendingSync = null;
       mvBody.querySelectorAll('video,audio').forEach((m) => { try { m.pause(); m.removeAttribute('src'); m.load(); } catch (_) {} });
+    }
+    function loadYouTubeApi() {
+      if (window.YT && window.YT.Player) return Promise.resolve(window.YT);
+      if (ytApiPromise) return ytApiPromise;
+      ytApiPromise = new Promise((resolve, reject) => {
+        const previous = window.onYouTubeIframeAPIReady;
+        window.onYouTubeIframeAPIReady = () => { try { if (typeof previous === 'function') previous(); } catch (_) {} resolve(window.YT); };
+        let script = document.querySelector('script[src="https://www.youtube.com/iframe_api"]');
+        if (!script) { script = document.createElement('script'); script.src = 'https://www.youtube.com/iframe_api'; script.onerror = () => reject(new Error('Não foi possível carregar o player do YouTube.')); document.head.appendChild(script); }
+        else if (window.YT && window.YT.Player) resolve(window.YT);
+      });
+      return ytApiPromise;
+    }
+    function mediaElement() { return mvBody.querySelector('video,audio'); }
+    function playbackTime() {
+      if (ytPlayer && ytPlayerReady) { try { return ytPlayer.getCurrentTime() || 0; } catch (_) {} }
+      const el = mediaElement(); return el && Number.isFinite(el.currentTime) ? el.currentTime : 0;
+    }
+    function playbackActive() {
+      if (ytPlayer && ytPlayerReady) { try { return ytPlayer.getPlayerState() === 1; } catch (_) {} }
+      const el = mediaElement(); return !!(el && !el.paused && !el.ended);
+    }
+    function sendSync(action, at, time) {
+      if (!isMaster() || !shared || shared.type !== 'video' && shared.type !== 'audio') return;
+      const now = Date.now();
+      if (action !== 'state' && now - lastSyncSent < 80) return;
+      lastSyncSent = now;
+      send('media_sync', { id: shared.id, action, time: Number.isFinite(time) ? time : playbackTime(), at: Number(at) || now });
+    }
+    function applySync(p) {
+      if (!p || !shared || p.id !== shared.id || isMaster()) return;
+      const run = () => {
+        const target = Math.max(0, Number(p.time) || 0);
+        applyingRemoteSync = true;
+        if (ytPlayer && ytPlayerReady) {
+          try {
+            if (p.action === 'play') { ytPlayer.seekTo(target, true); ytPlayer.playVideo(); }
+            else if (p.action === 'pause') { ytPlayer.seekTo(target, true); ytPlayer.pauseVideo(); }
+            else if (p.action === 'seek') ytPlayer.seekTo(target, true);
+            else if (p.action === 'state') {
+              const drift = Math.abs((ytPlayer.getCurrentTime() || 0) - target);
+              if (drift > 0.85) ytPlayer.seekTo(target, true);
+              if (p.playing && ytPlayer.getPlayerState() !== 1) ytPlayer.playVideo();
+              if (!p.playing && ytPlayer.getPlayerState() === 1) ytPlayer.pauseVideo();
+            }
+          } catch (_) {}
+        } else {
+          const el = mediaElement();
+          if (el) {
+            try {
+              if (p.action === 'play') { el.currentTime = target; el.play().catch(() => {}); }
+              else if (p.action === 'pause') { el.currentTime = target; el.pause(); }
+              else if (p.action === 'seek') el.currentTime = target;
+              else if (p.action === 'state') {
+                if (Math.abs((el.currentTime || 0) - target) > 0.85) el.currentTime = target;
+                if (p.playing && el.paused) el.play().catch(() => {});
+                if (!p.playing && !el.paused) el.pause();
+              }
+            } catch (_) {}
+          } else { ytPendingSync = p; }
+        }
+        setTimeout(() => { applyingRemoteSync = false; }, 250);
+      };
+      clearTimeout(syncStartTimer);
+      const delay = Math.max(0, Math.min(10000, (Number(p.at) || Date.now()) - Date.now()));
+      syncStartTimer = setTimeout(run, delay);
+    }
+    function startSyncHeartbeat() {
+      if (syncHeartbeat) clearInterval(syncHeartbeat);
+      if (!isMaster() || !shared || !['video', 'audio'].includes(shared.type)) return;
+      syncHeartbeat = setInterval(() => sendSync('state', Date.now() + 250, playbackTime()), 3500);
+    }
+    function bindSyncedMedia(el) {
+      if (!el) return;
+      el.controls = isMaster();
+      if (!isMaster()) el.setAttribute('controlslist', 'nodownload noplaybackrate');
+      if (!isMaster()) return;
+      el.addEventListener('play', () => { if (!applyingRemoteSync) sendSync('play', Date.now() + 250, el.currentTime); });
+      el.addEventListener('pause', () => { if (!applyingRemoteSync && !el.ended) sendSync('pause', Date.now() + 250, el.currentTime); });
+      el.addEventListener('seeking', () => { if (!applyingRemoteSync) sendSync('seek', Date.now() + 250, el.currentTime); });
+    }
+    function buildYouTube(it, host) {
+      const match = String(it.embedUrl || '').match(/\/embed\/([\w-]+)/);
+      if (!match) { showError('Link do YouTube inválido.'); return; }
+      const target = mk('div', 'mvYoutube'); target.id = 'mediaYoutubePlayer'; target.style.cssText = 'width:100%;height:100%;min-height:240px;background:#000';
+      mvBody.appendChild(target);
+      loadYouTubeApi().then((YT) => {
+        if (!target.isConnected || !viewing || viewing.id !== it.id) return;
+        ytPlayerReady = false;
+        ytPlayer = new YT.Player(target.id, {
+          width: '100%', height: '100%', videoId: match[1],
+          playerVars: { autoplay: 0, controls: isMaster() ? 1 : 0, disablekb: isMaster() ? 0 : 1, enablejsapi: 1, playsinline: 1, rel: 0, origin: location.origin },
+          events: {
+            onReady: () => {
+              ytPlayerReady = true;
+              if (ytPendingSync) { const pending = ytPendingSync; ytPendingSync = null; applySync(pending); }
+              if (isMaster()) startSyncHeartbeat();
+            },
+            onStateChange: (event) => {
+              if (!isMaster() || applyingRemoteSync || !shared || shared.id !== it.id) return;
+              if (event.data === YT.PlayerState.PLAYING) sendSync('play', Date.now() + 250, playbackTime());
+              else if (event.data === YT.PlayerState.PAUSED) sendSync('pause', Date.now() + 250, playbackTime());
+            },
+            onError: () => showError(LOAD_ERR)
+          }
+        });
+      }).catch((e) => showError(e.message || LOAD_ERR));
     }
     function showError(msg) { mvBody.innerHTML = ''; mvBody.appendChild(mk('div', 'mvError', msg)); }
     const LOAD_ERR = 'Não foi possível carregar esta mídia. O link pode estar inválido, expirado ou bloqueado pelo site de origem.';
@@ -6912,10 +7026,9 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
       if (it.type === 'image') {
         buildImage(it);
       } else if (it.type === 'video') {
-        const v = document.createElement('video');
-        v.controls = true; v.playsInline = true; v.preload = 'metadata'; v.setAttribute('playsinline', '');
-        v.addEventListener('error', () => showError(LOAD_ERR));
-        if (it.embedUrl) {
+        if (it.embedUrl && /^https:\/\/www\.youtube-nocookie\.com\/embed\//.test(it.embedUrl)) {
+          buildYouTube(it);
+        } else if (it.embedUrl) {
           const frame = document.createElement('iframe');
           frame.src = it.embedUrl; frame.title = it.title; frame.allow = 'autoplay; encrypted-media; picture-in-picture; fullscreen';
           frame.allowFullscreen = true; frame.referrerPolicy = 'strict-origin-when-cross-origin';
@@ -6923,22 +7036,24 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
           frame.style.cssText = 'width:100%;height:100%;min-height:240px;border:0;border-radius:10px;background:#000';
           mvBody.appendChild(frame);
         } else {
-          v.src = it.url; mvBody.appendChild(v);
-          v.play().catch(() => {});
+          const v = document.createElement('video');
+          v.playsInline = true; v.preload = 'auto'; v.setAttribute('playsinline', '');
+          v.addEventListener('error', () => showError(LOAD_ERR));
+          v.src = it.url; mvBody.appendChild(v); bindSyncedMedia(v);
         }
       } else {
         const card = mk('div', 'mvAudio');
         card.appendChild(mk('div', 'mvBig', ico('music', 56)));
         const nm = mk('div', 'mvAudioName'); nm.textContent = it.title; card.appendChild(nm);
         const a = document.createElement('audio');
-        a.controls = true; a.preload = 'metadata';
+        a.preload = 'auto';
         a.addEventListener('error', () => showError(LOAD_ERR));
-        a.src = it.url; card.appendChild(a); mvBody.appendChild(card);
-        a.play().catch(() => {});
+        a.src = it.url; card.appendChild(a); mvBody.appendChild(card); bindSyncedMedia(a);
       }
       mvStop.classList.toggle('hidden', !(isMaster() && shared && shared.id === it.id));
       viewer.classList.remove('hidden');
       unseen = false; refreshNotice();
+      if (isMaster() && shared && shared.id === it.id && ['video', 'audio'].includes(it.type)) startSyncHeartbeat();
     }
     function closeViewer() {
       stopPlayback(); mvBody.innerHTML = ''; mvTools.innerHTML = '';
@@ -6965,6 +7080,21 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
       shared = pub(it); sharedNonce = Date.now();
       if (!send('media_share', { item: shared, n: sharedNonce })) status('Sem conexão com a mesa: os jogadores ainda não receberam.', true);
       openViewer(it); renderList();
+      if (it.type === 'video' || it.type === 'audio') {
+        if (it.embedUrl && it.embedUrl.includes('drive.google.com')) status('Google Drive não permite sincronização precisa dos controles. Para cutscenes sincronizadas, use YouTube ou um link direto de vídeo.', true);
+        else {
+          const startAt = Date.now() + 2500;
+          send('media_sync', { id: shared.id, action: 'play', time: 0, at: startAt });
+          clearTimeout(syncStartTimer);
+          syncStartTimer = setTimeout(() => {
+            if (!shared || shared.id !== it.id) return;
+            const el = mediaElement();
+            if (ytPlayer && ytPlayerReady) { try { ytPlayer.seekTo(0, true); ytPlayer.playVideo(); } catch (_) {} }
+            else if (el) { el.currentTime = 0; el.play().catch(() => status('O navegador bloqueou a reprodução automática. Clique em reproduzir no player do mestre.', true)); }
+          }, Math.max(0, startAt - Date.now()));
+          startSyncHeartbeat();
+        }
+      }
     }
     async function stopShare() {
       if (!shared) return;
@@ -6986,25 +7116,30 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
       }
     }
     function onShare(p) {
-      if (isMaster() || projectorMode || !p) return;
+      if (isMaster() || !p) return;
       const it = clean(p.item); if (!it) return;
       const n = Number(p.n) || 0;
-      if (shared && sharedNonce === n && shared.id === it.id) return;
-      const viewerWasOpen = !viewer.classList.contains('hidden');
-      shared = it; sharedNonce = n; unseen = true;
-      if (viewerWasOpen) openViewer(it); else refreshNotice();
+      if (shared && sharedNonce === n && shared.id === it.id && viewing) return;
+      shared = it; sharedNonce = n; unseen = false;
+      openViewer(it);
+      refreshNotice();
     }
     function onStop() {
-      if (isMaster() || projectorMode) return;
+      if (isMaster()) return;
       const had = !!shared; shared = null; sharedNonce = 0; unseen = false;
       if (had && viewing) closeViewer(); else refreshNotice();
     }
+    function onSync(p) { applySync(p); }
     function onHello() {
       if (!isMaster()) return;
       const now = Date.now(); if (now - lastHelloReply < 1500) return; lastHelloReply = now;
-      if (shared) send('media_share', { item: shared, n: sharedNonce }); else send('media_stop', {});
+      if (shared) {
+        send('media_share', { item: shared, n: sharedNonce });
+        if (['video', 'audio'].includes(shared.type) && !(shared.embedUrl && shared.embedUrl.includes('drive.google.com')))
+          send('media_sync', { id: shared.id, action: 'state', time: playbackTime(), playing: playbackActive(), at: Date.now() + 500 });
+      } else send('media_stop', {});
     }
-    function hello() { if (!isMaster() && !projectorMode) send('media_hello', {}); }
+    function hello() { if (!isMaster()) send('media_hello', {}); }
 
     function openPanel() { if (!isMaster()) return; panel.classList.remove('hidden'); btn.classList.add('active'); status(''); renderList(); }
     function closePanel() { panel.classList.add('hidden'); btn.classList.remove('active'); }
@@ -7022,8 +7157,10 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
       }
       closeViewer(); closePanel();
       shared = null; sharedNonce = 0; unseen = false; roomId = null; lib = []; refreshNotice();
+      if (syncHeartbeat) { clearInterval(syncHeartbeat); syncHeartbeat = null; }
+      clearTimeout(syncStartTimer); syncStartTimer = null;
     }
-    return { setup, reset, closePanel, onShare, onStop, onHello, hello };
+    return { setup, reset, closePanel, onShare, onStop, onHello, onSync, hello };
   })();
 
 
