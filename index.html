@@ -6926,7 +6926,9 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
               else if (p.action === 'pause') { el.currentTime = target; el.pause(); }
               else if (p.action === 'seek') el.currentTime = target;
               else if (p.action === 'state') {
-                if (Math.abs((el.currentTime || 0) - target) > 0.85) el.currentTime = target;
+                // Heartbeats apenas mantêm o estado de reprodução. Não fazem seeks
+                // repetidos em vídeos HTML5, pois isso pode interromper o buffer/decoder.
+                // Reposicionamento continua reservado aos comandos explícitos play/seek.
                 if (p.playing && el.paused) el.play().then(clearPlaybackGate).catch(showPlaybackGate);
                 if (!p.playing && !el.paused) el.pause();
               }
