@@ -7107,15 +7107,18 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
           const startAt = Date.now() + 2500;
           const initialSync = { id: shared.id, action: 'play', time: 0, at: startAt };
           send('media_sync', initialSync);
-          if (it.embedUrl && it.embedUrl.includes('youtube.com') && !ytPlayerReady) ytPendingSync = initialSync;
           clearTimeout(syncStartTimer);
-          syncStartTimer = setTimeout(() => {
-            if (!shared || shared.id !== it.id) return;
-            const el = mediaElement();
-            if (ytPlayer && ytPlayerReady) { try { ytPlayer.seekTo(0, true); ytPlayer.playVideo(); } catch (_) {} }
-            else if (el) { el.currentTime = 0; el.play().catch(() => status('O navegador bloqueou a reprodução automática no seu player.', true)); }
-            else if (it.embedUrl && it.embedUrl.includes('youtube.com')) ytPendingSync = { action: 'play', time: 0, at: startAt };
-          }, Math.max(0, startAt - Date.now()));
+          if (it.embedUrl && it.embedUrl.includes('youtube.com')) {
+            if (ytPlayerReady && ytPlayer) {
+              syncStartTimer = setTimeout(() => { if (shared && shared.id === it.id) { try { ytPlayer.seekTo(0, true); ytPlayer.playVideo(); } catch (_) {} } }, Math.max(0, startAt - Date.now()));
+            } else ytPendingSync = initialSync;
+          } else {
+            syncStartTimer = setTimeout(() => {
+              if (!shared || shared.id !== it.id) return;
+              const el = mediaElement();
+              if (el) { el.currentTime = 0; el.play().catch(() => status('O navegador bloqueou a reprodução automática no seu player.', true)); }
+            }, Math.max(0, startAt - Date.now()));
+          }
           startSyncHeartbeat();
         }
       }
