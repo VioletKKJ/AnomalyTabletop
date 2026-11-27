@@ -842,6 +842,9 @@
 .ivInfo{width:min(640px,calc(100% - 24px));max-height:26vh;margin:0 auto 6px;padding:10px 14px;overflow-y:auto;touch-action:pan-y;border-radius:12px;border:1px solid rgba(255,255,255,.08);background:rgba(18,19,26,.72);backdrop-filter:blur(10px)}.ivDesc{font-size:13px;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere;-webkit-user-select:text;user-select:text}.ivHint{text-align:center;font-size:10.5px;color:var(--text-dim);padding:2px 12px max(10px,env(safe-area-inset-bottom,10px))}
 body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:none!important}body.projetor .ivDesc{font-size:18px}body.projetor .ivTitle{font-size:24px}@media(prefers-reduced-motion:reduce){#itemViewer{animation:none}.ivScene{transition:none}}
 
+  /* ===== Música de fundo compartilhada ===== */
+  #musicBar{position:fixed;left:50%;bottom:max(12px,env(safe-area-inset-bottom,12px));transform:translateX(-50%);z-index:60030;display:flex;align-items:center;gap:10px;max-width:calc(100vw - 20px);padding:9px 13px;border:1px solid rgba(157,78,223,.45);border-radius:13px;background:rgba(20,20,29,.96);box-shadow:0 8px 28px #0008;color:var(--text);font-size:12px;backdrop-filter:blur(12px)}
+  #musicBar.hidden{display:none!important}#musicBar #musicName{max-width:32vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}#musicBar label{display:flex;align-items:center;gap:6px;color:var(--text-dim)}#musicVolume{width:100px;accent-color:var(--accent)}#musicGate{white-space:nowrap;padding:5px 8px;font-size:11px}#musicBar.projectorMusic{z-index:60030}
   /* ===== Sistema de Mídia ===== */
   #mediaPanel { position: fixed; top: 70px; left: 50%; transform: translateX(-50%); width: min(380px, calc(100vw - 16px));
     max-height: calc(100vh - 90px); overflow-y: auto; z-index: 40; padding: 12px 14px 14px;
@@ -1400,6 +1403,9 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
       <button id="mdAdd" class="primary" type="button">Adicionar</button>
     </div>
     <div id="mdStatus"></div>
+    <div class="mdHead"><strong>Playlist de fundo</strong><span class="mdNote">O mestre controla a música. Cada pessoa regula o próprio volume.</span></div>
+    <div class="mdRow2"><button id="musicPlay" type="button" class="primary">Play</button><button id="musicPause" type="button">Pausar</button><button id="musicNext" type="button">Próxima</button><button id="musicStop" type="button" class="danger">Parar</button></div>
+    <div id="musicQueue"></div>
     <input type="text" id="mdSearch" placeholder="Buscar links salvos neste navegador…" autocomplete="off">
     <div id="mdList"></div>
   </div>
@@ -1414,6 +1420,7 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
     <div id="mvBody" class="mvBody"></div>
   </div>
   <button id="mediaNotice" class="hidden" type="button"></button>
+  <div id="musicBar" class="hidden" aria-label="Música de fundo"><span class="musicBarIcon">♫</span><span id="musicName">Playlist</span><label>Volume <input id="musicVolume" type="range" min="0" max="1" step="0.01" value="0.7"></label><button id="musicGate" class="hidden" type="button">Ativar áudio</button></div>
 
 
   <!-- Efeitos de ambiente em tela cheia (clima, vinheta, relâmpago) -->
@@ -4713,6 +4720,8 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
       .on('broadcast', { event: 'media_stop' }, () => Media.onStop())
       .on('broadcast', { event: 'media_hello' }, () => Media.onHello())
       .on('broadcast', { event: 'media_sync' }, ({ payload }) => Media.onSync(payload))
+      .on('broadcast', { event: 'music_sync' }, ({ payload }) => Media.onMusicSync(payload))
+      .on('broadcast', { event: 'music_hello' }, () => Media.musicHello())
       .on('broadcast', { event: 'projector_hello' }, () => {
         if (currentRole !== 'mestre') return;
         if (camLive) sendCamera(true, 'live'); else startCameraLive();
@@ -4720,7 +4729,7 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
       .subscribe((status) => {
         updateRealtimeChannelState('camera', status);
         if (status === 'SUBSCRIBED' && projectorMode) startProjectorHello();
-        if (status === 'SUBSCRIBED') Media.hello();
+        if (status === 'SUBSCRIBED') { Media.hello(); Media.musicHello(); }
         if (status === 'SUBSCRIBED' && currentRole === 'mestre') Items.resyncMirror();
       });
   }
@@ -6679,6 +6688,12 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
     const mvTitle = $('mvTitle'), mvIcon = $('mvIcon'), mvTools = $('mvTools'), mvBody = $('mvBody'), mvStop = $('mvStop');
     const mdTitle = $('mdTitle'), mdUrl = $('mdUrl'), mdType = $('mdType'), mdFile = $('mdFile'), mdAdd = $('mdAdd');
     const mdStatus = $('mdStatus'), mdSearch = $('mdSearch'), mdList = $('mdList');
+    const musicBar = $('musicBar'), musicName = $('musicName'), musicVolume = $('musicVolume'), musicGate = $('musicGate');
+    const musicAudio = new Audio(); musicAudio.preload = 'auto'; musicAudio.loop = false;
+    let musicQueue = [], musicIndex = -1, musicNonce = 0, musicHeartbeat = null, musicApplying = false;
+    let musicVolumeValue = Number(localStorage.getItem('tabletop_music_volume')); if (!Number.isFinite(musicVolumeValue)) musicVolumeValue = 0.7;
+    musicVolumeValue = Math.max(0, Math.min(1, musicVolumeValue)); musicAudio.volume = musicVolumeValue;
+    musicVolume.value = String(musicVolumeValue);
 
     const TYPES = { image: { icon: 'image' }, video: { icon: 'film' }, audio: { icon: 'music' } };
     const EXT = {
@@ -6734,6 +6749,41 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
       return it;
     }
     const pub = (it) => ({ id: it.id, title: it.title, url: it.url, type: it.type, path: it.path || null, embedUrl: it.embedUrl || null });
+    const cleanMusicItem = (it) => { const x = clean(it); return x && x.type === 'audio' && !x.embedUrl ? { id:x.id, title:x.title, url:x.url, type:'audio', path:x.path || null } : null; };
+    function musicSend(action) { if (!isMaster()) return; const item = musicQueue[musicIndex] || null; send('music_sync', { action, queue: musicQueue.map(x=>({id:x.id,title:x.title,url:x.url,type:'audio',path:x.path||null})), index:musicIndex, time:Number(musicAudio.currentTime)||0, playing:!musicAudio.paused && !musicAudio.ended, at:Date.now()+350, nonce:musicNonce, item }); }
+    function musicSetVolume(v) { musicVolumeValue=Math.max(0,Math.min(1,Number(v)||0)); musicAudio.volume=musicVolumeValue; musicVolume.value=String(musicVolumeValue); try{localStorage.setItem('tabletop_music_volume',String(musicVolumeValue));}catch(_){} }
+    function musicShow(active) { musicBar.classList.toggle('hidden',!active); if(projectorMode) musicBar.classList.toggle('projectorMusic',!!active); }
+    function musicLoadState(p) {
+      if(!p || isMaster()) return;
+      const q=Array.isArray(p.queue)?p.queue.map(cleanMusicItem).filter(Boolean):[];
+      musicQueue=q; musicIndex=Number.isInteger(Number(p.index))?Number(p.index):-1; musicNonce=Number(p.nonce)||musicNonce;
+      const item=musicQueue[musicIndex];
+      if(!item){musicAudio.pause();musicAudio.removeAttribute('src');musicAudio.load();musicName.textContent='Playlist parada';musicShow(false);return;}
+      musicName.textContent=item.title; musicShow(true);
+      if(musicAudio.dataset.musicId!==item.id || musicAudio.dataset.musicNonce!==String(musicNonce)){
+        musicAudio.dataset.musicId=item.id;musicAudio.dataset.musicNonce=String(musicNonce);musicAudio.src=item.url;musicAudio.load();
+      }
+      const target=Math.max(0,Number(p.time)||0), delay=Math.max(0,Math.min(5000,(Number(p.at)||Date.now())-Date.now()));
+      setTimeout(()=>{if(musicAudio.dataset.musicNonce!==String(musicNonce))return; if(Math.abs((musicAudio.currentTime||0)-target)>1.25)try{musicAudio.currentTime=target;}catch(_){} if(p.playing)musicAudio.play().then(()=>musicGate.classList.add('hidden')).catch(()=>musicGate.classList.remove('hidden'));else musicAudio.pause();},delay);
+    }
+    function musicPlayIndex(i) {
+      if(!isMaster() || i<0 || i>=musicQueue.length)return;
+      musicIndex=i;musicNonce=Date.now();const it=musicQueue[i];musicAudio.dataset.musicId=it.id;musicAudio.dataset.musicNonce=String(musicNonce);musicAudio.src=it.url;musicAudio.currentTime=0;musicAudio.load();musicName.textContent=it.title;musicShow(true);
+      const at=Date.now()+700; musicSend('play');
+      setTimeout(()=>{if(musicAudio.dataset.musicNonce!==String(musicNonce))return;musicAudio.play().then(()=>musicSend('state')).catch(()=>status('O navegador bloqueou a reprodução. Clique em Play novamente.',true));},Math.max(0,at-Date.now()));
+    }
+    function musicNext(){if(!isMaster()||!musicQueue.length)return;musicPlayIndex((musicIndex+1)%musicQueue.length);}
+    function musicStop(){if(!isMaster())return;musicAudio.pause();musicIndex=-1;musicNonce=Date.now();musicSend('stop');musicShow(false);musicName.textContent='Playlist parada';}
+    function renderMusicQueue(){const box=$('musicQueue');if(!box)return;box.innerHTML='';musicQueue.forEach((it,i)=>{const row=mk('div','mdItem'+(i===musicIndex?' live':''));const nm=mk('span','mdName');nm.textContent=(i+1)+'. '+it.title;const acts=mk('div','mdActs');acts.appendChild(iconBtn('play','Tocar',()=>musicPlayIndex(i),'primary'));acts.appendChild(iconBtn('trash','Remover da playlist',()=>{musicQueue.splice(i,1);if(i===musicIndex){musicAudio.pause();musicIndex=-1;musicSend('stop');musicShow(false);}else if(i<musicIndex)musicIndex--;musicSend('state');renderMusicQueue();}));row.append(nm,acts);box.appendChild(row);});if(!musicQueue.length)box.appendChild(mk('div','mdEmpty','Adicione músicas da biblioteca usando “Playlist +”.'));}
+    musicAudio.addEventListener('ended',()=>{if(isMaster())musicNext();});
+    musicVolume.addEventListener('input',()=>musicSetVolume(musicVolume.value));
+    $('musicPlay').addEventListener('click',()=>{if(!isMaster())return;if(musicIndex<0){if(musicQueue.length)musicPlayIndex(0);return;}musicAudio.play().then(()=>musicSend('play')).catch(()=>status('Não foi possível iniciar a música.',true));});
+    $('musicPause').addEventListener('click',()=>{if(!isMaster())return;musicAudio.pause();musicSend('pause');});
+    $('musicNext').addEventListener('click',musicNext);$('musicStop').addEventListener('click',musicStop);
+    musicGate.addEventListener('click',()=>musicAudio.play().then(()=>musicGate.classList.add('hidden')).catch(()=>{}));
+    function onMusicSync(p){if(!p)return;if(isMaster()){return;}musicLoadState(p);}
+    function musicHello(){if(isMaster())musicSend('state');else send('music_hello',{});}
+    if(!isMaster()){}
 
     function mk(tag, cls, html) { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; }
     function status(msg, err) { mdStatus.textContent = msg || ''; mdStatus.classList.toggle('err', !!err); }
@@ -6772,6 +6822,7 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
         sh.textContent = live ? 'Parar' : 'Compartilhar';
         sh.addEventListener('click', () => (live ? stopShare() : share(it)));
         acts.appendChild(sh);
+        if(it.type==='audio') acts.appendChild(iconBtn('plus','Adicionar à playlist',()=>{if(!musicQueue.some(x=>x.id===it.id)){musicQueue.push(cleanMusicItem(it));renderMusicQueue();musicSend('state');status('Música adicionada à playlist.');}},'primary'));
         if (!q) {
           acts.appendChild(iconBtn('chevup', 'Subir', () => move(it, -1)));
           acts.appendChild(iconBtn('chevdown', 'Descer', () => move(it, 1)));
@@ -6780,6 +6831,7 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
         row.append(ic, nm, acts);
         mdList.appendChild(row);
       });
+      renderMusicQueue();
     }
     function rename(it) {
       const n = prompt('Novo título:', it.title);
@@ -7177,7 +7229,7 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
     btn.addEventListener('click', () => (panel.classList.contains('hidden') ? openPanel() : closePanel()));
     $('mdClose').addEventListener('click', closePanel);
 
-    function setup(id) { reset(); roomId = id; load(); renderList(); }
+    function setup(id) { reset(); roomId = id; load(); renderList(); musicQueue=[];musicIndex=-1;musicNonce=0;musicShow(false);renderMusicQueue(); }
     function reset() {
       const ending = shared;
       if (ending && isMaster()) {
@@ -7191,7 +7243,7 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
       if (syncHeartbeat) { clearInterval(syncHeartbeat); syncHeartbeat = null; }
       clearTimeout(syncStartTimer); syncStartTimer = null;
     }
-    return { setup, reset, closePanel, onShare, onStop, onHello, onSync, hello };
+    return { setup, reset, closePanel, onShare, onStop, onHello, onSync, onMusicSync, musicHello, hello };
   })();
 
 
