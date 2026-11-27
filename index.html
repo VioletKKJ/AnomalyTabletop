@@ -963,6 +963,30 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
   @media (prefers-reduced-motion: reduce) { #mediaNotice.unseen { animation: none; } }
   body.projetor #mediaPanel, body.projetor #mediaNotice { display: none !important; }
 
+
+  .roomStorageOverlay{position:fixed;inset:0;z-index:12000;background:rgba(5,6,10,.78);backdrop-filter:blur(5px);display:flex;align-items:center;justify-content:center;padding:18px}
+  .roomStorageOverlay.hidden{display:none!important}
+  .roomStorageCard{width:min(760px,100%);max-height:min(86vh,850px);display:flex;flex-direction:column;background:#191b24;border:1px solid #353849;border-radius:16px;box-shadow:0 24px 80px rgba(0,0,0,.55);overflow:hidden}
+  .roomStorageHeader{display:flex;align-items:center;justify-content:space-between;padding:18px 20px;border-bottom:1px solid #303342}
+  .roomStorageHeader h2{font-size:18px;margin:0 0 4px}.roomStorageHeader p{margin:0;color:#9ba0b0;font-size:12px}
+  .roomStorageHeader>button{width:34px;height:34px;border:0;border-radius:9px;background:#292c38;color:#eee;font-size:23px;cursor:pointer}
+  .roomStorageSummary{padding:13px 20px 8px;font-weight:650;font-size:13px}
+  .roomStorageNote{margin:0 20px 12px;padding:10px 12px;border-radius:9px;background:rgba(157,78,223,.09);color:#b9b6c8;font-size:11px;line-height:1.45}
+  .roomStorageToolbar{display:flex;gap:8px;flex-wrap:wrap;padding:0 20px 12px}
+  .roomStorageToolbar button,.roomStorageFooter button,.roomStorageDeleteOne{border:1px solid #3b3e4e;border-radius:8px;background:#252834;color:#eee;padding:8px 11px;font-size:12px;cursor:pointer}
+  .roomStorageToolbar button:disabled{opacity:.4;cursor:not-allowed}
+  .roomStorageToolbar .danger,.roomStorageDeleteOne{background:rgba(220,65,75,.12);border-color:rgba(220,65,75,.4);color:#ff9a9f}
+  .roomStorageList{overflow:auto;min-height:130px;padding:0 20px 16px}
+  .roomStorageRow{display:flex;align-items:center;gap:12px;padding:11px 9px;border-top:1px solid #2c2f3b}
+  .roomStorageCheck{width:16px;height:16px;accent-color:#9d4edf;flex:none}
+  .roomStorageDetails{min-width:0;flex:1;display:flex;flex-direction:column;gap:4px}
+  .roomStorageDetails strong{font-size:12px;overflow-wrap:anywhere}.roomStorageDetails span{font-size:10px;color:#9298a8;overflow-wrap:anywhere}
+  .roomStorageDeleteOne{padding:6px 9px;flex:none}
+  .roomStorageEmpty{padding:28px 12px;text-align:center;color:#a0a4b2;font-size:12px}
+  .roomStorageError{color:#ff9a9f}
+  .roomStorageFooter{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 20px;border-top:1px solid #303342;color:#9298a8;font-size:10px}
+  @media(max-width:560px){.roomStorageOverlay{padding:8px}.roomStorageCard{max-height:92vh}.roomStorageHeader,.roomStorageSummary{padding-left:14px;padding-right:14px}.roomStorageNote{margin-left:14px;margin-right:14px}.roomStorageToolbar{padding-left:14px;padding-right:14px}.roomStorageList{padding-left:14px;padding-right:14px}.roomStorageFooter{padding:11px 14px}.roomStorageRow{gap:8px}}
+
 </style>
 </head>
 <body>
@@ -1246,6 +1270,7 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
           <button id="managePlayersBtn" class="mestre-only hidden" type="button">Jogadores</button>
           <button id="playerPreviewBtn" class="mestre-only" type="button">Ver como player</button>
           <button id="openProjectorBtn" class="mestre-only" type="button" title="Abre uma segunda janela só com a visão dos jogadores. Arraste-a para o projetor ou a TV e use Tela cheia">Abrir tela do projetor</button>
+          <button id="roomStorageBtn" class="mestre-only" type="button" title="Ver e limpar arquivos armazenados nesta mesa">Arquivos do Supabase</button>
           <button id="copyProjectorLinkBtn" class="mestre-only" type="button" title="Link para abrir a tela do projetor em outro computador, TV ou tablet">Copiar link do projetor</button>
           <button id="toggleNamesBtn" type="button" title="Mostrar ou esconder os nomes dos tokens (só para você)">Nomes dos tokens: ON</button>
           <button id="settingsBtn" type="button" title="Configurações">Configurações</button>
@@ -2152,8 +2177,9 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
     else if (t.includes('webp') || n.endsWith('.webp')) ext = 'webp';
     else if (t.includes('jpeg') || t.includes('jpg') || n.endsWith('.jpg') || n.endsWith('.jpeg')) ext = 'jpg';
 
-    const path = `${prefix}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-    const { error } = await sb.storage.from('tabletop').upload(path, blob, { contentType: blob.type || `application/octet-stream` });
+    if (!currentRoomId) throw new Error('Entre em uma mesa antes de enviar arquivos.');
+    const path = `rooms/${currentRoomId}/${prefix}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+    const { error } = await sb.storage.from('tabletop').upload(path, blob, { contentType: blob.type || `application/octet-stream`, metadata: { originalName: fileName || `arquivo.${ext}` } });
     if (error) throw error;
     const { data } = sb.storage.from('tabletop').getPublicUrl(path);
     return data.publicUrl;
@@ -6748,6 +6774,123 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
   })();
 
 
+
+  // Gerenciador de Storage por mesa. A chave service_role permanece somente na Edge Function.
+  async function roomStorageRequest(action, extra = {}) {
+    if (!sb || !currentRoomId || !currentUserId) throw new Error('Entre em uma mesa para gerenciar os arquivos.');
+    const { data, error } = await sb.functions.invoke('room-storage-manager', {
+      body: { action, roomId: currentRoomId, userId: currentUserId, ...extra }
+    });
+    if (error) {
+      const detail = data && data.error ? data.error : error.message;
+      throw new Error(detail || 'Não foi possível acessar o Storage.');
+    }
+    if (data && data.error) throw new Error(data.error);
+    return data || {};
+  }
+
+  function formatStorageSize(bytes) {
+    const n = Number(bytes) || 0;
+    if (n < 1024) return n + ' B';
+    if (n < 1024 * 1024) return (n / 1024).toFixed(1) + ' KB';
+    if (n < 1024 * 1024 * 1024) return (n / (1024 * 1024)).toFixed(2) + ' MB';
+    return (n / (1024 * 1024 * 1024)).toFixed(2) + ' GB';
+  }
+
+  function ensureRoomStorageModal() {
+    let overlay = document.getElementById('roomStorageOverlay');
+    if (overlay) return overlay;
+    overlay = document.createElement('div');
+    overlay.id = 'roomStorageOverlay';
+    overlay.className = 'roomStorageOverlay hidden';
+    overlay.innerHTML = '<section class="roomStorageCard" role="dialog" aria-modal="true" aria-labelledby="roomStorageTitle">' +
+      '<header class="roomStorageHeader"><div><h2 id="roomStorageTitle">Arquivos do Supabase</h2><p>Armazenamento desta mesa</p></div><button type="button" id="roomStorageClose" aria-label="Fechar">×</button></header>' +
+      '<div class="roomStorageSummary" id="roomStorageSummary">Carregando arquivos…</div>' +
+      '<div class="roomStorageNote">Esta lista mostra arquivos enviados após a atualização do gerenciador. Arquivos antigos, enviados antes da organização por mesa, não possuem vínculo confiável e ficam fora desta lista.</div>' +
+      '<div class="roomStorageToolbar"><button type="button" id="roomStorageRefresh">Atualizar</button><button type="button" id="roomStorageSelectAll">Selecionar todos</button><button type="button" id="roomStorageDeleteSelected" class="danger" disabled>Excluir selecionados</button></div>' +
+      '<div class="roomStorageList" id="roomStorageList"></div>' +
+      '<footer class="roomStorageFooter"><span>Arquivos são excluídos permanentemente do Storage.</span><button type="button" id="roomStorageDone">Concluir</button></footer>' +
+      '</section>';
+    document.body.appendChild(overlay);
+    const close=()=>overlay.classList.add('hidden');
+    overlay.querySelector('#roomStorageClose').addEventListener('click',close);
+    overlay.querySelector('#roomStorageDone').addEventListener('click',close);
+    overlay.addEventListener('click',e=>{if(e.target===overlay)close();});
+    overlay.querySelector('#roomStorageRefresh').addEventListener('click',loadRoomStorageFiles);
+    overlay.querySelector('#roomStorageSelectAll').addEventListener('click',()=>{
+      const boxes=[...overlay.querySelectorAll('.roomStorageCheck')];
+      const selectAll=boxes.some(b=>!b.checked);
+      boxes.forEach(b=>b.checked=selectAll);
+      updateRoomStorageSelection();
+    });
+    overlay.querySelector('#roomStorageDeleteSelected').addEventListener('click',async()=>{
+      const paths=[...overlay.querySelectorAll('.roomStorageCheck:checked')].map(b=>b.dataset.path);
+      if(!paths.length)return;
+      if(!confirm('Excluir permanentemente '+paths.length+' arquivo(s) desta mesa do Supabase?'))return;
+      const button=overlay.querySelector('#roomStorageDeleteSelected');
+      button.disabled=true;button.textContent='Excluindo…';
+      try{await roomStorageRequest('delete',{paths});await loadRoomStorageFiles();}
+      catch(err){alert('Não foi possível excluir os arquivos: '+err.message);}
+      finally{button.textContent='Excluir selecionados';updateRoomStorageSelection();}
+    });
+    return overlay;
+  }
+
+  function updateRoomStorageSelection() {
+    const overlay=document.getElementById('roomStorageOverlay');
+    if(!overlay)return;
+    const count=overlay.querySelectorAll('.roomStorageCheck:checked').length;
+    const button=overlay.querySelector('#roomStorageDeleteSelected');
+    if(button){button.disabled=count===0;button.textContent=count?'Excluir selecionados ('+count+')':'Excluir selecionados';}
+  }
+
+  async function loadRoomStorageFiles() {
+    const overlay=ensureRoomStorageModal();
+    const list=overlay.querySelector('#roomStorageList');
+    const summary=overlay.querySelector('#roomStorageSummary');
+    list.innerHTML='<div class="roomStorageEmpty">Consultando o Supabase…</div>';
+    summary.textContent='Carregando…';
+    try{
+      const result=await roomStorageRequest('list');
+      const files=Array.isArray(result.files)?result.files:[];
+      const total=files.reduce((sum,file)=>sum+(Number(file.size)||0),0);
+      summary.textContent=files.length+' arquivo(s) • '+formatStorageSize(total)+' no total';
+      list.innerHTML='';
+      if(!files.length){list.innerHTML='<div class="roomStorageEmpty">Nenhum arquivo novo armazenado nesta mesa.</div>';return;}
+      files.forEach(file=>{
+        const row=document.createElement('div');row.className='roomStorageRow';
+        const check=document.createElement('input');check.type='checkbox';check.className='roomStorageCheck';check.dataset.path=file.path;check.addEventListener('change',updateRoomStorageSelection);
+        const details=document.createElement('div');details.className='roomStorageDetails';
+        const name=document.createElement('strong');name.textContent=file.name||file.path.split('/').pop();
+        const meta=document.createElement('span');meta.textContent=(file.folder||'')+' • '+formatStorageSize(file.size)+' • '+(file.contentType||'tipo desconhecido');
+        details.append(name,meta);
+        const del=document.createElement('button');del.type='button';del.className='danger roomStorageDeleteOne';del.textContent='Excluir';
+        del.addEventListener('click',async()=>{
+          if(!confirm('Excluir permanentemente "'+(file.name||file.path.split('/').pop())+'" do Supabase?'))return;
+          del.disabled=true;del.textContent='…';
+          try{await roomStorageRequest('delete',{paths:[file.path]});await loadRoomStorageFiles();}
+          catch(err){alert('Não foi possível excluir: '+err.message);del.disabled=false;del.textContent='Excluir';}
+        });
+        row.append(check,details,del);list.appendChild(row);
+      });
+      updateRoomStorageSelection();
+    }catch(err){
+      summary.textContent='Não foi possível carregar os arquivos.';
+      list.innerHTML='';
+      const msg=document.createElement('div');msg.className='roomStorageEmpty roomStorageError';msg.textContent=err.message||'Erro ao consultar o Storage.';list.appendChild(msg);
+    }
+  }
+
+  async function openRoomStorageManager() {
+    if(currentRole!=='mestre'||!currentRoomId)return;
+    const overlay=ensureRoomStorageModal();
+    overlay.classList.remove('hidden');
+    await loadRoomStorageFiles();
+  }
+
+  const roomStorageBtn=document.getElementById('roomStorageBtn');
+  if(roomStorageBtn)roomStorageBtn.addEventListener('click',openRoomStorageManager);
+
   // =====================================================================
   //  SISTEMA DE MÍDIA
   //  Biblioteca no localStorage do mestre; compartilhamento por broadcast
@@ -7023,8 +7166,7 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
       if (it.path) {
         status('Apagando arquivo do Supabase…');
         try {
-          const { error } = await sb.storage.from('tabletop').remove([it.path]);
-          if (error) throw error;
+          await roomStorageRequest('delete', { paths: [it.path] });
         } catch (e) {
           console.warn('Falha ao apagar arquivo de mídia:', e);
           status('Não foi possível apagar o arquivo do Supabase. A mídia continua na biblioteca para tentar novamente.', true);
@@ -7100,9 +7242,10 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
       let uploadedPath = null;
       try {
         const ext = ((f.name.split('.').pop() || 'bin').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 5)) || 'bin';
-        const path = 'media/' + Date.now() + '-' + Math.random().toString(36).slice(2, 8) + '.' + ext;
+        if (!currentRoomId) throw new Error('Entre em uma mesa antes de enviar arquivos.');
+        const path = 'rooms/' + currentRoomId + '/media/' + Date.now() + '-' + Math.random().toString(36).slice(2, 8) + '.' + ext;
         uploadedPath = path;
-        const { error } = await sb.storage.from('tabletop').upload(path, f, { contentType: f.type || undefined, cacheControl: '31536000' });
+        const { error } = await sb.storage.from('tabletop').upload(path, f, { contentType: f.type || undefined, cacheControl: '31536000', metadata: { originalName: f.name, title: mdTitle.value.trim() || f.name } });
         if (error) throw error;
         const { data } = sb.storage.from('tabletop').getPublicUrl(path);
         const it = clean({ id: uid(), title: (mdTitle.value.trim() || f.name.replace(/\.[^.]+$/, '')).slice(0, 80), url: data.publicUrl, type, path });
@@ -7113,7 +7256,7 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
         status('Arquivo salvo na biblioteca e no Supabase. Ele continuará disponível após encerrar a transmissão; exclua-o pela lixeira para liberar espaço.');
       } catch (err) {
         if (uploadedPath) {
-          try { await sb.storage.from('tabletop').remove([uploadedPath]); }
+          try { await roomStorageRequest('delete', { paths: [uploadedPath] }); }
           catch (cleanupError) { console.warn('Falha ao limpar upload incompleto:', cleanupError); }
         }
         status('Falha no envio: ' + (err.message || err), true);
