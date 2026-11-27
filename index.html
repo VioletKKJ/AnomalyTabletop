@@ -6820,7 +6820,7 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
         const target=mk('div');target.id='musicYoutubePlayer';host.appendChild(target);
         musicYTPlayer=new YT.Player(target.id,{width:'200',height:'200',playerVars:{autoplay:0,controls:0,disablekb:1,playsinline:1,rel:0,origin:location.origin},events:{
           onReady:()=>{musicYTReady=true;musicYTPlayer.setVolume(Math.round(musicVolumeValue*100));resolve(musicYTPlayer);},
-          onStateChange:e=>{if(!isMaster()||musicApplying)return;if(e.data===YT.PlayerState.PLAYING){musicGate.classList.add('hidden');try{const d=musicYTPlayer.getVideoData();if(d&&d.title){const it=musicQueue[musicIndex];if(it){it.title=d.title;musicName.textContent=d.title;renderMusicQueue();}}}catch(_){}musicSend('play');}else if(e.data===YT.PlayerState.PAUSED)musicSend('pause');else if(e.data===YT.PlayerState.ENDED)musicNext();},
+          onStateChange:e=>{if(!isMaster()||musicApplying)return;if(e.data===YT.PlayerState.PLAYING){musicGate.classList.add('hidden');try{const d=musicYTPlayer.getVideoData();if(d&&d.title){const it=musicQueue[musicIndex];if(it){it.title=d.title.slice(0,80);musicName.textContent=it.title;renderMusicQueue();musicSend('state');}}}catch(_){}musicSend('play');}else if(e.data===YT.PlayerState.PAUSED)musicSend('pause');else if(e.data===YT.PlayerState.ENDED)musicNext();},
           onError:()=>{if(isMaster())status('O YouTube não permitiu reproduzir este vídeo. Verifique se ele está disponível e permite incorporação.',true);}
         }});
       }));
@@ -6871,6 +6871,33 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
     musicGate.addEventListener('click',()=>{const it=musicQueue[musicIndex];if(musicItemIsYT(it))ensureMusicYT().then(p=>p.playVideo()).catch(()=>{});else musicAudio.play().then(()=>musicGate.classList.add('hidden')).catch(()=>{});});
     function onMusicSync(p){if(p&&!isMaster())musicLoadState(p);}
     function musicHello(){if(isMaster())musicSend('state');else send('music_hello',{});}
+    const youtubeTitleCache = new Map();
+    async function resolveYouTubeTitle(videoId){
+      if(!videoId)return '';
+      if(youtubeTitleCache.has(videoId))return youtubeTitleCache.get(videoId);
+      try{
+        const endpoint='https://www.youtube.com/oembed?format=json&url='+encodeURIComponent('https://www.youtube.com/watch?v='+videoId);
+        const response=await fetch(endpoint,{headers:{'Accept':'application/json'}});
+        if(!response.ok)throw new Error('metadata indisponível');
+        const data=await response.json();
+        const title=String(data.title||'').trim().slice(0,80);
+        if(title)youtubeTitleCache.set(videoId,title);
+        return title;
+      }catch(_){return '';}
+    }
+    async function resolveMusicTitles(items){
+      const pending=items.filter(it=>it&&it.ytId);
+      for(let i=0;i<pending.length;i+=4){
+        const batch=pending.slice(i,i+4);
+        await Promise.all(batch.map(async it=>{
+          const title=await resolveYouTubeTitle(it.ytId);
+          if(title&&musicQueue.includes(it))it.title=title;
+        }));
+        renderMusicQueue();
+        musicSend('state');
+      }
+    }
+
     async function importYouTubePlaylist(playlistId,title){
       if(!isMaster())return;status('Lendo a playlist do YouTube…');
       try{
@@ -6887,7 +6914,8 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
         });
         if(!ids.length)throw new Error('Nenhum vídeo disponível nessa playlist.');
         const added=ids.map((videoId,n)=>({id:'ytp'+videoId+uid().slice(-12),title:(title?title+' • ':'YouTube • ')+(n+1),url:'https://www.youtube.com/watch?v='+videoId,type:'video',ytId:videoId}));
-        musicQueue.push(...added);renderMusicQueue();musicSend('state');status(added.length+' vídeos adicionados à playlist de fundo.');mdUrl.value='';mdTitle.value='';
+        musicQueue.push(...added);renderMusicQueue();musicSend('state');status(added.length+' vídeos adicionados. Buscando os nomes das faixas…');mdUrl.value='';mdTitle.value='';
+        resolveMusicTitles(added).then(()=>status('Playlist importada com '+added.length+' faixas e títulos atualizados.'));
       }catch(e){status(e.message||'Não foi possível importar a playlist.',true);}
     }
 
@@ -7000,6 +7028,14 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
       addItem(it);
       mdUrl.value = ''; mdTitle.value = ''; mdType.value = '';
       status((parsed.provider || 'Mídia') + ' adicionado à lista local. Clique em Compartilhar para transmitir.');
+      if(it.ytId){
+        status('Vídeo adicionado. Buscando o título no YouTube…');
+        resolveYouTubeTitle(it.ytId).then(title=>{
+          if(!title||!lib.includes(it))return;
+          it.title=title;save();renderList();
+          status('Título do vídeo identificado.');
+        });
+      }
     }
     mdAdd.addEventListener('click', addFromUrl);
     mdUrl.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter') { e.preventDefault(); addFromUrl(); } });
