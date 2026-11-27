@@ -7014,17 +7014,26 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
       [lib[i], lib[j]] = [lib[j], lib[i]]; save(); renderList();
     }
     async function remove(it) {
-      if (!confirm('Excluir "' + it.title + '" da biblioteca?' + (it.path ? ' O arquivo enviado também será apagado do armazenamento.' : ''))) return;
+      if (!confirm('Excluir "' + it.title + '" da biblioteca?' + (it.path ? ' O arquivo também será apagado permanentemente do Supabase.' : ''))) return;
       const wasLive = !!(shared && shared.id === it.id);
       if (wasLive) await stopShare();
       if (viewing && viewing.id === it.id) closeViewer();
-      lib = lib.filter((x) => x !== it); save(); renderList();
-      if (it.path && !wasLive) {
+      // Primeiro apaga o objeto remoto. Se falhar, mantém a entrada na biblioteca
+      // para que o mestre possa tentar novamente sem perder a referência do arquivo.
+      if (it.path) {
+        status('Apagando arquivo do Supabase…');
         try {
           const { error } = await sb.storage.from('tabletop').remove([it.path]);
           if (error) throw error;
-        } catch (e) { console.warn('Falha ao apagar arquivo de mídia:', e); status('Mídia removida da biblioteca, mas o arquivo não pôde ser apagado do Storage.', true); }
+        } catch (e) {
+          console.warn('Falha ao apagar arquivo de mídia:', e);
+          status('Não foi possível apagar o arquivo do Supabase. A mídia continua na biblioteca para tentar novamente.', true);
+          return;
+        }
       }
+      lib = lib.filter((x) => x.id !== it.id);
+      save(); renderList();
+      status(it.path ? 'Mídia e arquivo apagados do Supabase.' : 'Mídia removida da biblioteca.');
     }
 
     function parseExternalMedia(raw) {
@@ -7088,18 +7097,27 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
       if (!type) { status('Formato não reconhecido. Escolha o tipo manualmente.', true); return; }
       if (f.size > MAX_UPLOAD) { status('Arquivo acima de 45 MB. No plano atual, o limite do Storage é 50 MB por arquivo. Use YouTube, Drive ou link externo.', true); return; }
       status('Enviando…');
+      let uploadedPath = null;
       try {
         const ext = ((f.name.split('.').pop() || 'bin').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 5)) || 'bin';
         const path = 'media/' + Date.now() + '-' + Math.random().toString(36).slice(2, 8) + '.' + ext;
+        uploadedPath = path;
         const { error } = await sb.storage.from('tabletop').upload(path, f, { contentType: f.type || undefined, cacheControl: '31536000' });
         if (error) throw error;
         const { data } = sb.storage.from('tabletop').getPublicUrl(path);
         const it = clean({ id: uid(), title: (mdTitle.value.trim() || f.name.replace(/\.[^.]+$/, '')).slice(0, 80), url: data.publicUrl, type, path });
         if (!it) throw new Error('resposta inválida do armazenamento');
+        addItem(it);
         mdTitle.value = ''; mdType.value = '';
         share(it);
-        status('Arquivo enviado e transmitido temporariamente. Ele será apagado ao encerrar a transmissão.');
-      } catch (err) { status('Falha no envio: ' + (err.message || err), true); }
+        status('Arquivo salvo na biblioteca e no Supabase. Ele continuará disponível após encerrar a transmissão; exclua-o pela lixeira para liberar espaço.');
+      } catch (err) {
+        if (uploadedPath) {
+          try { await sb.storage.from('tabletop').remove([uploadedPath]); }
+          catch (cleanupError) { console.warn('Falha ao limpar upload incompleto:', cleanupError); }
+        }
+        status('Falha no envio: ' + (err.message || err), true);
+      }
     });
 
     function stopPlayback() {
@@ -7365,22 +7383,10 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
     }
     async function stopShare() {
       if (!shared) return;
-      const ending = shared;
       shared = null; sharedNonce = 0;
       send('media_stop', {});
       closeViewer(); renderList();
-      if (ending.path) {
-        lib = lib.filter((entry) => entry.path !== ending.path);
-        save(); renderList();
-        try {
-          const { error } = await sb.storage.from('tabletop').remove([ending.path]);
-          if (error) throw error;
-          status('Transmissão encerrada e arquivo temporário apagado.');
-        } catch (e) {
-          console.warn('Falha ao apagar arquivo temporário:', e);
-          status('Transmissão encerrada, mas o arquivo temporário não pôde ser apagado automaticamente. Verifique o Storage.', true);
-        }
-      }
+      status('Transmissão encerrada. A mídia continua salva na biblioteca.');
     }
     function onShare(p) {
       if (isMaster() || !p) return;
@@ -7430,10 +7436,9 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
     function reset() {
       const ending = shared;
       if (ending && isMaster()) {
+        // Encerrar a transmissão não apaga o arquivo: ele permanece na biblioteca
+        // e só é removido do Storage quando o mestre usa a ação Excluir.
         send('media_stop', {});
-        if (ending.path) sb.storage.from('tabletop').remove([ending.path]).then(({ error }) => {
-          if (error) console.warn('Falha ao limpar mídia temporária ao sair da mesa:', error);
-        });
       }
       closeViewer(true); closePanel();
       if(musicHeartbeat){clearInterval(musicHeartbeat);musicHeartbeat=null;} musicAudio.pause();if(musicYTPlayer&&musicYTReady)try{musicYTPlayer.stopVideo();}catch(_){}musicAudio.removeAttribute('src');musicAudio.load();musicQueue=[];musicIndex=-1;musicShow(false);
