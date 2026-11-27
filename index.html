@@ -842,6 +842,26 @@
 .ivInfo{width:min(640px,calc(100% - 24px));max-height:26vh;margin:0 auto 6px;padding:10px 14px;overflow-y:auto;touch-action:pan-y;border-radius:12px;border:1px solid rgba(255,255,255,.08);background:rgba(18,19,26,.72);backdrop-filter:blur(10px)}.ivDesc{font-size:13px;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere;-webkit-user-select:text;user-select:text}.ivHint{text-align:center;font-size:10.5px;color:var(--text-dim);padding:2px 12px max(10px,env(safe-area-inset-bottom,10px))}
 body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:none!important}body.projetor .ivDesc{font-size:18px}body.projetor .ivTitle{font-size:24px}@media(prefers-reduced-motion:reduce){#itemViewer{animation:none}.ivScene{transition:none}}
 
+  /* Seletor de cores próprio do Anomaly VTT */
+  .vttColorTrigger{display:inline-flex;align-items:center;justify-content:center;width:36px;height:34px;min-width:36px;padding:4px;border:1px solid var(--panel-border);border-radius:9px;background:rgba(255,255,255,.045);cursor:pointer;vertical-align:middle;flex:none}
+  .vttColorTrigger:hover,.vttColorTrigger[aria-expanded="true"]{border-color:rgba(157,78,223,.75);background:rgba(157,78,223,.13)}
+  .vttColorTrigger .vttColorSwatch{display:block;width:100%;height:100%;border:1px solid rgba(255,255,255,.28);border-radius:6px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.12)}
+  #vttColorPopover{position:fixed;z-index:100200;width:260px;padding:13px;border:1px solid var(--panel-border);border-radius:15px;background:rgba(24,25,34,.98);box-shadow:0 14px 42px rgba(0,0,0,.65);backdrop-filter:blur(16px);color:var(--text)}
+  #vttColorPopover.hidden{display:none!important}
+  #vttColorPopover .vcpHead{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;font-size:12px;font-weight:700}
+  #vttColorPopover .vcpClose{width:26px;height:26px;min-height:26px;padding:0;border-radius:50%;justify-content:center}
+  #vttColorPopover .vcpWheelWrap{display:grid;place-items:center;padding:2px 0 10px}
+  #vttColorWheel{width:196px;height:196px;max-width:100%;touch-action:none;cursor:crosshair}
+  #vttColorPopover .vcpLabel{display:flex;justify-content:space-between;align-items:center;margin:4px 0 5px;color:var(--text-dim);font-size:10px}
+  #vttColorBrightness{width:100%;margin:0 0 9px;accent-color:var(--accent)}
+  #vttColorPopover .vcpHexRow{display:flex;align-items:center;gap:8px}
+  #vttColorPreview{width:34px;height:32px;flex:none;border:1px solid rgba(255,255,255,.22);border-radius:8px}
+  #vttColorHex{width:100%;min-width:0;padding:7px 9px;border:1px solid var(--panel-border);border-radius:8px;background:var(--bg);color:var(--text);font:12px ui-monospace,monospace;text-transform:uppercase}
+  #vttColorHex:focus{outline:none;border-color:var(--accent)}
+  #vttColorPopover .vcpRecent{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+  #vttColorPopover .vcpRecent button{width:22px;height:22px;min-height:22px;min-width:22px;padding:0;border-radius:50%;border:1px solid rgba(255,255,255,.25)}
+  #vttColorPopover .vcpRecent button:hover{outline:2px solid var(--accent);outline-offset:2px}
+  @media(max-width:420px){#vttColorPopover{width:min(260px,calc(100vw - 16px));padding:11px}#vttColorWheel{width:180px;height:180px}}
   /* ===== Música de fundo compartilhada ===== */
   #musicBar{position:fixed;left:auto;right:62px;bottom:max(8px,env(safe-area-inset-bottom,8px));transform:none;z-index:29;display:flex;align-items:center;gap:10px;max-width:min(420px,calc(100vw - 76px));padding:8px 12px;border:1px solid rgba(157,78,223,.45);border-radius:999px;background:rgba(20,20,29,.96);box-shadow:0 8px 28px #0008;color:var(--text);font-size:12px;backdrop-filter:blur(12px)}
   #musicBar.hidden{display:none!important}#musicBar #musicName{max-width:32vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}#musicBar label{display:flex;align-items:center;gap:6px;color:var(--text-dim)}#musicVolume{width:100px;accent-color:var(--accent)}#musicGate{white-space:nowrap;padding:5px 8px;font-size:11px}
@@ -7822,6 +7842,40 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
     document.addEventListener('visibilitychange', keepAwake);
     keepAwake();
   }
+
+  (function initVttColorPicker(){
+    const inputs=Array.from(document.querySelectorAll('input[type="color"]'));
+    if(!inputs.length)return;
+    const pop=document.createElement('div');
+    pop.id='vttColorPopover';pop.className='hidden';pop.setAttribute('role','dialog');pop.setAttribute('aria-label','Seletor de cores');
+    pop.innerHTML='<div class="vcpHead"><span>Selecionar cor</span><button type="button" class="vcpClose" aria-label="Fechar">×</button></div><div class="vcpWheelWrap"><canvas id="vttColorWheel" width="196" height="196" aria-label="Roda de matiz e saturação"></canvas></div><div class="vcpLabel"><span>Brilho</span><span id="vttColorBrightnessVal">100%</span></div><input id="vttColorBrightness" type="range" min="0" max="100" value="100"><div class="vcpLabel"><span>Código hexadecimal</span></div><div class="vcpHexRow"><span id="vttColorPreview"></span><input id="vttColorHex" type="text" maxlength="7" spellcheck="false" value="#FFFFFF" aria-label="Código hexadecimal"></div><div class="vcpLabel" style="margin-top:11px"><span>Cores recentes</span></div><div class="vcpRecent" id="vttColorRecent"></div>';
+    document.body.appendChild(pop);
+    const canvas=pop.querySelector('#vttColorWheel'),ctx=canvas.getContext('2d'),bright=pop.querySelector('#vttColorBrightness'),brightVal=pop.querySelector('#vttColorBrightnessVal'),hex=pop.querySelector('#vttColorHex'),preview=pop.querySelector('#vttColorPreview'),recent=pop.querySelector('#vttColorRecent');
+    let input=null,trigger=null,hue=0,sat=1,val=1,drag=false;
+    const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
+    const hsvRgb=(h,s,v)=>{const c=v*s,x=c*(1-Math.abs((h/60)%2-1)),m=v-c;let r=0,g=0,b=0;if(h<60){r=c;g=x}else if(h<120){r=x;g=c}else if(h<180){g=c;b=x}else if(h<240){g=x;b=c}else if(h<300){r=x;b=c}else{r=c;b=x}return[r,g,b].map(n=>Math.round((n+m)*255))};
+    const toHex=rgb=>'#'+rgb.map(n=>n.toString(16).padStart(2,'0')).join('').toUpperCase();
+    const fromHex=x=>{const m=/^#?([0-9a-f]{6})$/i.exec(x.trim());return m?m[1].match(/../g).map(v=>parseInt(v,16)):null};
+    const toHsv=rgb=>{const[r0,g0,b0]=rgb,[r,g,b]=[r0/255,g0/255,b0/255],mx=Math.max(r,g,b),mn=Math.min(r,g,b),d=mx-mn;let h=0;if(d){if(mx===r)h=60*(((g-b)/d)%6);else if(mx===g)h=60*((b-r)/d+2);else h=60*((r-g)/d+4)}return[(h+360)%360,mx?d/mx:0,mx]};
+    function draw(){const w=canvas.width,c=w/2,rad=c-2,img=ctx.createImageData(w,w);for(let y=0;y<w;y++)for(let x=0;x<w;x++){const dx=x-c,dy=c-y,d=Math.hypot(dx,dy),i=(y*w+x)*4;if(d<=rad){const[r,g,b]=hsvRgb((Math.atan2(dy,dx)*180/Math.PI+360)%360,d/rad,1);img.data[i]=r;img.data[i+1]=g;img.data[i+2]=b;img.data[i+3]=255}}ctx.putImageData(img,0,0)}
+    function marker(){const r=canvas.width/2-2,a=hue*Math.PI/180,d=sat*r,x=canvas.width/2+Math.cos(a)*d,y=canvas.height/2-Math.sin(a)*d;draw();ctx.beginPath();ctx.arc(x,y,6,0,Math.PI*2);ctx.strokeStyle='#111';ctx.lineWidth=4;ctx.stroke();ctx.beginPath();ctx.arc(x,y,6,0,Math.PI*2);ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.stroke()}
+    function recentDraw(){let arr=[];try{arr=JSON.parse(localStorage.getItem('anomaly_vtt_recent_colors')||'[]')}catch(_){}recent.innerHTML='';arr.slice(0,10).forEach(c=>{const b=document.createElement('button');b.type='button';b.title=c;b.style.background=c;b.addEventListener('click',()=>chooseHex(c,true));recent.appendChild(b)})}
+    function remember(c){let arr=[];try{arr=JSON.parse(localStorage.getItem('anomaly_vtt_recent_colors')||'[]')}catch(_){}arr=[c,...arr.filter(x=>x!==c)].slice(0,10);try{localStorage.setItem('anomaly_vtt_recent_colors',JSON.stringify(arr))}catch(_){}recentDraw()}
+    function paint(c,emit=true){if(!input)return;input.value=c;trigger.querySelector('.vttColorSwatch').style.background=c;preview.style.background=c;hex.value=c;[hue,sat,val]=toHsv(fromHex(c));bright.value=Math.round(val*100);brightVal.textContent=bright.value+'%';marker();if(emit)input.dispatchEvent(new Event('input',{bubbles:true}))}
+    function chooseHex(c,emit=true){const rgb=fromHex(c);if(!rgb)return;[hue,sat,val]=toHsv(rgb);paint(toHex(rgb),emit)}
+    function point(e){const r=canvas.getBoundingClientRect(),x=(e.clientX-r.left)*canvas.width/r.width-canvas.width/2,y=canvas.height/2-(e.clientY-r.top)*canvas.height/r.height,rad=canvas.width/2-2,d=Math.min(rad,Math.hypot(x,y));hue=(Math.atan2(y,x)*180/Math.PI+360)%360;sat=d/rad;paint(toHex(hsvRgb(hue,sat,val)))}
+    function place(){const r=trigger.getBoundingClientRect(),w=pop.offsetWidth,h=pop.offsetHeight;let x=clamp(r.left,8,innerWidth-w-8),y=r.bottom+8;if(y+h>innerHeight-8)y=r.top-h-8;pop.style.left=clamp(x,8,innerWidth-w-8)+'px';pop.style.top=clamp(y,8,innerHeight-h-8)+'px'}
+    function close(){pop.classList.add('hidden');if(trigger)trigger.setAttribute('aria-expanded','false');input=null;trigger=null;drag=false}
+    function open(inp,btn){if(input===inp&&!pop.classList.contains('hidden')){close();return}input=inp;trigger=btn;btn.setAttribute('aria-expanded','true');pop.classList.remove('hidden');chooseHex(/^#[0-9a-f]{6}$/i.test(inp.value)?inp.value:'#ffffff',false);recentDraw();place()}
+    inputs.forEach(inp=>{const b=document.createElement('button');b.type='button';b.className='vttColorTrigger';b.title=inp.title||'Escolher cor';b.setAttribute('aria-label',inp.title||'Escolher cor');b.setAttribute('aria-expanded','false');b.innerHTML='<span class="vttColorSwatch"></span>';inp.insertAdjacentElement('beforebegin',b);inp.style.display='none';b.addEventListener('click',()=>open(inp,b))});
+    draw();pop.querySelector('.vcpClose').addEventListener('click',close);
+    canvas.addEventListener('pointerdown',e=>{drag=true;canvas.setPointerCapture(e.pointerId);point(e)});canvas.addEventListener('pointermove',e=>{if(drag)point(e)});canvas.addEventListener('pointerup',()=>{if(drag&&input)remember(input.value);drag=false});canvas.addEventListener('pointercancel',()=>drag=false);
+    bright.addEventListener('input',()=>{val=Number(bright.value)/100;brightVal.textContent=bright.value+'%';if(input)paint(toHex(hsvRgb(hue,sat,val)))});
+    hex.addEventListener('input',()=>{if(/^#?[0-9a-f]{6}$/i.test(hex.value))chooseHex(hex.value,true)});hex.addEventListener('change',()=>{if(input&&/^#?[0-9a-f]{6}$/i.test(hex.value))remember(input.value)});
+    document.addEventListener('pointerdown',e=>{if(!pop.classList.contains('hidden')&&!pop.contains(e.target)&&!e.target.closest('.vttColorTrigger'))close()});
+    document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!pop.classList.contains('hidden'))close()});
+    window.addEventListener('resize',()=>{if(input)place()});window.addEventListener('scroll',()=>{if(input)place()},true);
+  })();
 
   applyZoom(); drawGrid();
   const savedUrl = localStorage.getItem('tabletop_sb_url') || '';
