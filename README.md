@@ -51,7 +51,7 @@ O frontend é uma página estática (\`index.html\`) hospedada pelo GitHub Pages
 - **Hospedagem:** GitHub Pages.
 - **Banco de dados:** PostgreSQL pelo Supabase.
 - **Sincronização:** Supabase Realtime para propagar alterações entre participantes.
-- **Arquivos:** Supabase Storage para imagens e recursos enviados.
+- **Arquivos:** Supabase Storage para imagens e recursos enviados. Novos uploads ficam organizados por mesa em `rooms/<room_id>/...`; o menu `...` inclui um gerenciador que lista e exclui arquivos da mesa atual por meio da Edge Function `room-storage-manager`. Arquivos antigos, enviados antes dessa organização, permanecem nos caminhos legados e não aparecem no gerenciador.
 - **Operações protegidas:** funções RPC no banco para ações que exigem validação de permissões.
 - **Acesso:** sistema próprio de cadastro e login, separado do Supabase Auth.
 
