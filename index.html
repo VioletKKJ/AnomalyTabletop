@@ -843,8 +843,9 @@
 body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:none!important}body.projetor .ivDesc{font-size:18px}body.projetor .ivTitle{font-size:24px}@media(prefers-reduced-motion:reduce){#itemViewer{animation:none}.ivScene{transition:none}}
 
   /* ===== Música de fundo compartilhada ===== */
-  #musicBar{position:fixed;left:50%;bottom:max(12px,env(safe-area-inset-bottom,12px));transform:translateX(-50%);z-index:60030;display:flex;align-items:center;gap:10px;max-width:calc(100vw - 20px);padding:9px 13px;border:1px solid rgba(157,78,223,.45);border-radius:13px;background:rgba(20,20,29,.96);box-shadow:0 8px 28px #0008;color:var(--text);font-size:12px;backdrop-filter:blur(12px)}
+  #musicBar{position:fixed;left:auto;right:14px;bottom:max(76px,calc(env(safe-area-inset-bottom,0px) + 68px));transform:none;z-index:60030;display:flex;align-items:center;gap:10px;max-width:min(420px,calc(100vw - 20px));padding:9px 13px;border:1px solid rgba(157,78,223,.45);border-radius:13px;background:rgba(20,20,29,.96);box-shadow:0 8px 28px #0008;color:var(--text);font-size:12px;backdrop-filter:blur(12px)}
   #musicBar.hidden{display:none!important}#musicBar #musicName{max-width:32vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}#musicBar label{display:flex;align-items:center;gap:6px;color:var(--text-dim)}#musicVolume{width:100px;accent-color:var(--accent)}#musicGate{white-space:nowrap;padding:5px 8px;font-size:11px}#musicBar.projectorMusic{z-index:60030}
+  @media(max-width:600px){#musicBar{right:8px;bottom:max(72px,calc(env(safe-area-inset-bottom,0px) + 64px));gap:7px;padding:7px 9px;max-width:calc(100vw - 16px)}#musicBar #musicName{max-width:30vw}#musicVolume{width:76px}}
   #musicYoutubeHost,#musicPlaylistImportHost{position:fixed;left:-10000px;top:0;width:200px;height:200px;overflow:hidden;pointer-events:none}
   /* Interface reorganizada do painel de mídia */
   #mediaPanel{width:min(430px,calc(100vw - 16px));padding:0;overflow:hidden;display:flex;flex-direction:column;max-height:calc(100vh - 90px)}
