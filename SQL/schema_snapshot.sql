@@ -211,9 +211,6 @@ CREATE POLICY "scenes select all" ON public.scenes AS permissive FOR SELECT TO p
 CREATE POLICY "tokens select all" ON public.tokens AS permissive FOR SELECT TO public
   USING (true);
 
-CREATE POLICY "Delete tabletop" ON storage.objects AS permissive FOR DELETE TO public
-  USING ((bucket_id = 'tabletop'::text));
-
 CREATE POLICY "Public read tabletop" ON storage.objects AS permissive FOR SELECT TO public
   USING ((bucket_id = 'tabletop'::text));
 
