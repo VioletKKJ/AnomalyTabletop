@@ -6862,7 +6862,7 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
         const check=document.createElement('input');check.type='checkbox';check.className='roomStorageCheck';check.dataset.path=file.path;check.addEventListener('change',updateRoomStorageSelection);
         const details=document.createElement('div');details.className='roomStorageDetails';
         const name=document.createElement('strong');name.textContent=file.name||file.path.split('/').pop();
-        const meta=document.createElement('span');meta.textContent=(file.folder||'')+' • '+formatStorageSize(file.size)+' • '+(file.contentType||'tipo desconhecido');
+        const meta=document.createElement('span');meta.textContent=(file.folder||'')+' • '+formatStorageSize(file.size)+' • '+(file.contentType||'tipo desconhecido')+(file.createdAt?' • '+new Date(file.createdAt).toLocaleString('pt-BR'):'');
         details.append(name,meta);
         const del=document.createElement('button');del.type='button';del.className='danger roomStorageDeleteOne';del.textContent='Excluir';
         del.addEventListener('click',async()=>{
@@ -7164,6 +7164,10 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
       // Primeiro apaga o objeto remoto. Se falhar, mantém a entrada na biblioteca
       // para que o mestre possa tentar novamente sem perder a referência do arquivo.
       if (it.path) {
+        if (!it.path.startsWith('rooms/' + currentRoomId + '/')) {
+          status('Este arquivo é legado e foi enviado antes da organização por mesa. Para evitar apagar algo de outra mesa, ele foi mantido na biblioteca. Remova-o manualmente pelo Storage do Supabase.', true);
+          return;
+        }
         status('Apagando arquivo do Supabase…');
         try {
           await roomStorageRequest('delete', { paths: [it.path] });
