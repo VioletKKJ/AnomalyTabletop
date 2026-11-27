@@ -71,7 +71,8 @@ Deno.serve(async (req: Request) => {
               const meta = (entry.metadata || {}) as Record<string, unknown>;
               files.push({
                 path,
-                name: entry.name,
+                name: String(meta.originalName || meta.title || entry.name),
+                objectName: entry.name,
                 folder: folder.slice(root.length + 1),
                 size: Number(meta.size || 0),
                 contentType: String(meta.mimetype || meta.contentType || ""),
