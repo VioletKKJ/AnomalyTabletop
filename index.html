@@ -7229,7 +7229,7 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
     btn.addEventListener('click', () => (panel.classList.contains('hidden') ? openPanel() : closePanel()));
     $('mdClose').addEventListener('click', closePanel);
 
-    function setup(id) { reset(); roomId = id; load(); renderList(); musicQueue=[];musicIndex=-1;musicNonce=0;musicShow(false);renderMusicQueue(); }
+    function setup(id) { reset(); roomId = id; load(); renderList(); musicQueue=[];musicIndex=-1;musicNonce=0;musicShow(false);renderMusicQueue(); if(musicHeartbeat)clearInterval(musicHeartbeat); if(isMaster())musicHeartbeat=setInterval(()=>{if(musicIndex>=0)musicSend('state');},4000); }
     function reset() {
       const ending = shared;
       if (ending && isMaster()) {
@@ -7239,6 +7239,7 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
         });
       }
       closeViewer(true); closePanel();
+      if(musicHeartbeat){clearInterval(musicHeartbeat);musicHeartbeat=null;} musicAudio.pause();musicAudio.removeAttribute('src');musicAudio.load();musicQueue=[];musicIndex=-1;musicShow(false);
       shared = null; sharedNonce = 0; unseen = false; roomId = null; lib = []; refreshNotice();
       if (syncHeartbeat) { clearInterval(syncHeartbeat); syncHeartbeat = null; }
       clearTimeout(syncStartTimer); syncStartTimer = null;
