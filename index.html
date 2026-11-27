@@ -7032,7 +7032,9 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
         status('Vídeo adicionado. Buscando o título no YouTube…');
         resolveYouTubeTitle(it.ytId).then(title=>{
           if(!title||!lib.includes(it))return;
-          it.title=title;save();renderList();
+          it.title=title;
+          musicQueue.forEach(q=>{if(q.ytId===it.ytId)q.title=title;});
+          save();renderList();renderMusicQueue();musicSend('state');
           status('Título do vídeo identificado.');
         });
       }
