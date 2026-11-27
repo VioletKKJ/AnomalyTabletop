@@ -51,7 +51,7 @@ O frontend é uma página estática (\`index.html\`) hospedada pelo GitHub Pages
 - **Hospedagem:** GitHub Pages.
 - **Banco de dados:** PostgreSQL pelo Supabase.
 - **Sincronização:** Supabase Realtime para propagar alterações entre participantes.
-- **Arquivos:** Supabase Storage para imagens e recursos enviados. Novos uploads ficam organizados por mesa em `rooms/<room_id>/...`; o menu `...` inclui um gerenciador que lista e exclui arquivos da mesa atual por meio da Edge Function `room-storage-manager`. Arquivos antigos, enviados antes dessa organização, permanecem nos caminhos legados e não aparecem no gerenciador.
+- **Arquivos:** Supabase Storage para imagens e recursos enviados. Novos uploads ficam organizados por mesa em `rooms/<room_id>/...`; o menu `...` inclui um gerenciador que lista e exclui arquivos da mesa atual por meio da Edge Function `room-storage-manager`. Arquivos antigos, enviados antes dessa organização, permanecem nos caminhos legados e não aparecem no gerenciador. O bucket continua público por URL direta para manter mapas, tokens e mídias existentes funcionando, mas a policy de listagem pública foi removida. A autorização do gerenciador segue o sistema de contas próprio do Anomaly VTT e valida a função de mestre em `room_members`; não equivale a uma sessão Supabase Auth.
 - **Operações protegidas:** funções RPC no banco para ações que exigem validação de permissões.
 - **Acesso:** sistema próprio de cadastro e login, separado do Supabase Auth.
 
@@ -62,6 +62,8 @@ As credenciais de conexão do Supabase são informadas na primeira configuraçã
 - \`index.html\`: aplicação completa, incluindo interface, estilos e lógica do frontend.
 - \`SQL/schema_snapshot.sql\`: snapshot da estrutura do banco conectado, incluindo tabelas, funções, índices e políticas. Não contém os dados das mesas ou dos usuários.
 - \`SQL/shared_items.sql\`: criação da tabela e das RPCs do sistema de itens compartilhados.
+- \`SQL/room_storage_manager.sql\`: remoção das policies amplas de listagem e exclusão do bucket.
+- \`supabase/functions/room-storage-manager/index.ts\`: listagem e exclusão de arquivos restritas à mesa e ao mestre informado pela aplicação.
 - \`SQL/\` e \`supabase/sql/\`: scripts SQL de alterações e funções específicas do banco.
 
 ### Sobre o snapshot SQL
