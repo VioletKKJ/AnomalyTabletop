@@ -205,7 +205,9 @@
 
   #tokensLayer { position: absolute; inset: 0; z-index: 10000; pointer-events: none; }
   #tokensLayer > * { pointer-events: auto; }
-  .token.multi-selected { outline: 2px solid #b565d8; outline-offset: 3px; filter: drop-shadow(0 0 5px rgba(181,101,216,.75)); }
+  /* A seleção acompanha a silhueta visível do PNG, sem desenhar um retângulo ao redor. */
+  .token.multi-selected .pieceContent { filter: drop-shadow(0 0 2px #b565d8) drop-shadow(0 0 3px rgba(181,101,216,.9)); }
+  .token.multi-selected .pieceTint { filter: drop-shadow(0 0 2px #b565d8) drop-shadow(0 0 3px rgba(181,101,216,.9)); }
   #tokenSelectionBox { position: fixed; z-index: 50000; pointer-events: none; border: 1px solid rgba(181,101,216,.95); background: rgba(157,78,223,.16); border-radius: 3px; display: none; }
 
   /* Camada de Iluminação Dinâmica / Sombra */
@@ -377,7 +379,9 @@
     touch-action: none; cursor: grab; display: none; box-shadow: 0 0 10px rgba(0, 230, 118, 0.8); }
 
   .selected .resizeHandle, .selected .rotateHandle { display: block; }
-  .selected .pieceImg, .selected .pieceVideo { outline: calc(2px * var(--inv-zoom, 1)) dashed var(--accent); outline-offset: calc(4px * var(--inv-zoom, 1)); filter: drop-shadow(0 0 6px rgba(157, 78, 223, 0.5)); }
+  .token.selected .pieceContent { filter: drop-shadow(0 0 2px var(--accent)) drop-shadow(0 0 4px rgba(157, 78, 223, .9)); }
+  .token.selected .pieceTint { filter: drop-shadow(0 0 2px var(--accent)) drop-shadow(0 0 4px rgba(157, 78, 223, .9)); }
+  .selected .pieceVideo { filter: drop-shadow(0 0 6px rgba(157, 78, 223, .8)); }
 
   #contextMenu { position: fixed; z-index: 60000; background: var(--panel); border: 1px solid var(--panel-border);
     border-radius: 12px; padding: 8px; display: none; min-width: 210px; box-shadow: 0 10px 30px rgba(0,0,0,0.6);
@@ -4983,7 +4987,10 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
   document.addEventListener('contextmenu', (e) => e.preventDefault(), true);
 
   boardWrap.addEventListener('contextmenu', (e) => {
-    if (e.target.closest('.token, .mapPiece')) return;
+    const tokenTarget = e.target.closest('.token');
+    // Clique com botão direito em área transparente atravessa o token e abre o menu da mesa.
+    if (tokenTarget && tokenHasOpaquePixelAt(tokenTarget, e.clientX, e.clientY)) return;
+    if (!tokenTarget && e.target.closest('.mapPiece')) return;
     if (document.body.classList.contains('wall-editor-active') && wallStartPoint) {
       e.preventDefault();
       breakWallChain();
