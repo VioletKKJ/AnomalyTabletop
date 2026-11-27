@@ -3634,8 +3634,10 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
     const cx = rect.left + rect.width / 2, cy = rect.top + rect.height / 2;
     const dx = clientX - cx, dy = clientY - cy;
     const cos = Math.cos(angle), sin = Math.sin(angle);
-    let nx = (dx * cos - dy * sin) / rect.width + 0.5;
-    const ny = (dx * sin + dy * cos) / rect.height + 0.5;
+    const localWidth = Math.max(1, el.offsetWidth * scale);
+    const localHeight = Math.max(1, el.offsetHeight * scale);
+    let nx = (dx * cos - dy * sin) / localWidth + 0.5;
+    const ny = (dx * sin + dy * cos) / localHeight + 0.5;
     if (tok.flip_x) nx = 1 - nx;
     if (nx < 0 || nx > 1 || ny < 0 || ny > 1) return false;
 
