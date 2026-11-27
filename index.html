@@ -865,7 +865,7 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
   #mediaPanel .mdSectionIntro span{font-size:11px;line-height:1.45;color:var(--text-dim)}
   #mediaPanel #mdSearch{margin-bottom:9px}
   #mediaPanel #mdList{margin-top:0;max-height:min(48vh,460px);overflow-y:auto;padding-right:2px}
-  #mediaPanel .mdMusicControls{margin:12px 0}
+  #mediaPanel .mdMusicControls{margin:12px 0}#mediaPanel .mdProgress{margin:12px 0 4px}#mediaPanel .mdProgressTimes{display:flex;justify-content:space-between;color:var(--text-dim);font-size:10px;font-variant-numeric:tabular-nums}#mediaPanel #musicSeek{display:block;width:100%;margin:5px 0;accent-color:var(--accent);touch-action:pan-x}#mediaPanel #musicSeek:disabled{opacity:.45}#mediaPanel #musicLoop.active{border-color:rgba(157,78,223,.65);background:rgba(157,78,223,.18);color:#e5cafa}
   #mediaPanel .mdMusicControls button{font-size:11px;padding:7px 4px}
   #mediaPanel .mdNowPlaying{display:flex;align-items:center;gap:10px;padding:12px;border:1px solid rgba(157,78,223,.2);border-radius:11px;background:linear-gradient(120deg,rgba(157,78,223,.13),rgba(255,255,255,.025))}
   #mediaPanel .mdNowIcon{width:34px;height:34px;display:grid;place-items:center;border-radius:9px;background:rgba(157,78,223,.2);font-size:19px;color:#e1c9f5}
@@ -1440,7 +1440,8 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
     <section class="mdTabPanel" data-md-panel="playlist" role="tabpanel">
       <div class="mdSectionIntro"><strong>Trilha sonora</strong><span>O mestre controla a faixa. Cada participante ajusta o próprio volume.</span></div>
       <div class="mdNowPlaying"><span class="mdNowIcon">♫</span><div><small>REPRODUÇÃO DA MESA</small><strong id="mdPlaylistHint">Nenhuma faixa selecionada</strong></div></div>
-      <div class="mdRow2 mdMusicControls"><button id="musicPlay" type="button" class="primary">Reproduzir</button><button id="musicPause" type="button">Pausar</button><button id="musicNext" type="button">Próxima</button><button id="musicStop" type="button" class="danger">Parar</button></div>
+      <div class="mdProgress"><div class="mdProgressTimes"><span id="musicElapsed">0:00</span><span id="musicDuration">0:00</span></div><input id="musicSeek" type="range" min="0" max="1000" value="0" step="1" aria-label="Progresso da música"></div>
+      <div class="mdRow2 mdMusicControls"><button id="musicLoop" type="button" class="mestre-only" title="Alternar repetição">Loop: desligado</button><button id="musicPlay" type="button" class="primary">Reproduzir</button><button id="musicPause" type="button">Pausar</button><button id="musicNext" type="button">Próxima</button><button id="musicStop" type="button" class="danger">Parar</button></div>
       <div class="mdQueueLabel"><strong>Fila de reprodução</strong><span id="mdQueueLabelCount">0 faixas</span></div>
       <div id="musicQueue"></div>
       <p class="mdFootnote">Para adicionar faixas, use o botão + nos itens de áudio ou YouTube da biblioteca, ou importe uma playlist pela aba Adicionar.</p>
@@ -6744,7 +6745,7 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
     const mdStatus = $('mdStatus'), mdSearch = $('mdSearch'), mdList = $('mdList');
     const musicBar = $('musicBar'), musicName = $('musicName'), musicVolume = $('musicVolume'), musicGate = $('musicGate');
     const musicAudio = new Audio(); musicAudio.preload = 'auto'; musicAudio.loop = false;
-    let musicQueue = [], musicIndex = -1, musicNonce = 0, musicHeartbeat = null, musicApplying = false;
+    let musicQueue = [], musicIndex = -1, musicNonce = 0, musicHeartbeat = null, musicApplying = false, musicLoopMode = 0, musicSeeking = false;
     let musicYTPlayer = null, musicYTReady = false, musicYTPromise = null;
     let musicVolumeValue = Number(localStorage.getItem('tabletop_music_volume')); if (!Number.isFinite(musicVolumeValue)) musicVolumeValue = 0.7;
     musicVolumeValue = Math.max(0, Math.min(1, musicVolumeValue)); musicAudio.volume = musicVolumeValue;
@@ -6809,7 +6810,7 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
     const musicItemIsYT = it => !!(it && it.ytId);
     function musicCurrentTime(){const it=musicQueue[musicIndex];if(musicItemIsYT(it)&&musicYTPlayer&&musicYTReady){try{return musicYTPlayer.getCurrentTime()||0;}catch(_){}}return Number(musicAudio.currentTime)||0;}
     function musicIsPlaying(){const it=musicQueue[musicIndex];if(musicItemIsYT(it)&&musicYTPlayer&&musicYTReady){try{return musicYTPlayer.getPlayerState()===1;}catch(_){}}return !musicAudio.paused&&!musicAudio.ended;}
-    function musicSend(action){if(!isMaster())return;send('music_sync',{action,queue:musicQueue.map(x=>({id:x.id,title:x.title,url:x.url,type:x.type,path:x.path||null,ytId:x.ytId||null})),index:musicIndex,time:musicCurrentTime(),playing:musicIsPlaying(),at:Date.now()+350,nonce:musicNonce});}
+    function musicSend(action){if(!isMaster())return;send('music_sync',{action,queue:musicQueue.map(x=>({id:x.id,title:x.title,url:x.url,type:x.type,path:x.path||null,ytId:x.ytId||null})),index:musicIndex,time:musicCurrentTime(),playing:musicIsPlaying(),loopMode:musicLoopMode,at:Date.now()+350,nonce:musicNonce});}
     function musicSetVolume(v){musicVolumeValue=Math.max(0,Math.min(1,Number(v)||0));musicAudio.volume=musicVolumeValue;if(musicYTPlayer&&musicYTReady)try{musicYTPlayer.setVolume(Math.round(musicVolumeValue*100));}catch(_){}musicVolume.value=String(musicVolumeValue);try{localStorage.setItem('tabletop_music_volume',String(musicVolumeValue));}catch(_){}}
     function musicShow(active){musicBar.classList.toggle('hidden',!active);if(projectorMode)musicBar.classList.toggle('projectorMusic',!!active);}
     function ensureMusicYT(){
@@ -6829,7 +6830,7 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
     function musicLoadState(p){
       if(!p||isMaster())return;
       musicQueue=Array.isArray(p.queue)?p.queue.map(cleanMusicItem).filter(Boolean):[];
-      musicIndex=Number.isInteger(Number(p.index))?Number(p.index):-1;musicNonce=Number(p.nonce)||musicNonce;
+      musicIndex=Number.isInteger(Number(p.index))?Number(p.index):-1;musicNonce=Number(p.nonce)||musicNonce;musicLoopMode=Math.max(0,Math.min(2,Number(p.loopMode)||0));
       const item=musicQueue[musicIndex];
       if(!item){musicAudio.pause();if(musicYTPlayer&&musicYTReady)try{musicYTPlayer.stopVideo();}catch(_){}musicAudio.removeAttribute('src');musicAudio.load();musicName.textContent='Playlist parada';musicShow(false);return;}
       musicName.textContent=item.title;musicShow(true);
@@ -6850,12 +6851,12 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
     }
     function musicPlayIndex(i){
       if(!isMaster()||i<0||i>=musicQueue.length)return;
-      musicIndex=i;musicNonce=Date.now();const it=musicQueue[i];musicName.textContent=it.title;musicShow(true);musicAudio.pause();
+      musicIndex=i;musicNonce=Date.now();const it=musicQueue[i];musicName.textContent=it.title;musicShow(true);musicAudio.pause();renderMusicProgress();
       if(musicItemIsYT(it)){ensureMusicYT().then(player=>{player.__musicNonce=String(musicNonce);player.setVolume(Math.round(musicVolumeValue*100));player.loadVideoById(it.ytId);musicSend('play');}).catch(e=>status(e.message||'Falha ao carregar o YouTube.',true));}
       else{if(musicYTPlayer&&musicYTReady)try{musicYTPlayer.pauseVideo();}catch(_){}musicAudio.dataset.musicId=it.id;musicAudio.dataset.musicNonce=String(musicNonce);musicAudio.src=it.url;musicAudio.currentTime=0;musicAudio.load();musicSend('play');setTimeout(()=>{if(musicAudio.dataset.musicNonce!==String(musicNonce))return;musicAudio.play().then(()=>musicSend('state')).catch(()=>status('O navegador bloqueou a reprodução. Clique em Play novamente.',true));},350);}
       renderMusicQueue();
     }
-    function musicNext(){if(!isMaster()||!musicQueue.length)return;musicPlayIndex((musicIndex+1)%musicQueue.length);}
+    function musicNext(){if(!isMaster()||!musicQueue.length)return;if(musicLoopMode===2&&musicIndex>=0){musicPlayIndex(musicIndex);return;}if(musicIndex+1<musicQueue.length){musicPlayIndex(musicIndex+1);return;}if(musicLoopMode===1){musicPlayIndex(0);return;}musicStop();}
     function musicStop(){if(!isMaster())return;musicAudio.pause();if(musicYTPlayer&&musicYTReady)try{musicYTPlayer.stopVideo();}catch(_){}musicIndex=-1;musicNonce=Date.now();musicSend('stop');musicShow(false);musicName.textContent='Playlist parada';renderMusicQueue();}
     function renderMusicQueue(){
       const box=$('musicQueue');if(!box)return;box.innerHTML='';
@@ -6864,6 +6865,16 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
       updateMediaQueueCounts();
     }
     musicAudio.addEventListener('ended',()=>{if(isMaster())musicNext();});
+    const musicSeek=$('musicSeek'),musicLoopBtn=$('musicLoop');
+    function musicDuration(){const it=musicQueue[musicIndex];if(musicItemIsYT(it)&&musicYTPlayer&&musicYTReady){try{return musicYTPlayer.getDuration()||0;}catch(_){}}return Number(musicAudio.duration)||0;}
+    function formatMusicTime(value){if(!Number.isFinite(value)||value<0)value=0;const n=Math.floor(value);return Math.floor(n/60)+':'+String(n%60).padStart(2,'0');}
+    function renderMusicProgress(){const duration=musicDuration(),current=Math.min(musicCurrentTime(),duration||0);$('musicElapsed').textContent=formatMusicTime(current);$('musicDuration').textContent=formatMusicTime(duration);if(!musicSeeking){musicSeek.value=String(duration?Math.round(current/duration*1000):0);}musicSeek.disabled=!duration||!isMaster();musicLoopBtn.textContent=['Loop: desligado','Loop: playlist','Loop: faixa'][musicLoopMode];musicLoopBtn.classList.toggle('active',musicLoopMode!==0);musicLoopBtn.title=['Sem repetição','Repetir playlist inteira','Repetir faixa atual'][musicLoopMode];}
+    musicLoopBtn.addEventListener('click',()=>{if(!isMaster())return;musicLoopMode=(musicLoopMode+1)%3;renderMusicProgress();musicSend('state');});
+    musicSeek.addEventListener('pointerdown',()=>{musicSeeking=true;});
+    musicSeek.addEventListener('input',()=>{const d=musicDuration();$('musicElapsed').textContent=formatMusicTime(d*Number(musicSeek.value)/1000);});
+    musicSeek.addEventListener('change',()=>{if(!isMaster())return;const d=musicDuration(),t=d*Number(musicSeek.value)/1000;if(musicItemIsYT(musicQueue[musicIndex])){if(musicYTPlayer&&musicYTReady)try{musicYTPlayer.seekTo(t,true);}catch(_){}}else try{musicAudio.currentTime=t;}catch(_){}musicSeeking=false;musicSend('seek');renderMusicProgress();});
+    musicSeek.addEventListener('pointerup',()=>{musicSeeking=false;});
+    setInterval(renderMusicProgress,500);
     musicVolume.addEventListener('input',()=>musicSetVolume(musicVolume.value));
     $('musicPlay').addEventListener('click',()=>{if(!isMaster())return;if(musicIndex<0){if(musicQueue.length)musicPlayIndex(0);return;}const it=musicQueue[musicIndex];if(musicItemIsYT(it)){ensureMusicYT().then(p=>p.playVideo()).catch(()=>musicGate.classList.remove('hidden'));musicSend('play');}else musicAudio.play().then(()=>musicSend('play')).catch(()=>status('Não foi possível iniciar a música.',true));});
     $('musicPause').addEventListener('click',()=>{if(!isMaster())return;const it=musicQueue[musicIndex];if(musicItemIsYT(it)&&musicYTPlayer&&musicYTReady)musicYTPlayer.pauseVideo();else musicAudio.pause();musicSend('pause');});
