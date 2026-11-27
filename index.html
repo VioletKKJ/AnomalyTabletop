@@ -843,9 +843,10 @@
 body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:none!important}body.projetor .ivDesc{font-size:18px}body.projetor .ivTitle{font-size:24px}@media(prefers-reduced-motion:reduce){#itemViewer{animation:none}.ivScene{transition:none}}
 
   /* ===== Música de fundo compartilhada ===== */
-  #musicBar{position:fixed;left:auto;right:14px;bottom:max(76px,calc(env(safe-area-inset-bottom,0px) + 68px));transform:none;z-index:60030;display:flex;align-items:center;gap:10px;max-width:min(420px,calc(100vw - 20px));padding:9px 13px;border:1px solid rgba(157,78,223,.45);border-radius:13px;background:rgba(20,20,29,.96);box-shadow:0 8px 28px #0008;color:var(--text);font-size:12px;backdrop-filter:blur(12px)}
-  #musicBar.hidden{display:none!important}#musicBar #musicName{max-width:32vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}#musicBar label{display:flex;align-items:center;gap:6px;color:var(--text-dim)}#musicVolume{width:100px;accent-color:var(--accent)}#musicGate{white-space:nowrap;padding:5px 8px;font-size:11px}#musicBar.projectorMusic{z-index:60030}
-  @media(max-width:600px){#musicBar{right:8px;bottom:max(72px,calc(env(safe-area-inset-bottom,0px) + 64px));gap:7px;padding:7px 9px;max-width:calc(100vw - 16px)}#musicBar #musicName{max-width:30vw}#musicVolume{width:76px}}
+  #musicBar{position:fixed;left:auto;right:14px;bottom:max(8px,env(safe-area-inset-bottom,8px));transform:none;z-index:500;display:flex;align-items:center;gap:10px;max-width:min(420px,calc(100vw - 20px));padding:9px 13px;border:1px solid rgba(157,78,223,.45);border-radius:13px;background:rgba(20,20,29,.96);box-shadow:0 8px 28px #0008;color:var(--text);font-size:12px;backdrop-filter:blur(12px)}
+  #musicBar.hidden{display:none!important}#musicBar #musicName{max-width:32vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}#musicBar label{display:flex;align-items:center;gap:6px;color:var(--text-dim)}#musicVolume{width:100px;accent-color:var(--accent)}#musicGate{white-space:nowrap;padding:5px 8px;font-size:11px}#musicBarToggle{width:25px;height:25px;min-width:25px;padding:0;display:grid;place-items:center;font-size:16px;line-height:1}
+  #musicBar.collapsed{gap:8px;padding:6px 8px;border-radius:10px}#musicBar.collapsed #musicName,#musicBar.collapsed .musicVolumeControl,#musicBar.collapsed #musicGate{display:none!important}#musicBar.collapsed .musicBarIcon{font-size:15px}#musicBar.collapsed #musicBarToggle{width:27px;height:27px}
+  @media(max-width:600px){#musicBar{right:8px;bottom:max(6px,env(safe-area-inset-bottom,6px));gap:7px;padding:7px 9px;max-width:calc(100vw - 16px)}#musicBar #musicName{max-width:30vw}#musicVolume{width:76px}}
   #musicYoutubeHost,#musicPlaylistImportHost{position:fixed;left:-10000px;top:0;width:200px;height:200px;overflow:hidden;pointer-events:none}
   /* Interface reorganizada do painel de mídia */
   #mediaPanel{width:min(430px,calc(100vw - 16px));padding:0;overflow:hidden;display:flex;flex-direction:column;max-height:calc(100vh - 90px)}
@@ -1476,7 +1477,7 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
     <div id="mvBody" class="mvBody"></div>
   </div>
   <button id="mediaNotice" class="hidden" type="button"></button>
-  <div id="musicBar" class="hidden" aria-label="Música de fundo"><span class="musicBarIcon">♫</span><span id="musicName">Playlist</span><label>Volume <input id="musicVolume" type="range" min="0" max="1" step="0.01" value="0.7"></label><button id="musicGate" class="hidden" type="button">Ativar áudio</button></div>
+  <div id="musicBar" class="hidden" aria-label="Música de fundo"><span class="musicBarIcon">♫</span><span id="musicName">Playlist</span><label class="musicVolumeControl">Volume <input id="musicVolume" type="range" min="0" max="1" step="0.01" value="0.7"></label><button id="musicGate" class="hidden" type="button">Ativar áudio</button><button id="musicBarToggle" type="button" title="Ocultar controles de música" aria-label="Ocultar controles de música">−</button></div>
 
 
   <!-- Efeitos de ambiente em tela cheia (clima, vinheta, relâmpago) -->
@@ -6814,6 +6815,8 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
     function musicSend(action){if(!isMaster())return;send('music_sync',{action,queue:musicQueue.map(x=>({id:x.id,title:x.title,url:x.url,type:x.type,path:x.path||null,ytId:x.ytId||null})),index:musicIndex,time:musicCurrentTime(),playing:musicIsPlaying(),loopMode:musicLoopMode,at:Date.now()+350,nonce:musicNonce});}
     function musicSetVolume(v){musicVolumeValue=Math.max(0,Math.min(1,Number(v)||0));musicAudio.volume=musicVolumeValue;if(musicYTPlayer&&musicYTReady)try{musicYTPlayer.setVolume(Math.round(musicVolumeValue*100));}catch(_){}musicVolume.value=String(musicVolumeValue);try{localStorage.setItem('tabletop_music_volume',String(musicVolumeValue));}catch(_){}}
     function musicShow(active){musicBar.classList.toggle('hidden',!active);if(projectorMode)musicBar.classList.toggle('projectorMusic',!!active);}
+    const musicBarToggle=$('musicBarToggle');
+    if(musicBarToggle)musicBarToggle.addEventListener('click',()=>{const collapsed=musicBar.classList.toggle('collapsed');musicBarToggle.textContent=collapsed?'+':'−';musicBarToggle.title=collapsed?'Mostrar controles de música':'Ocultar controles de música';musicBarToggle.setAttribute('aria-label',musicBarToggle.title);});
     function ensureMusicYT(){
       if(musicYTReady&&musicYTPlayer)return Promise.resolve(musicYTPlayer);
       if(musicYTPromise)return musicYTPromise;
