@@ -7635,7 +7635,7 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
             name:String(p.name||('Playlist '+(i+1))).slice(0,50),
             loopMode:Math.max(0,Math.min(2,Number(p.loopMode)||0)),
             items:Array.isArray(p.items)?p.items.map(cleanMusicItem).filter(Boolean):[]
-          })).filter(p=>/^[\\w-]{1,64}$/.test(p.id));
+          })).filter(p=>/^[\w-]{1,64}$/.test(p.id));
           activeMusicPlaylistId=musicPlaylists.some(p=>p.id===raw.activeId)?raw.activeId:null;
         }
       }catch(_){}
