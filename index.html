@@ -3529,7 +3529,7 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
     clearTokenMultiSelection();
     tokenEls.forEach((el, id) => {
       const r = el.getBoundingClientRect();
-      if (r.right >= left && r.left <= right && r.bottom >= top && r.top <= bottom) {
+      if (tokenIntersectsSelection(el, left, top, right, bottom)) {
         const tok = tokenData.get(id);
         if (tok && !tok.locked && !tok.hidden) {
           selectedTokenIds.add(id);
@@ -3584,6 +3584,85 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
       if (cur) { cur.z = oldZ; reorderLayers(dataMap, elMap); }
       alert('Não foi possível mudar a camada: ' + error.message);
     }
+  }
+
+  // Hit detection por transparência: pixels vazios do PNG não recebem seleção.
+  const tokenAlphaMasks = new Map();
+  function getTokenAlphaMask(url) {
+    if (!url || isVideoUrl(url)) return null;
+    const cleanUrl = url.replace(/^http:\/\//, 'https://');
+    if (tokenAlphaMasks.has(cleanUrl)) return tokenAlphaMasks.get(cleanUrl);
+    const entry = { status: 'loading', canvas: null, ctx: null, width: 0, height: 0 };
+    tokenAlphaMasks.set(cleanUrl, entry);
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        ctx.drawImage(img, 0, 0);
+        // Ler os pixels aqui também detecta imagens externas sem CORS.
+        ctx.getImageData(0, 0, 1, 1);
+        entry.canvas = canvas;
+        entry.ctx = ctx;
+        entry.width = canvas.width;
+        entry.height = canvas.height;
+        entry.status = 'ready';
+      } catch (_) {
+        entry.status = 'unavailable';
+      }
+    };
+    img.onerror = () => { entry.status = 'unavailable'; };
+    img.src = cleanUrl;
+    return entry;
+  }
+
+  function tokenHasOpaquePixelAt(el, clientX, clientY) {
+    const tok = tokenData.get(el.dataset.id);
+    if (!tok) return true;
+    const url = imageForToken(tok);
+    if (isVideoUrl(url)) return true;
+    const mask = getTokenAlphaMask(url);
+    // Enquanto carrega ou se o servidor não permitir leitura, mantém o comportamento antigo.
+    if (!mask || mask.status !== 'ready') return true;
+
+    const rect = el.getBoundingClientRect();
+    if (!rect.width || !rect.height) return false;
+    const angle = -((+tok.rotation || 0) * Math.PI / 180);
+    const cx = rect.left + rect.width / 2, cy = rect.top + rect.height / 2;
+    const dx = clientX - cx, dy = clientY - cy;
+    const cos = Math.cos(angle), sin = Math.sin(angle);
+    let nx = (dx * cos - dy * sin) / rect.width + 0.5;
+    const ny = (dx * sin + dy * cos) / rect.height + 0.5;
+    if (tok.flip_x) nx = 1 - nx;
+    if (nx < 0 || nx > 1 || ny < 0 || ny > 1) return false;
+
+    const px = Math.min(mask.width - 1, Math.max(0, Math.floor(nx * mask.width)));
+    const py = Math.min(mask.height - 1, Math.max(0, Math.floor(ny * mask.height)));
+    try {
+      return mask.ctx.getImageData(px, py, 1, 1).data[3] > 12;
+    } catch (_) {
+      return true;
+    }
+  }
+
+  function tokenIntersectsSelection(el, left, top, right, bottom) {
+    const rect = el.getBoundingClientRect();
+    const l = Math.max(left, rect.left), r = Math.min(right, rect.right);
+    const t = Math.max(top, rect.top), b = Math.min(bottom, rect.bottom);
+    if (r < l || b < t) return false;
+    // Amostra a região sobreposta para evitar selecionar apenas pela caixa transparente.
+    const cols = 9, rows = 9;
+    for (let y = 0; y <= rows; y++) {
+      for (let x = 0; x <= cols; x++) {
+        const px = l + (r - l) * (x / cols);
+        const py = t + (b - t) * (y / rows);
+        if (tokenHasOpaquePixelAt(el, px, py)) return true;
+      }
+    }
+    return false;
   }
 
   function imageForToken(tok) {
@@ -3657,6 +3736,7 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
       attachRotate(el, rotHandle, tok.id, 'token');
 
       el.addEventListener('contextmenu', (e) => {
+        if (!tokenHasOpaquePixelAt(el, e.clientX, e.clientY)) return;
         e.preventDefault();
         if (currentTool !== 'select') return;
         openContextMenu('token', tok.id, e.clientX, e.clientY);
@@ -3970,6 +4050,7 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
 
     el.addEventListener('pointerdown', (e) => {
       if (currentTool !== 'select') return;
+      if (type === 'token' && !tokenHasOpaquePixelAt(el, e.clientX, e.clientY)) return;
       if (document.body.classList.contains('wall-editor-active') || document.body.classList.contains('fog-editor-active') || document.body.classList.contains('light-editor-active')) return;
       if (type === 'map' && (!document.body.classList.contains('map-editor-active') || currentRole !== 'mestre')) return;
       if (e.target === handle || e.target.classList.contains('rotateHandle')) return;
