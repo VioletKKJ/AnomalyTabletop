@@ -6785,7 +6785,7 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
         musicAudio.pause();
         ensureMusicYT().then(player=>{
           let current='';try{current=player.getVideoData().video_id||'';}catch(_){}
-          const changed=current!==item.ytId||player.__musicNonce!==String(musicNonce);
+          const changed=player.__musicNonce!==String(musicNonce);
           if(changed){player.__musicNonce=String(musicNonce);player.cueVideoById(item.ytId);}
           setTimeout(()=>{if(player.__musicNonce!==String(musicNonce))return;musicApplying=true;try{player.setVolume(Math.round(musicVolumeValue*100));if(Math.abs((player.getCurrentTime()||0)-target)>1.25)player.seekTo(target,true);if(p.playing)player.playVideo();else player.pauseVideo();}catch(_){}setTimeout(()=>musicApplying=false,400);},delay+(changed?500:0));
         }).catch(()=>musicGate.classList.remove('hidden'));
@@ -6917,7 +6917,7 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
         let id = '', embedUrl = '';
         if (host === 'youtu.be' || host.endsWith('youtube.com') || host.endsWith('youtube-nocookie.com')) {
           const playlistId=u.searchParams.get('list')||'';
-          if(playlistId&&!u.searchParams.get('v'))return {url,type:'playlist',playlistId,provider:'YouTube'};
+          if(playlistId)return {url,type:'playlist',playlistId,provider:'YouTube'};
           if (host === 'youtu.be') id = u.pathname.split('/').filter(Boolean)[0] || '';
           else if (u.pathname === '/watch') id = u.searchParams.get('v') || '';
           else if (/^\/(shorts|embed|live)\//.test(u.pathname)) id = u.pathname.split('/')[2] || '';
