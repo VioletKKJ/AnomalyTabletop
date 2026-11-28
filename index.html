@@ -7080,6 +7080,15 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
       return it;
     }
     const pub = (it) => ({ id: it.id, title: it.title, url: it.url, type: it.type, path: it.path || null, embedUrl: it.embedUrl || null });
+    // Vídeos enviados como arquivos para o Storage são reproduzidos independentemente
+    // em cada navegador. Apenas o comando inicial de play é transmitido.
+    function isUploadedLocalVideo(it) {
+      if (!it || it.type !== 'video' || it.embedUrl) return false;
+      try {
+        const path = new URL(it.url, location.href).pathname;
+        return /\/storage\/v1\/object\/public\/tabletop\/rooms\/[^/]+\/media\//i.test(path);
+      } catch (_) { return false; }
+    }
     const cleanMusicItem = (it) => { const x = clean(it); if (!x) return null; if (x.ytId) return {id:x.id,title:x.title,url:x.url,type:'video',ytId:x.ytId}; return x.type === 'audio' && !x.embedUrl ? {id:x.id,title:x.title,url:x.url,type:'audio',path:x.path||null} : null; };
     const musicItemIsYT = it => !!(it && it.ytId);
     function musicCurrentTime(){const it=musicQueue[musicIndex];if(musicItemIsYT(it)&&musicYTPlayer&&musicYTReady){try{return musicYTPlayer.getCurrentTime()||0;}catch(_){}}return Number(musicAudio.currentTime)||0;}
@@ -7419,7 +7428,21 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
       const run = () => {
         const target = Math.max(0, Number(p.time) || 0);
         applyingRemoteSync = true;
-        if (ytPlayer && ytPlayerReady) {
+        if (isUploadedLocalVideo(shared)) {
+          // Não sincroniza pausa, busca, posição ou heartbeat em vídeos locais.
+          // O play do mestre apenas solicita que cada jogador inicie sua própria cópia.
+          if (p.action === 'play') {
+            const el = mediaElement();
+            if (el) {
+              const startLocalVideo = () => {
+                if (!shared || shared.id !== p.id || !el.isConnected) return;
+                el.play().then(clearPlaybackGate).catch(showPlaybackGate);
+              };
+              if (el.readyState >= 2) startLocalVideo();
+              else el.addEventListener('canplay', startLocalVideo, { once: true });
+            }
+          }
+        } else if (ytPlayer && ytPlayerReady) {
           try {
             if (p.action === 'play') { ytPlayer.seekTo(target, true); ytPlayer.playVideo(); setTimeout(() => { if (ytPlayer && ytPlayerReady && ytPlayer.getPlayerState() !== 1) showPlaybackGate(); }, 1400); }
             else if (p.action === 'pause') { ytPlayer.seekTo(target, true); ytPlayer.pauseVideo(); }
@@ -7456,7 +7479,7 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
     }
     function startSyncHeartbeat() {
       if (syncHeartbeat) clearInterval(syncHeartbeat);
-      if (!isMaster() || !shared || !['video', 'audio'].includes(shared.type)) return;
+      if (!isMaster() || !shared || !['video', 'audio'].includes(shared.type) || isUploadedLocalVideo(shared)) return;
       syncHeartbeat = setInterval(() => {
         if (shared && shared.embedUrl && shared.embedUrl.includes('youtube.com') && !ytPlayerReady) return;
         send('media_sync', { id: shared.id, action: 'state', time: playbackTime(), playing: playbackActive(), at: Date.now() + 250 });
@@ -7467,6 +7490,11 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
       el.controls = isMaster();
       if (!isMaster()) el.setAttribute('controlslist', 'nodownload noplaybackrate');
       if (!isMaster()) return;
+      if (el.tagName === 'VIDEO' && isUploadedLocalVideo(shared)) {
+        // Para arquivos locais, somente o play do mestre é enviado uma vez.
+        el.addEventListener('play', () => { if (!applyingRemoteSync) sendSync('play', Date.now() + 250, 0); });
+        return;
+      }
       el.addEventListener('play', () => { if (!applyingRemoteSync) sendSync('play', Date.now() + 250, el.currentTime); });
       el.addEventListener('pause', () => { if (!applyingRemoteSync && !el.ended) sendSync('pause', Date.now() + 250, el.currentTime); });
       el.addEventListener('seeking', () => { if (!applyingRemoteSync) sendSync('seek', Date.now() + 250, el.currentTime); });
@@ -7590,7 +7618,7 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
       mvStop.classList.toggle('hidden', !(isMaster() && shared && shared.id === it.id));
       viewer.classList.remove('hidden');
       unseen = false; refreshNotice();
-      if (isMaster() && shared && shared.id === it.id && ['video', 'audio'].includes(it.type)) startSyncHeartbeat();
+      if (isMaster() && shared && shared.id === it.id && ['video', 'audio'].includes(it.type) && !isUploadedLocalVideo(it)) startSyncHeartbeat();
     }
     function closeViewer(force) {
       if (!force && isMaster() && shared && viewing && shared.id === viewing.id) { viewer.classList.add('hidden'); refreshNotice(); return; }
@@ -7619,7 +7647,10 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
       if (!send('media_share', { item: shared, n: sharedNonce })) status('Sem conexão com a mesa: os jogadores ainda não receberam.', true);
       openViewer(it); renderList();
       if (it.type === 'video' || it.type === 'audio') {
-        if (it.embedUrl && it.embedUrl.includes('drive.google.com')) status('Google Drive não permite sincronização precisa dos controles. Para cutscenes sincronizadas, use YouTube ou um link direto de vídeo.', true);
+        if (isUploadedLocalVideo(it)) {
+          // O vídeo aparece para todos, mas cada navegador começa ao receber o play do mestre.
+          if (syncHeartbeat) { clearInterval(syncHeartbeat); syncHeartbeat = null; }
+        } else if (it.embedUrl && it.embedUrl.includes('drive.google.com')) status('Google Drive não permite sincronização precisa dos controles. Para cutscenes sincronizadas, use YouTube ou um link direto de vídeo.', true);
         else {
           const startAt = Date.now() + 2500;
           const initialSync = { id: shared.id, action: 'play', time: 0, at: startAt };
@@ -7667,7 +7698,7 @@ body.projetor .ivTools,body.projetor .ivHint,body.projetor #itemsPanel{display:n
       const now = Date.now(); if (now - lastHelloReply < 1500) return; lastHelloReply = now;
       if (shared) {
         send('media_share', { item: shared, n: sharedNonce });
-        if (['video', 'audio'].includes(shared.type) && !(shared.embedUrl && shared.embedUrl.includes('drive.google.com')))
+        if (['video', 'audio'].includes(shared.type) && !isUploadedLocalVideo(shared) && !(shared.embedUrl && shared.embedUrl.includes('drive.google.com')))
           send('media_sync', { id: shared.id, action: 'state', time: playbackTime(), playing: playbackActive(), at: Date.now() + 500 });
       } else send('media_stop', {});
     }
